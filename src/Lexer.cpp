@@ -17,9 +17,27 @@ bool Lexer::operator_startswith(std::string c) {
 
 Token Lexer::peek() {
     std::string tok;
-    bool num = false, real = false, op = false;
+    bool num = false, real = false, op = false, string = false;
     for (int i = 0; i < code.size(); i++) {
         char c = code[i];
+
+        if (c == '"') {
+            if (tok.empty()) {
+                string = true;
+                tok.push_back(c);
+                continue;
+            } else {
+                if (string) {
+                    tok.push_back(c);
+                }
+                break;
+            }
+        }
+
+        if (string) {
+            tok.push_back(c);
+            continue;
+        }
 
         if (isblank(c)) {
             if (tok.empty()) continue;
@@ -89,7 +107,7 @@ Token Lexer::peek() {
         type = REAL;
     } else if (num) {
         type = INTEGER;
-    } else if (tok[0] == '\"') {
+    } else if (string) {
         type = STRING;
     } else {
         type = NAME;
