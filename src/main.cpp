@@ -9,7 +9,7 @@
 
 #define ASSERT_TOK(type, tok) _st = _st && lexer.peek().id == type; \
 _st = _st && lexer.peek().raw == tok;\
-if (!_st) printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok);\
+if (!_st) { printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok); return false; }\
 lexer.consume()
 
 bool test() {
