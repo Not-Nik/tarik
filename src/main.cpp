@@ -1,8 +1,6 @@
 #include "Lexer.h"
 #include "cli/arguments.h"
 
-#define TEST_OPTION 1
-
 #define BEGIN_TEST bool _st = true
 #define MID_TEST if (!_st) return _st
 #define END_TEST return _st
@@ -39,6 +37,8 @@ bool test() {
     MID_TEST;
     END_TEST;
 }
+
+#define TEST_OPTION 1
 
 int main(int argc, const char * argv[]) {
     ArgumentParser parser(argc, argv, "Seno");

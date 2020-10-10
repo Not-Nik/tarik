@@ -26,7 +26,7 @@ void ArgumentParser::help() {
     std::cout << "Usage: " << this->passed[0] << " [options] inputs\n\n";
     std::cout << "Options:\n";
     for (const auto & option : this->options) {
-        std::cout << "--" << option.name;
+        std::cout << "    --" << option.name;
         if (option.hasArg)
             std::cout << "=<" << option.argumentName << ">";
         std::cout << " - " << option.description << "\n";
