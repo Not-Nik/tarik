@@ -18,8 +18,16 @@ bool Lexer::operator_startswith(std::string c) {
 Token Lexer::peek() {
     std::string tok;
     bool num = false, real = false, op = false, string = false;
+    bool temp_com = false;
     for (int i = 0; i < code.size(); i++) {
         char c = code[i];
+
+        if (temp_com) {
+            if (c == '\n') {
+                temp_com = false;
+            }
+            continue;
+        }
 
         if (c == '"') {
             if (tok.empty()) {
@@ -32,6 +40,11 @@ Token Lexer::peek() {
                 }
                 break;
             }
+        }
+
+        if (c == '#') {
+            temp_com = true;
+            continue;
         }
 
         if (string) {

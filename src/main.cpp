@@ -16,7 +16,7 @@ bool test() {
     BEGIN_TEST;
 
     printf("testing lexer...");
-    Lexer lexer("hello test4 ( ) +-===- > fn i32 42 12.34 \"a string\"");
+    Lexer lexer("hello test4 ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
 
     ASSERT_TOK(NAME, "hello");
     ASSERT_TOK(NAME, "test4");
@@ -33,6 +33,7 @@ bool test() {
     ASSERT_TOK(INTEGER, "42");
     ASSERT_TOK(REAL, "12.34");
     ASSERT_TOK(STRING, "\"a string\"");
+    ASSERT_TOK(NAME, "back");
 
     puts(" done");
     MID_TEST;

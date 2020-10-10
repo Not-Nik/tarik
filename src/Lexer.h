@@ -15,7 +15,9 @@ class Lexer {
     } pos {0, 0};
 
     static bool operator_startswith(char c);
+
     static bool operator_startswith(std::string c);
+
 public:
     explicit Lexer(std::string c);
 
