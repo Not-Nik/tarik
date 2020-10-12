@@ -14,7 +14,7 @@ lexer.consume();
 
 #define ASSERT_EQ(l, r) {std::string save = l; \
 _st = save == r; \
-if (!_st) { printf("\nFailed at expression '%s': expected '%s'", save.c_str(), r); return false; }}
+if (!_st) { printf("\nFailed for expression '%s': expected '%s'", save.c_str(), r); return false; }}
 
 bool test() {
     BEGIN_TEST;
@@ -49,6 +49,8 @@ bool test() {
     std::string test = "hey g";
 
     ASSERT_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
+    ASSERT_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
+    ASSERT_EQ(Parser("-name + 4 * -5").parse_expression()->print(), "(-name+(4*-5))")
 
     puts(" done");
     END_TEST;
