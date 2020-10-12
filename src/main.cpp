@@ -12,9 +12,12 @@ _st = _st && lexer.peek().raw == tok;\
 if (!_st) { printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok); return false; }\
 lexer.consume();
 
-#define ASSERT_EQ(l, r) {std::string save = l; \
+#define ASSERT_STR_EQ(l, r) {std::string save = l; \
 _st = save == r; \
 if (!_st) { printf("\nFailed for expression '%s': expected '%s'", save.c_str(), r); return false; }}
+
+#define ASSERT_EQ(l, r) _st = l == r; \
+if (!_st) { printf("\nFailed for expression '%s': expected '%s'", #l, #r); return false; }
 
 bool test() {
     BEGIN_TEST;
@@ -48,9 +51,11 @@ bool test() {
 
     std::string test = "hey g";
 
-    ASSERT_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
-    ASSERT_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
-    ASSERT_EQ(Parser("-name + 4 * -5").parse_expression()->print(), "(-name+(4*-5))")
+    ASSERT_STR_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
+    ASSERT_STR_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
+    ASSERT_STR_EQ(Parser("-name + 4 * -5").parse_expression()->print(), "(-name+(4*-5))")
+
+    ASSERT_EQ(Parser("if (4 + 4)").parse_statement()->type, IF_STMT)
 
     puts(" done");
     END_TEST;

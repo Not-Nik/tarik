@@ -5,6 +5,7 @@
 #include "expressions/Parslets.h"
 
 #define STDERR_WARN
+
 #include <comperr.h>
 
 #include <utility>
@@ -14,6 +15,16 @@ void Parser::iassert(bool cond, std::string what, ...) {
     va_start(args, what);
     vcomperr(cond, what.c_str(), false, filename.c_str(), lexer.where().l, lexer.where().p, args);
     va_end(args);
+}
+
+void Parser::expect(TokenType raw) {
+    iassert(lexer.peek().id == raw, "Unexpected '%s'.", lexer.peek().raw.c_str());
+    lexer.consume();
+}
+
+void Parser::expect(const std::string & raw) {
+    iassert(lexer.peek().raw == raw, "Expected '%s' found '%s'.", raw.c_str(), lexer.peek().raw.c_str());
+    lexer.consume();
 }
 
 ExprType Parser::get_precedence() {
@@ -60,4 +71,20 @@ Expression * Parser::parse_expression(int precedence) {
     }
 
     return left;
+}
+
+Statement * Parser::parse_statement() {
+    TokenType type = lexer.peek().id;
+    if (type == FUNC) {
+
+    } else if (type == RETURN) {
+        return new ReturnStatement(parse_expression());
+    } else if (type == IF) {
+        lexer.consume();
+        expect(PAREN_OPEN);
+        auto * res = new IfStatement(parse_expression());
+        expect(PAREN_CLOSE);
+        return res;
+    }
+    return nullptr;
 }

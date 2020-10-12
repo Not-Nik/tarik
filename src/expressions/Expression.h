@@ -5,6 +5,7 @@
 #ifndef SENO_EXPRESSION_H
 #define SENO_EXPRESSION_H
 
+// This also does precedence
 enum ExprType {
     CALL_EXPR,
     DASH_EXPR, // add subtract

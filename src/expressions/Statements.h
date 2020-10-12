@@ -27,9 +27,9 @@ public:
 
 class IfStatement : public Statement {
 public:
-    Expression condition;
+    Expression * condition;
 
-    explicit IfStatement(Expression cond) :
+    explicit IfStatement(Expression * cond) :
             Statement(IF_STMT),
             condition(cond) {
     }
@@ -47,9 +47,9 @@ public:
 
 class ReturnStatement : public Statement {
 public:
-    Expression value;
+    Expression * value;
 
-    explicit ReturnStatement(Expression val) :
+    explicit ReturnStatement(Expression * val) :
             Statement(RETURN_STMT),
             value(val) {
     }
@@ -57,9 +57,9 @@ public:
 
 class WhileStatement : public Statement {
 public:
-    Expression condition;
+    Expression * condition;
 
-    explicit WhileStatement(Expression cond) :
+    explicit WhileStatement(Expression * cond) :
             Statement(WHILE_STMT),
             condition(cond) {
     }
@@ -67,9 +67,9 @@ public:
 
 class ForStatement : public Statement {
 public:
-    Expression initializer, condition, loop;
+    Expression * initializer, * condition, * loop;
 
-    explicit ForStatement(Expression init, Expression cond, Expression l) :
+    explicit ForStatement(Expression * init, Expression * cond, Expression * l) :
             Statement(FOR_STMT),
             initializer(init),
             condition(cond),

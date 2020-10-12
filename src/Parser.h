@@ -7,6 +7,7 @@
 
 #include "Lexer.h"
 #include "expressions/Expression.h"
+#include "expressions/Statements.h"
 
 class PrefixParselet;
 class InfixParselet;
@@ -19,6 +20,8 @@ class Parser {
     std::map<TokenType, InfixParselet *> infix_parslets;
 
     void iassert(bool cond, std::string what = "", ...);
+    void expect(TokenType raw);
+    void expect(const std::string & raw);
 
     ExprType get_precedence();
 
@@ -27,6 +30,7 @@ public:
     ~Parser();
 
     Expression * parse_expression(int precedence = 0);
+    Statement * parse_statement();
 };
 
 
