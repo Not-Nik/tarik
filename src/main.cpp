@@ -1,4 +1,6 @@
-#include "Lexer.h"
+// Seno (c) Nikolas Wipper 2020
+
+#include "Parser.h"
 #include "cli/arguments.h"
 
 #define BEGIN_TEST bool _st = true
@@ -8,33 +10,47 @@
 #define ASSERT_TOK(type, tok) _st = _st && lexer.peek().id == type; \
 _st = _st && lexer.peek().raw == tok;\
 if (!_st) { printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok); return false; }\
-lexer.consume()
+lexer.consume();
+
+#define ASSERT_EQ(l, r) {std::string save = l; \
+_st = save == r; \
+if (!_st) { printf("\nFailed at expression '%s': expected '%s'", save.c_str(), r); return false; }}
 
 bool test() {
     BEGIN_TEST;
 
     printf("testing lexer...");
-    Lexer lexer("hello test4 ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
+    Lexer lexer("hello test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
 
-    ASSERT_TOK(NAME, "hello");
-    ASSERT_TOK(NAME, "test4");
-    ASSERT_TOK(PAREN_OPEN, "(");
-    ASSERT_TOK(PAREN_CLOSE, ")");
-    ASSERT_TOK(PLUS, "+");
-    ASSERT_TOK(MINUS, "-");
-    ASSERT_TOK(DOUBLE_EQUAL, "==");
-    ASSERT_TOK(EQUAL, "=");
-    ASSERT_TOK(MINUS, "-");
-    ASSERT_TOK(GREATER, ">");
-    ASSERT_TOK(FUNC, "fn");
-    ASSERT_TOK(INT_32, "i32");
-    ASSERT_TOK(INTEGER, "42");
-    ASSERT_TOK(REAL, "12.34");
-    ASSERT_TOK(STRING, "\"a string\"");
-    ASSERT_TOK(NAME, "back");
+    ASSERT_TOK(NAME, "hello")
+    ASSERT_TOK(NAME, "test4")
+    ASSERT_TOK(INTEGER, "4")
+    ASSERT_TOK(NAME, "test")
+    ASSERT_TOK(PAREN_OPEN, "(")
+    ASSERT_TOK(PAREN_CLOSE, ")")
+    ASSERT_TOK(PLUS, "+")
+    ASSERT_TOK(MINUS, "-")
+    ASSERT_TOK(DOUBLE_EQUAL, "==")
+    ASSERT_TOK(EQUAL, "=")
+    ASSERT_TOK(MINUS, "-")
+    ASSERT_TOK(GREATER, ">")
+    ASSERT_TOK(FUNC, "fn")
+    ASSERT_TOK(INT_32, "i32")
+    ASSERT_TOK(INTEGER, "42")
+    ASSERT_TOK(REAL, "12.34")
+    ASSERT_TOK(STRING, "\"a string\"")
+    ASSERT_TOK(NAME, "back")
 
     puts(" done");
     MID_TEST;
+
+    printf("testing expression parsing...");
+
+    std::string test = "hey g";
+
+    ASSERT_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
+
+    puts(" done");
     END_TEST;
 }
 
