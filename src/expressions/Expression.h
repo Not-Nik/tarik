@@ -1,9 +1,11 @@
-#include <utility>
-
 // Seno (c) Nikolas Wipper 2020
 
 #ifndef SENO_EXPRESSION_H
 #define SENO_EXPRESSION_H
+
+#include <utility>
+
+#include "Statements.h"
 
 // This also does precedence
 enum ExprType {
@@ -16,13 +18,13 @@ enum ExprType {
     INT_EXPR
 };
 
-class Expression {
+class Expression : public Statement {
 public:
     ExprType type;
 
     Expression() = default;
 
-    explicit Expression(ExprType t) { type = t; }
+    explicit Expression(ExprType t) : Statement(EXPR_STMT) { type = t; }
 
     virtual std::string print() const { return ""; }
 };

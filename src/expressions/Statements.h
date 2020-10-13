@@ -1,11 +1,15 @@
+#include <utility>
+
 // Seno (c) Nikolas Wipper 2020
 
 #ifndef SENO_STATEMENTS_H
 #define SENO_STATEMENTS_H
 
-#include "Expression.h"
+
+class Expression;
 
 enum StmtType {
+    FUNC_STMT,
     IF_STMT,
     ELSE_STMT,
     RETURN_STMT,
@@ -13,7 +17,8 @@ enum StmtType {
     FOR_STMT,
     BREAK_STMT,
     CONTINUE_STMT,
-    STRUCT_STMT
+    STRUCT_STMT,
+    EXPR_STMT
 };
 
 class Statement {
@@ -25,23 +30,31 @@ public:
     }
 };
 
+class FuncStatement : public Statement {
+
+};
+
 class IfStatement : public Statement {
 public:
     Expression * condition;
+    std::vector<Statement *> block;
 
-    explicit IfStatement(Expression * cond) :
+    explicit IfStatement(Expression * cond, std::vector<Statement *> b) :
             Statement(IF_STMT),
-            condition(cond) {
+            condition(cond),
+            block(std::move(b)) {
     }
 };
 
 class ElseStatement : public Statement {
 public:
     IfStatement * inverse;
+    std::vector<Statement *> block;
 
-    explicit ElseStatement(IfStatement * inv) :
+    explicit ElseStatement(IfStatement * inv, std::vector<Statement *> b) :
             Statement(ELSE_STMT),
-            inverse(inv) {
+            inverse(inv),
+            block(std::move(b)) {
     }
 };
 
@@ -58,22 +71,26 @@ public:
 class WhileStatement : public Statement {
 public:
     Expression * condition;
+    std::vector<Statement *> block;
 
-    explicit WhileStatement(Expression * cond) :
+    explicit WhileStatement(Expression * cond, std::vector<Statement *> b) :
             Statement(WHILE_STMT),
-            condition(cond) {
+            condition(cond),
+            block(std::move(b)) {
     }
 };
 
 class ForStatement : public Statement {
 public:
     Expression * initializer, * condition, * loop;
+    std::vector<Statement *> block;
 
-    explicit ForStatement(Expression * init, Expression * cond, Expression * l) :
+    explicit ForStatement(Expression * init, Expression * cond, Expression * l, std::vector<Statement *> b) :
             Statement(FOR_STMT),
             initializer(init),
             condition(cond),
-            loop(l) {
+            loop(l),
+            block(std::move(b)) {
     }
 };
 

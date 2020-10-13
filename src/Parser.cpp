@@ -17,24 +17,24 @@ void Parser::iassert(bool cond, std::string what, ...) {
     va_end(args);
 }
 
-void Parser::expect(TokenType raw) {
-    iassert(lexer.peek().id == raw, "Unexpected '%s'.", lexer.peek().raw.c_str());
-    lexer.consume();
-}
-
-void Parser::expect(const std::string & raw) {
-    iassert(lexer.peek().raw == raw, "Expected '%s' found '%s'.", raw.c_str(), lexer.peek().raw.c_str());
-    lexer.consume();
-}
-
 ExprType Parser::get_precedence() {
     if (lexer.peek().id == SEMICOLON) {
-        lexer.consume();
         return (ExprType) -1;
     }
     if (infix_parslets.count(lexer.peek().id) > 0)
         return infix_parslets[lexer.peek().id]->get_type();
     return static_cast<ExprType>(0);
+}
+
+std::vector<Statement *> Parser::block() {
+    expect(CURLY_OPEN);
+    std::vector<Statement *> res;
+    while (lexer.peek().id != CURLY_CLOSE) {
+        res.push_back(parse_statement());
+        expect(SEMICOLON);
+    }
+    expect(CURLY_CLOSE);
+    return res;
 }
 
 Parser::Parser(std::string code, std::string fn) :
@@ -48,6 +48,7 @@ Parser::Parser(std::string code, std::string fn) :
     // Prefix expressions
     prefix_parslets.emplace(PLUS, new PosParselet());
     prefix_parslets.emplace(MINUS, new NegParselet());
+    prefix_parslets.emplace(PAREN_OPEN, new GroupParselet());
 
     // Binary expressions
     infix_parslets.emplace(PLUS, new AddParselet());
@@ -60,9 +61,20 @@ Parser::~Parser() {
     endfile();
 }
 
+void Parser::expect(TokenType raw) {
+    TokenType peek = lexer.peek().id;
+    iassert(lexer.peek().id == raw, "Unexpected '%s'.", lexer.peek().raw.c_str());
+    lexer.consume();
+}
+
+void Parser::expect(const std::string & raw) {
+    iassert(lexer.peek().raw == raw, "Expected '%s' found '%s'.", raw.c_str(), lexer.peek().raw.c_str());
+    lexer.consume();
+}
+
 Expression * Parser::parse_expression(int precedence) {
     Token token = lexer.consume();
-    iassert(prefix_parslets.count(token.id) > 0, "Unkown token '%s'", token.raw.c_str());
+    iassert(prefix_parslets.count(token.id) > 0, "Unexpected token '%s'", token.raw.c_str());
     PrefixParselet * prefix = prefix_parslets[token.id];
 
     Expression * left = prefix->parse(this, token);
@@ -85,10 +97,14 @@ Statement * Parser::parse_statement() {
         return new ReturnStatement(parse_expression());
     } else if (type == IF) {
         lexer.consume();
-        expect(PAREN_OPEN);
-        auto * res = new IfStatement(parse_expression());
-        expect(PAREN_CLOSE);
-        return res;
+        return new IfStatement(parse_expression(), block());
+    } else if (type == ELSE) {
+
+    } else if (type == WHILE) {
+        lexer.consume();
+        return new WhileStatement(parse_expression(), block());
+    } else if (type == FOR) {
+
     }
-    return nullptr;
+    return parse_expression();
 }

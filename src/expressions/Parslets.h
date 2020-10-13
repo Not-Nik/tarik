@@ -56,4 +56,12 @@ using SubParselet = BinaryOperatorParselet<SubExpression, DASH_EXPR>;
 using MulParselet = BinaryOperatorParselet<MulExpression, DOT_EXPR>;
 using DivParselet = BinaryOperatorParselet<DivExpression, DOT_EXPR>;
 
+class GroupParselet : public PrefixParselet {
+    Expression * parse(Parser * parser, const Token & token) override {
+        Expression * e = parser->parse_expression();
+        parser->expect(PAREN_CLOSE);
+        return e;
+    }
+};
+
 #endif //SENO_PARSLETS_H
