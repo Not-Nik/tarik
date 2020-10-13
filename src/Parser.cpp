@@ -28,6 +28,10 @@ void Parser::expect(const std::string & raw) {
 }
 
 ExprType Parser::get_precedence() {
+    if (lexer.peek().id == SEMICOLON) {
+        lexer.consume();
+        return (ExprType) -1;
+    }
     if (infix_parslets.count(lexer.peek().id) > 0)
         return infix_parslets[lexer.peek().id]->get_type();
     return static_cast<ExprType>(0);

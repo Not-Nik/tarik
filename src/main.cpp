@@ -4,7 +4,6 @@
 #include "cli/arguments.h"
 
 #define BEGIN_TEST bool _st = true
-#define MID_TEST if (!_st) return _st
 #define END_TEST return _st
 
 #define ASSERT_TOK(type, tok) _st = _st && lexer.peek().id == type; \
@@ -45,17 +44,21 @@ bool test() {
     ASSERT_TOK(NAME, "back")
 
     puts(" done");
-    MID_TEST;
 
     printf("testing expression parsing...");
-
-    std::string test = "hey g";
 
     ASSERT_STR_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
     ASSERT_STR_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
     ASSERT_STR_EQ(Parser("-name + 4 * -5").parse_expression()->print(), "(-name+(4*-5))")
+    ASSERT_STR_EQ(Parser("3 + 4 * 5; 6 + 7 * 8").parse_expression()->print(), "(3+(4*5))")
+
+    puts(" done");
+
+    printf("testing statement parsing...");
 
     ASSERT_EQ(Parser("if (4 + 4)").parse_statement()->type, IF_STMT)
+    IfStatement * ifStatement = (IfStatement *) Parser("if (4 + 4)").parse_statement();
+    ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
 
     puts(" done");
     END_TEST;
