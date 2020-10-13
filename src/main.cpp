@@ -50,7 +50,11 @@ bool test() {
     ASSERT_STR_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
     ASSERT_STR_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
     ASSERT_STR_EQ(Parser("-name + 4 * -5").parse_expression()->print(), "(-name+(4*-5))")
-    ASSERT_STR_EQ(Parser("3 + 4 * 5; 6 + 7 * 8").parse_expression()->print(), "(3+(4*5))")
+    {
+        Parser tmp = Parser("3 + 4 * 5; 6 + 7 * 8");
+        ASSERT_STR_EQ(tmp.parse_expression()->print(), "(3+(4*5))")
+        ASSERT_STR_EQ(tmp.parse_expression()->print(), "(6+(7*8))")
+    }
 
     puts(" done");
 
