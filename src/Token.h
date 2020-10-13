@@ -1,7 +1,7 @@
 // Matrix (c) Nikolas Wipper 2020
 
-#ifndef SENO_TOKEN_H
-#define SENO_TOKEN_H
+#ifndef TARIK_TOKEN_H
+#define TARIK_TOKEN_H
 
 #include <map>
 #include <string>
@@ -112,4 +112,4 @@ public:
     std::string raw;
 };
 
-#endif //SENO_TOKEN_H
+#endif //TARIK_TOKEN_H

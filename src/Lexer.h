@@ -1,7 +1,7 @@
-// Matrix (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
-#ifndef SENO_LEXER_H
-#define SENO_LEXER_H
+#ifndef TARIK_LEXER_H
+#define TARIK_LEXER_H
 
 #include "Token.h"
 
@@ -28,4 +28,4 @@ public:
     typeof(Lexer::pos) where();
 };
 
-#endif //SENO_LEXER_H
+#endif //TARIK_LEXER_H

@@ -1,7 +1,7 @@
-// Seno (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
-#ifndef SENO_PARSLETS_H
-#define SENO_PARSLETS_H
+#ifndef TARIK_PARSLETS_H
+#define TARIK_PARSLETS_H
 
 #include "Expression.h"
 #include "../Token.h"
@@ -64,4 +64,4 @@ class GroupParselet : public PrefixParselet {
     }
 };
 
-#endif //SENO_PARSLETS_H
+#endif //TARIK_PARSLETS_H

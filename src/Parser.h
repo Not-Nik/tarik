@@ -1,7 +1,7 @@
-// Seno (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
-#ifndef SENO_PARSER_H
-#define SENO_PARSER_H
+#ifndef TARIK_PARSER_H
+#define TARIK_PARSER_H
 
 #include <map>
 #include <vector>
@@ -37,4 +37,4 @@ public:
 };
 
 
-#endif //SENO_PARSER_H
+#endif //TARIK_PARSER_H

@@ -1,9 +1,9 @@
 #include <utility>
 
-// Seno (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
-#ifndef SENO_STATEMENTS_H
-#define SENO_STATEMENTS_H
+#ifndef TARIK_STATEMENTS_H
+#define TARIK_STATEMENTS_H
 
 
 class Expression;
@@ -104,4 +104,4 @@ public:
     ContinueStatement() : Statement(CONTINUE_STMT) { }
 };
 
-#endif //SENO_STATEMENTS_H
+#endif //TARIK_STATEMENTS_H

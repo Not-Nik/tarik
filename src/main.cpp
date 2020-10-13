@@ -1,4 +1,4 @@
-// Seno (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
 #include "Parser.h"
 #include "cli/arguments.h"
@@ -8,10 +8,10 @@
 bool test();
 
 int main(int argc, const char * argv[]) {
-    ArgumentParser parser(argc, argv, "Seno");
+    ArgumentParser parser(argc, argv, "tarik");
     parser.addOption(Option {
             .name = "test",
-            .description = "Run internal Seno tests",
+            .description = "Run internal tarik tests",
             .optionID = TEST_OPTION,
             .hasArg = false
     });

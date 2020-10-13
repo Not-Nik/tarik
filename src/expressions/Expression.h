@@ -1,7 +1,7 @@
-// Seno (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
-#ifndef SENO_EXPRESSION_H
-#define SENO_EXPRESSION_H
+#ifndef TARIK_EXPRESSION_H
+#define TARIK_EXPRESSION_H
 
 #include <utility>
 
@@ -97,4 +97,4 @@ using SubExpression = BinaryOperatorExpression<DASH_EXPR, '-'>;
 using MulExpression = BinaryOperatorExpression<DOT_EXPR, '*'>;
 using DivExpression = BinaryOperatorExpression<DOT_EXPR, '/'>;
 
-#endif //SENO_EXPRESSION_H
+#endif //TARIK_EXPRESSION_H

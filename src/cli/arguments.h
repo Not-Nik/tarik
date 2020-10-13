@@ -1,7 +1,7 @@
-// Matrix (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
-#ifndef SENO_TOOLS_H
-#define SENO_TOOLS_H
+#ifndef TARIK_ARGUMENTS_H
+#define TARIK_ARGUMENTS_H
 
 #include <map>
 #include <vector>
@@ -45,4 +45,4 @@ public:
     std::vector<std::string> getInputs() { return this->inputs; }
 };
 
-#endif //SENO_TOOLS_H
+#endif //TARIK_ARGUMENTS_H

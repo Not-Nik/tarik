@@ -1,4 +1,4 @@
-// Seno (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020
 
 #include "Parser.h"
 
