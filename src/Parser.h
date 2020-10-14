@@ -17,19 +17,23 @@ class Parser {
     Lexer lexer;
     std::string filename;
 
+    std::map<std::string, Type> type_names;
+
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
 
     void iassert(bool cond, std::string what = "", ...);
 
     ExprType get_precedence();
+
     std::vector<Statement *> block();
+    Type type();
 
 public:
     explicit Parser(std::string code, std::string fn = "<undefined>");
     ~Parser();
 
-    void expect(TokenType raw);
+    Token expect(TokenType raw);
     void expect(const std::string & raw);
 
     Expression * parse_expression(int precedence = 0);

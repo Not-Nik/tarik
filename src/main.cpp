@@ -46,9 +46,10 @@ bool test() {
     BEGIN_TEST;
 
     printf("testing lexer...");
-    Lexer lexer("hello test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
+    Lexer lexer("hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
 
     ASSERT_TOK(NAME, "hello")
+    ASSERT_TOK(NAME, "under_score")
     ASSERT_TOK(NAME, "test4")
     ASSERT_TOK(INTEGER, "4")
     ASSERT_TOK(NAME, "test")
@@ -87,8 +88,15 @@ bool test() {
     printf("testing statement parsing...");
 
     IfStatement * ifStatement = (IfStatement *) Parser("if 4 + 4 {}").parse_statement();
-    ASSERT_EQ(ifStatement->type, IF_STMT)
+    ASSERT_EQ(ifStatement->statement_type, IF_STMT)
     ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
+
+    FuncStatement * funcStatement = (FuncStatement *) Parser("fn test_func(i32 arg1, f64 arg2) i8 {}").parse_statement();
+    ASSERT_EQ(funcStatement->statement_type, FUNC_STMT)
+    ASSERT_STR_EQ(funcStatement->name, "test_func")
+    ASSERT_EQ(funcStatement->arguments["arg1"].type.size, INT32)
+    ASSERT_EQ(funcStatement->arguments["arg2"].type.size, FLOAT64)
+    ASSERT_EQ(funcStatement->return_type.type.size, INT8)
 
     puts(" done");
     END_TEST;

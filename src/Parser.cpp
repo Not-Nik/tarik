@@ -28,13 +28,29 @@ ExprType Parser::get_precedence() {
 
 std::vector<Statement *> Parser::block() {
     expect(CURLY_OPEN);
-    std::vector<Statement *> res;
+    std::vector < Statement * > res;
     while (lexer.peek().id != CURLY_CLOSE) {
+        Statement * statement = parse_statement();
+        if (res.back()->statement_type != IF_STMT) {
+            iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
+        } else if (statement->statement_type == ELSE_STMT) {
+            ((ElseStatement *) statement)->inverse = (IfStatement *) res.back();
+        }
         res.push_back(parse_statement());
         expect(SEMICOLON);
     }
     expect(CURLY_CLOSE);
     return res;
+}
+
+Type Parser::type() {
+    iassert(type_names.count(lexer.peek().raw) > 0, "Expected type name");
+    Type tmp = type_names[lexer.consume().raw];
+    while (lexer.peek().id == ASTERISK) {
+        tmp.pointer_level++;
+        lexer.consume();
+    }
+    return tmp;
 }
 
 Parser::Parser(std::string code, std::string fn) :
@@ -55,16 +71,26 @@ Parser::Parser(std::string code, std::string fn) :
     infix_parslets.emplace(MINUS, new SubParselet());
     infix_parslets.emplace(ASTERISK, new MulParselet());
     infix_parslets.emplace(SLASH, new DivParselet());
+
+    type_names.emplace("i8", Type(TypeUnion {.size = INT8}, true, false));
+    type_names.emplace("u8", Type(TypeUnion {.size = UINT8}, true, false));
+    type_names.emplace("i16", Type(TypeUnion {.size = INT16}, true, false));
+    type_names.emplace("u16", Type(TypeUnion {.size = UINT16}, true, false));
+    type_names.emplace("i32", Type(TypeUnion {.size = INT32}, true, false));
+    type_names.emplace("u32", Type(TypeUnion {.size = UINT32}, true, false));
+    type_names.emplace("i64", Type(TypeUnion {.size = INT64}, true, false));
+    type_names.emplace("u64", Type(TypeUnion {.size = UINT64}, true, false));
+    type_names.emplace("f32", Type(TypeUnion {.size = FLOAT32}, true, false));
+    type_names.emplace("f64", Type(TypeUnion {.size = FLOAT64}, true, false));
 }
 
 Parser::~Parser() {
     endfile();
 }
 
-void Parser::expect(TokenType raw) {
-    TokenType peek = lexer.peek().id;
+Token Parser::expect(TokenType raw) {
     iassert(lexer.peek().id == raw, "Unexpected '%s'.", lexer.peek().raw.c_str());
-    lexer.consume();
+    return lexer.consume();
 }
 
 void Parser::expect(const std::string & raw) {
@@ -90,20 +116,33 @@ Expression * Parser::parse_expression(int precedence) {
 }
 
 Statement * Parser::parse_statement() {
-    TokenType type = lexer.peek().id;
-    if (type == FUNC) {
-
-    } else if (type == RETURN) {
+    TokenType token = lexer.peek().id;
+    if (token == FUNC) {
+        lexer.consume();
+        std::string name = expect(NAME).raw;
+        std::map <std::string, Type> args;
+        expect(PAREN_OPEN);
+        while (lexer.peek().id != PAREN_CLOSE) {
+            Type t = type();
+            args.emplace(expect(NAME).raw, t);
+            if (lexer.peek().id != PAREN_CLOSE)
+                expect(COMMA);
+        }
+        expect(PAREN_CLOSE);
+        return new FuncStatement(name, type(), args, block());
+    } else if (token == RETURN) {
+        lexer.consume();
         return new ReturnStatement(parse_expression());
-    } else if (type == IF) {
+    } else if (token == IF) {
         lexer.consume();
         return new IfStatement(parse_expression(), block());
-    } else if (type == ELSE) {
-
-    } else if (type == WHILE) {
+    } else if (token == ELSE) {
+        lexer.consume();
+        return new ElseStatement(nullptr, block());
+    } else if (token == WHILE) {
         lexer.consume();
         return new WhileStatement(parse_expression(), block());
-    } else if (type == FOR) {
+    } else if (token == FOR) {
 
     }
     return parse_expression();

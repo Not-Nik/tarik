@@ -18,49 +18,33 @@ bool Lexer::operator_startswith(std::string c) {
 Token Lexer::peek() {
     std::string tok;
     bool num = false, real = false, op = false, string = false;
-    bool temp_com = false;
     for (int i = 0; i < code.size(); i++) {
         char c = code[i];
 
-        if (temp_com) {
-            if (c == '\n') {
-                temp_com = false;
-            }
-            continue;
-        }
-
         if (c == '"') {
-            if (tok.empty()) {
-                string = true;
-                tok.push_back(c);
-                continue;
-            } else {
-                if (string) {
-                    tok.push_back(c);
-                }
+            if (!tok.empty())
                 break;
+            tok.push_back(code[i++]);
+            for (; code[i] != '\"'; i++) {
+                tok.push_back(code[i]);
             }
+            tok.push_back(code[i]);
+            string = true;
+            break;
         }
 
         if (c == '#') {
-            temp_com = true;
+            for (; code[i] != '\n'; i++) { }
             continue;
         }
 
-        if (string) {
-            tok.push_back(c);
-            continue;
-        }
+        // Basically stop the token if we have an operator that is right after another token i.e. `peter*`
+        if (!tok.empty() && // If we are in a token
+            operator_startswith(c) && // And the current char does start an operator
+            !operator_startswith(tok + c)) // But the token and that char do not start an operator
+            break; // Break
 
-        if (isblank(c)) {
-            if (tok.empty()) continue;
-            break;
-        }
-
-        if (!tok.empty() && operator_startswith(c) && !operator_startswith(tok + c))
-            break;
-
-        if (!isalnum(c) && c != '.') {
+        if (operator_startswith(c) && c != '.') {
             if (tok.empty()) {
                 op = true;
                 tok.push_back(c);
@@ -72,16 +56,10 @@ Token Lexer::peek() {
             continue;
         }
 
-        if (op) break;
+        if (op || isblank(c))
+            break;
 
-        if (isalpha(c)) {
-            if (!num) {
-                tok.push_back(c);
-            } else {
-                // No scientific notation for now
-                break;
-            }
-        } else if (isnumber(c)) {
+        if (isnumber(c)) {
             if (num || tok.empty()) {
                 num = true;
             }
@@ -108,6 +86,13 @@ Token Lexer::peek() {
                     break;
                 }
             }
+        } else {
+            if (!num) {
+                tok.push_back(c);
+            } else {
+                // No scientific notation for now
+                break;
+            }
         }
     }
 
@@ -131,7 +116,12 @@ Token Lexer::peek() {
 Token Lexer::consume() {
     Token t = peek();
     code.erase(0, t.raw.size());
+    pos.p += t.raw.size();
     while (isblank(code[0])) {
+        if (code[0] == '\n')
+            pos = {.l = pos.l+1, .p=0};
+        else
+            pos.p++;
         code.erase(0, 1);
     }
     return t;

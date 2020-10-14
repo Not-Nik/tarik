@@ -1,10 +1,12 @@
-#include <utility>
-
 // tarik (c) Nikolas Wipper 2020
 
 #ifndef TARIK_STATEMENTS_H
 #define TARIK_STATEMENTS_H
 
+#include <map>
+#include <utility>
+
+#include "Types.h"
 
 class Expression;
 
@@ -17,44 +19,59 @@ enum StmtType {
     FOR_STMT,
     BREAK_STMT,
     CONTINUE_STMT,
+    VARIABLE_STMT,
     STRUCT_STMT,
     EXPR_STMT
 };
 
 class Statement {
 public:
-    StmtType type;
+    StmtType statement_type;
 
     explicit Statement(StmtType t) {
-        type = t;
+        statement_type = t;
     }
 };
 
-class FuncStatement : public Statement {
+class ScopeStatement : public Statement {
+public:
+    std::vector<Statement *> block;
 
+    ScopeStatement(StmtType t, std::vector<Statement *> b) :
+            Statement(t),
+            block(std::move(b)) { }
 };
 
-class IfStatement : public Statement {
+class FuncStatement : public ScopeStatement {
+public:
+    std::string name;
+    Type return_type;
+    std::map<std::string, Type> arguments;
+
+    FuncStatement(std::string n, Type ret, std::map<std::string, Type> args, std::vector<Statement *> b) :
+            ScopeStatement(FUNC_STMT, std::move(b)),
+            name(std::move(n)),
+            return_type(ret),
+            arguments(std::move(args)) { }
+};
+
+class IfStatement : public ScopeStatement {
 public:
     Expression * condition;
-    std::vector<Statement *> block;
 
-    explicit IfStatement(Expression * cond, std::vector<Statement *> b) :
-            Statement(IF_STMT),
-            condition(cond),
-            block(std::move(b)) {
+    IfStatement(Expression * cond, std::vector<Statement *> b) :
+            ScopeStatement(IF_STMT, std::move(b)),
+            condition(cond) {
     }
 };
 
-class ElseStatement : public Statement {
+class ElseStatement : public ScopeStatement {
 public:
     IfStatement * inverse;
-    std::vector<Statement *> block;
 
     explicit ElseStatement(IfStatement * inv, std::vector<Statement *> b) :
-            Statement(ELSE_STMT),
-            inverse(inv),
-            block(std::move(b)) {
+            ScopeStatement(ELSE_STMT, std::move(b)),
+            inverse(inv) {
     }
 };
 
@@ -68,29 +85,25 @@ public:
     }
 };
 
-class WhileStatement : public Statement {
+class WhileStatement : public ScopeStatement {
 public:
     Expression * condition;
-    std::vector<Statement *> block;
 
     explicit WhileStatement(Expression * cond, std::vector<Statement *> b) :
-            Statement(WHILE_STMT),
-            condition(cond),
-            block(std::move(b)) {
+            ScopeStatement(WHILE_STMT, std::move(b)),
+            condition(cond) {
     }
 };
 
-class ForStatement : public Statement {
+class ForStatement : public ScopeStatement {
 public:
     Expression * initializer, * condition, * loop;
-    std::vector<Statement *> block;
 
-    explicit ForStatement(Expression * init, Expression * cond, Expression * l, std::vector<Statement *> b) :
-            Statement(FOR_STMT),
+    ForStatement(Expression * init, Expression * cond, Expression * l, std::vector<Statement *> b) :
+            ScopeStatement(FOR_STMT, std::move(b)),
             initializer(init),
             condition(cond),
-            loop(l),
-            block(std::move(b)) {
+            loop(l) {
     }
 };
 
@@ -102,6 +115,17 @@ public:
 class ContinueStatement : public Statement {
 public:
     ContinueStatement() : Statement(CONTINUE_STMT) { }
+};
+
+class VariableStatement : public Statement {
+public:
+    Type type;
+    std::string name;
+
+    VariableStatement(Type t, std::string n) :
+            Statement(VARIABLE_STMT),
+            type(t),
+            name(std::move(n)) { }
 };
 
 #endif //TARIK_STATEMENTS_H
