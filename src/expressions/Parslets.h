@@ -64,4 +64,18 @@ class GroupParselet : public PrefixParselet {
     }
 };
 
+class AssignParselet : public InfixParselet {
+    Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
+        Expression * right = parser->parse_expression(ASSIGN_EXPR - 1);
+
+        parser->iassert(left->expression_type == NAME_EXPR, "Can't assign to expression");
+
+        return new AssignExpression(parser->require_var(left->print()), right);
+    }
+
+    ExprType get_type() override {
+        return ASSIGN_EXPR;
+    }
+};
+
 #endif //TARIK_PARSLETS_H

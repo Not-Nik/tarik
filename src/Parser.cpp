@@ -2,20 +2,12 @@
 
 #include "Parser.h"
 
+#include <magic_enum.hpp>
 #include "expressions/Parslets.h"
-
-#define STDERR_WARN
 
 #include <comperr.h>
 
 #include <utility>
-
-void Parser::iassert(bool cond, std::string what, ...) {
-    va_list args;
-    va_start(args, what);
-    vcomperr(cond, what.c_str(), false, filename.c_str(), lexer.where().l, lexer.where().p, args);
-    va_end(args);
-}
 
 ExprType Parser::get_precedence() {
     if (lexer.peek().id == SEMICOLON) {
@@ -27,30 +19,62 @@ ExprType Parser::get_precedence() {
 }
 
 std::vector<Statement *> Parser::block() {
-    expect(CURLY_OPEN);
-    std::vector < Statement * > res;
-    while (lexer.peek().id != CURLY_CLOSE) {
-        Statement * statement = parse_statement();
+    if (!check_expect(CURLY_OPEN))
+        return {};
+    std::vector<Statement *> res;
+    variable_pop_stack.push_back(0);
+    while (!lexer.peek().raw.empty() && lexer.peek().id != CURLY_CLOSE) {
+        Statement * statement = parse_statement(false);
         if (res.back()->statement_type != IF_STMT) {
             iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
         } else if (statement->statement_type == ELSE_STMT) {
             ((ElseStatement *) statement)->inverse = (IfStatement *) res.back();
         }
-        res.push_back(parse_statement());
+        res.push_back(parse_statement(false));
         expect(SEMICOLON);
     }
+    for (int i = 0; i < variable_pop_stack.back(); i++)
+        variables.pop_back();
+    variable_pop_stack.pop_back();
     expect(CURLY_CLOSE);
     return res;
 }
 
 Type Parser::type() {
-    iassert(type_names.count(lexer.peek().raw) > 0, "Expected type name");
-    Type tmp = type_names[lexer.consume().raw];
-    while (lexer.peek().id == ASTERISK) {
-        tmp.pointer_level++;
+    return type(lexer.consume());
+}
+
+Type Parser::type(Token starter) {
+    iassert(starter.id == TYPE or starter.id == USER_TYPE, "Expected type name");
+    Type t;
+
+    if (starter.id == TYPE) {
+        std::string type_name;
+        for (auto c : starter.raw)
+            type_name.push_back(toupper(c));
+        auto size = magic_enum::enum_cast<TypeSize>(type_name);
+        iassert(size.has_value(), "FATAL INTERNAL ERROR: Couldn't find enum member for built-in type");
+        if (size.has_value()) {
+            t.type.size = size.value();
+        }
+    } else {
+        StructStatement * structure;
+        for (StructStatement * st : structures) {
+            if (st->name == starter.raw) {
+                structure = st;
+                break;
+            }
+        }
+        iassert(structure, "Undefined structure %s", starter.raw.c_str());
+        t.type.user_type = structure;
+        t.is_primitive = false;
+    }
+
+    while (!lexer.peek().raw.empty() && lexer.peek().id == ASTERISK) {
+        t.pointer_level++;
         lexer.consume();
     }
-    return tmp;
+    return t;
 }
 
 Parser::Parser(std::string code, std::string fn) :
@@ -72,35 +96,65 @@ Parser::Parser(std::string code, std::string fn) :
     infix_parslets.emplace(ASTERISK, new MulParselet());
     infix_parslets.emplace(SLASH, new DivParselet());
 
-    type_names.emplace("i8", Type(TypeUnion {.size = INT8}, true, false));
-    type_names.emplace("u8", Type(TypeUnion {.size = UINT8}, true, false));
-    type_names.emplace("i16", Type(TypeUnion {.size = INT16}, true, false));
-    type_names.emplace("u16", Type(TypeUnion {.size = UINT16}, true, false));
-    type_names.emplace("i32", Type(TypeUnion {.size = INT32}, true, false));
-    type_names.emplace("u32", Type(TypeUnion {.size = UINT32}, true, false));
-    type_names.emplace("i64", Type(TypeUnion {.size = INT64}, true, false));
-    type_names.emplace("u64", Type(TypeUnion {.size = UINT64}, true, false));
-    type_names.emplace("f32", Type(TypeUnion {.size = FLOAT32}, true, false));
-    type_names.emplace("f64", Type(TypeUnion {.size = FLOAT64}, true, false));
+    // Assign expressions
+    infix_parslets.emplace(EQUAL, new AssignParselet());
+
+    variable_pop_stack.push_back(0);
 }
 
 Parser::~Parser() {
     endfile();
 }
 
+bool Parser::iassert(bool cond, std::string what, ...) {
+    va_list args;
+    va_start(args, what);
+    vcomperr(cond, what.c_str(), false, filename.c_str(), lexer.where().l, lexer.where().p, args);
+    va_end(args);
+    return cond;
+}
+
 Token Parser::expect(TokenType raw) {
-    iassert(lexer.peek().id == raw, "Unexpected '%s'.", lexer.peek().raw.c_str());
+    auto s = magic_enum::enum_name(raw);
+    std::stringstream ss;
+    ss << s;
+    iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", ss.str().c_str(), lexer.peek().raw.c_str());
     return lexer.consume();
 }
 
-void Parser::expect(const std::string & raw) {
-    iassert(lexer.peek().raw == raw, "Expected '%s' found '%s'.", raw.c_str(), lexer.peek().raw.c_str());
+bool Parser::is_peek(TokenType raw) {
+    return lexer.peek().id == raw;
+}
+
+bool Parser::check_expect(TokenType raw) {
+    auto s = magic_enum::enum_name(raw);
+    std::stringstream ss;
+    ss << s;
+    bool r = iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", ss.str().c_str(), lexer.peek().raw.c_str());
     lexer.consume();
+    return r;
+}
+
+VariableStatement * Parser::require_var(const std::string & name) {
+    for (auto * var : variables) {
+        if (var->name == name)
+            return var;
+    }
+    iassert(false, "Undefined variable %s", name.c_str());
+    return nullptr;
+}
+
+VariableStatement * Parser::register_var(VariableStatement * var) {
+    variable_pop_stack.back()++;
+    variables.push_back(var);
+    return variables.back();
 }
 
 Expression * Parser::parse_expression(int precedence) {
     Token token = lexer.consume();
-    iassert(prefix_parslets.count(token.id) > 0, "Unexpected token '%s'", token.raw.c_str());
+    if (token.raw.empty()) return reinterpret_cast<Expression *>(-1);
+    if (!iassert(prefix_parslets.count(token.id) > 0, "Unexpected token '%s'", token.raw.c_str()))
+        return nullptr;
     PrefixParselet * prefix = prefix_parslets[token.id];
 
     Expression * left = prefix->parse(this, token);
@@ -115,35 +169,70 @@ Expression * Parser::parse_expression(int precedence) {
     return left;
 }
 
-Statement * Parser::parse_statement() {
+Statement * Parser::parse_statement(bool top_level) {
     TokenType token = lexer.peek().id;
     if (token == FUNC) {
+        iassert(top_level, "Function definition is not allowed here");
         lexer.consume();
         std::string name = expect(NAME).raw;
-        std::map <std::string, Type> args;
-        expect(PAREN_OPEN);
-        while (lexer.peek().id != PAREN_CLOSE) {
-            Type t = type();
-            args.emplace(expect(NAME).raw, t);
-            if (lexer.peek().id != PAREN_CLOSE)
-                expect(COMMA);
-        }
-        expect(PAREN_CLOSE);
+
+        std::map<std::string, Type> args;
+        if (!check_expect(PAREN_OPEN))
+            while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
+        else
+            while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) {
+                Type t = type();
+
+                if (!is_peek(NAME))
+                    return parse_statement(false);
+                args.emplace(expect(NAME).raw, t);
+
+                if (lexer.peek().id != PAREN_CLOSE)
+                    if (!check_expect(COMMA))
+                        return parse_statement(false);
+            }
+        if (!check_expect(PAREN_CLOSE))
+            return parse_statement(false);
         return new FuncStatement(name, type(), args, block());
     } else if (token == RETURN) {
         lexer.consume();
-        return new ReturnStatement(parse_expression());
+        auto * s = new ReturnStatement(parse_expression());
+        expect(SEMICOLON);
+        return s;
     } else if (token == IF) {
         lexer.consume();
-        return new IfStatement(parse_expression(), block());
+        return new IfStatement(parse_expression(), parse_statement(false));
     } else if (token == ELSE) {
         lexer.consume();
-        return new ElseStatement(nullptr, block());
+        return new ElseStatement(nullptr, parse_statement(false));
     } else if (token == WHILE) {
         lexer.consume();
-        return new WhileStatement(parse_expression(), block());
+        return new WhileStatement(parse_expression(), parse_statement(false));
     } else if (token == FOR) {
 
+    } else if (token == CURLY_OPEN) {
+        return new ScopeStatement(SCOPE_STMT, block());
+    } else if (token == TYPE or token == USER_TYPE) {
+        Type t = type();
+
+        if (!iassert(is_peek(NAME), "Expected a NAME found '%s' instead", lexer.peek().raw.c_str()))
+            return parse_statement(false);
+        std::string name = lexer.peek().raw;
+
+        if (lexer.peek(1).id != EQUAL) {
+            lexer.consume();
+            expect(SEMICOLON);
+        }
+
+        return register_var(new VariableStatement(t, name));
     }
-    return parse_expression();
+    Expression * e = parse_expression();
+    if (e == reinterpret_cast<Expression *>(-1)) {
+        return nullptr;
+    } else if (e == nullptr) {
+        return parse_statement(top_level);
+    } else {
+        expect(SEMICOLON);
+        return e;
+    }
 }

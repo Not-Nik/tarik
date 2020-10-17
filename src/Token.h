@@ -44,17 +44,8 @@ enum TokenType {
     BREAK,
     CONTINUE,
     STRUCT,
-    // Types
-    INT_8,
-    INT_16,
-    INT_32,
-    INT_64,
-    UINT_8,
-    UINT_16,
-    UINT_32,
-    UINT_64,
-    FLOAT_32,
-    FLOAT_64
+    TYPE,
+    USER_TYPE
 };
 
 static std::map<std::string, TokenType> operators = {
@@ -91,16 +82,16 @@ static std::map<std::string, TokenType> keywords = {
         {"break",    BREAK},
         {"continue", CONTINUE},
         {"struct",   STRUCT},
-        {"i8",       INT_8},
-        {"i16",      INT_16},
-        {"i32",      INT_32},
-        {"i64",      INT_64},
-        {"u8",       UINT_8},
-        {"u16",      UINT_16},
-        {"u32",      UINT_32},
-        {"u64",      UINT_64},
-        {"f32",      FLOAT_32},
-        {"f64",      FLOAT_64},
+        {"i8",       TYPE},
+        {"i16",      TYPE},
+        {"i32",      TYPE},
+        {"i64",      TYPE},
+        {"u8",       TYPE},
+        {"u16",      TYPE},
+        {"u32",      TYPE},
+        {"u64",      TYPE},
+        {"f32",      TYPE},
+        {"f64",      TYPE},
 };
 
 class Token {

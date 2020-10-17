@@ -3,13 +3,13 @@
 #ifndef COMPERR_COMPERR_H
 #define COMPERR_COMPERR_H
 
-#include <stdarg.h>
-
 #ifndef __cplusplus
 
+#include <stdarg.h>
 #include <stdbool.h>
 
 #else
+#include <cstdarg>
 extern "C" {
 #endif
 
@@ -23,7 +23,7 @@ bool vcomperr(
         const char * fileName, int lineNumber, int row, va_list va
 );
 
-void endfile();
+bool endfile();
 
 #ifdef __cplusplus
 }

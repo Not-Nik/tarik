@@ -15,10 +15,19 @@ bool Lexer::operator_startswith(std::string c) {
     return std::any_of(operators.begin(), operators.end(), [c](auto op) { return op.first.find(c) != std::string::npos; });
 }
 
-Token Lexer::peek() {
+Token Lexer::peek(int dist) {
     std::string tok;
     bool num = false, real = false, op = false, string = false;
-    for (int i = 0; i < code.size(); i++) {
+
+    int d = 0;
+    while (dist--) {
+        d += peek(dist).raw.size();
+        while (isblank(code[d])) {
+            d++;
+        }
+    }
+
+    for (int i = d; i < code.size(); i++) {
         char c = code[i];
 
         if (c == '"') {

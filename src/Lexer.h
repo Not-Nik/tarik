@@ -21,7 +21,7 @@ class Lexer {
 public:
     explicit Lexer(std::string c);
 
-    Token peek();
+    Token peek(int dist = 0);
 
     Token consume();
 

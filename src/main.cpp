@@ -27,28 +27,44 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 
-#define BEGIN_TEST bool _st = true
-#define END_TEST return _st
+#define BEGIN_TEST bool _st = true; int count_suc = 0; int count_tested = 0;
+#define FIRST_TEST(name) for (int i = 0; i < 1; i++) { printf("testing %s...", #name);
+#define MID_TEST(name) } printf(" done (%i/%i succeeded)\n", count_suc, count_tested); \
+count_suc = 0; count_tested = 0;\
+for (int i = 0; i < 1; i++) { printf("testing %s...", #name);
+#define END_TEST } printf(" done (%i/%i succeeded)\n", count_suc, count_tested); return _st;
 
-#define ASSERT_TOK(type, tok) _st = _st && lexer.peek().id == type; \
+#define ASSERT_TOK(type, tok) _st = lexer.peek().id == type;\
 _st = _st && lexer.peek().raw == tok;\
-if (!_st) { printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok); return false; }\
+count_tested++;\
+if (!_st) { printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok); break; }\
+count_suc++;\
 lexer.consume();
 
-#define ASSERT_STR_EQ(l, r) {std::string save = l; \
-_st = save == r; \
-if (!_st) { printf("\nFailed for expression '%s': expected '%s'", save.c_str(), r); return false; }}
+#define ASSERT_STR_EQ(l, r) {std::string save = l;\
+_st = save == r;\
+count_tested++;\
+if (!_st) { printf("\nFailed for expression '%s': expected '%s'", save.c_str(), r); break; }}\
+count_suc++;
 
-#define ASSERT_EQ(l, r) _st = l == r; \
-if (!_st) { printf("\nFailed for expression '%s': expected '%s'", #l, #r); return false; }
+#define ASSERT_EQ(l, r) _st = l == r;\
+count_tested++;\
+if (!_st) { printf("\nFailed for expression '%s': expected '%s'", #l, #r); break; }\
+count_suc++;
+
+#define ASSERT_TRUE(e) _st = e; \
+count_tested++;\
+if (!_st) { printf("\nFailed for expression: expected '%s' to be true", #e); return false; }\
+count_suc++;
 
 bool test() {
-    BEGIN_TEST;
+    BEGIN_TEST
 
-    printf("testing lexer...");
+    FIRST_TEST(lexer)
     Lexer lexer("hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
 
     ASSERT_TOK(NAME, "hello")
+    ASSERT_STR_EQ(lexer.peek(1).raw, "test4")
     ASSERT_TOK(NAME, "under_score")
     ASSERT_TOK(NAME, "test4")
     ASSERT_TOK(INTEGER, "4")
@@ -62,15 +78,13 @@ bool test() {
     ASSERT_TOK(MINUS, "-")
     ASSERT_TOK(GREATER, ">")
     ASSERT_TOK(FUNC, "fn")
-    ASSERT_TOK(INT_32, "i32")
+    ASSERT_TOK(TYPE, "i32")
     ASSERT_TOK(INTEGER, "42")
     ASSERT_TOK(REAL, "12.34")
     ASSERT_TOK(STRING, "\"a string\"")
     ASSERT_TOK(NAME, "back")
 
-    puts(" done");
-
-    printf("testing expression parsing...");
+    MID_TEST(expression parsing)
 
     ASSERT_STR_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
     ASSERT_STR_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
@@ -83,21 +97,32 @@ bool test() {
         ASSERT_STR_EQ(tmp.parse_expression()->print(), "(6+(7*8))")
     }
 
-    puts(" done");
+    MID_TEST(statement parsing)
 
-    printf("testing statement parsing...");
-
+    // If/while (they're syntactically the same)
     IfStatement * ifStatement = (IfStatement *) Parser("if 4 + 4 {}").parse_statement();
     ASSERT_EQ(ifStatement->statement_type, IF_STMT)
     ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
 
+    // Functions
     FuncStatement * funcStatement = (FuncStatement *) Parser("fn test_func(i32 arg1, f64 arg2) i8 {}").parse_statement();
     ASSERT_EQ(funcStatement->statement_type, FUNC_STMT)
     ASSERT_STR_EQ(funcStatement->name, "test_func")
-    ASSERT_EQ(funcStatement->arguments["arg1"].type.size, INT32)
-    ASSERT_EQ(funcStatement->arguments["arg2"].type.size, FLOAT64)
-    ASSERT_EQ(funcStatement->return_type.type.size, INT8)
+    ASSERT_EQ(funcStatement->arguments["arg1"].type.size, I32)
+    ASSERT_EQ(funcStatement->arguments["arg2"].type.size, F64)
+    ASSERT_EQ(funcStatement->return_type.type.size, I8)
 
-    puts(" done");
-    END_TEST;
+    // Variables and assignments
+    Parser p("u8 test_var = 4; test_var = 5;");
+    auto * var = (VariableStatement *)p.parse_statement();
+    ASSERT_EQ(var->statement_type, VARIABLE_STMT)
+    ASSERT_STR_EQ(var->name, "test_var")
+    ASSERT_TRUE(var->type.is_primitive)
+    ASSERT_EQ(var->type.pointer_level, 0)
+    ASSERT_EQ(var->type.type.size, U8)
+
+    ASSERT_EQ(((Expression *)p.parse_statement())->expression_type, ASSIGN_EXPR)
+    ASSERT_EQ(((Expression *)p.parse_statement())->expression_type, ASSIGN_EXPR)
+
+    END_TEST
 }

@@ -11,6 +11,7 @@
 class Expression;
 
 enum StmtType {
+    SCOPE_STMT,
     FUNC_STMT,
     IF_STMT,
     ELSE_STMT,
@@ -28,50 +29,51 @@ class Statement {
 public:
     StmtType statement_type;
 
+    Statement() = default;
+
     explicit Statement(StmtType t) {
         statement_type = t;
     }
+
+    [[nodiscard]] virtual std::string print() const { return ""; }
 };
 
-class ScopeStatement : public Statement {
-public:
-    std::vector<Statement *> block;
-
-    ScopeStatement(StmtType t, std::vector<Statement *> b) :
-            Statement(t),
-            block(std::move(b)) { }
-};
-
-class FuncStatement : public ScopeStatement {
+class FuncStatement : public Statement {
 public:
     std::string name;
     Type return_type;
+    std::vector<Statement *> block;
     std::map<std::string, Type> arguments;
 
     FuncStatement(std::string n, Type ret, std::map<std::string, Type> args, std::vector<Statement *> b) :
-            ScopeStatement(FUNC_STMT, std::move(b)),
+            Statement(FUNC_STMT),
             name(std::move(n)),
             return_type(ret),
+            block(std::move(b)),
             arguments(std::move(args)) { }
 };
 
-class IfStatement : public ScopeStatement {
+class IfStatement : public Statement {
 public:
     Expression * condition;
+    Statement * then;
 
-    IfStatement(Expression * cond, std::vector<Statement *> b) :
-            ScopeStatement(IF_STMT, std::move(b)),
-            condition(cond) {
+    IfStatement(Expression * cond, Statement * t) :
+            Statement(IF_STMT),
+            condition(cond),
+            then(t) {
     }
 };
 
-class ElseStatement : public ScopeStatement {
+class ElseStatement : public Statement {
 public:
     IfStatement * inverse;
+    Statement * then;
 
-    explicit ElseStatement(IfStatement * inv, std::vector<Statement *> b) :
-            ScopeStatement(ELSE_STMT, std::move(b)),
-            inverse(inv) {
+    explicit ElseStatement(IfStatement * inv, Statement * t) :
+            Statement(ELSE_STMT),
+            inverse(inv),
+            then(t) {
     }
 };
 
@@ -85,25 +87,29 @@ public:
     }
 };
 
-class WhileStatement : public ScopeStatement {
+class WhileStatement : public Statement {
 public:
     Expression * condition;
+    Statement * then;
 
-    explicit WhileStatement(Expression * cond, std::vector<Statement *> b) :
-            ScopeStatement(WHILE_STMT, std::move(b)),
-            condition(cond) {
+    explicit WhileStatement(Expression * cond, Statement * t) :
+            Statement(WHILE_STMT),
+            condition(cond),
+            then(t) {
     }
 };
 
-class ForStatement : public ScopeStatement {
+class ForStatement : public Statement {
 public:
     Expression * initializer, * condition, * loop;
+    Statement * then;
 
-    ForStatement(Expression * init, Expression * cond, Expression * l, std::vector<Statement *> b) :
-            ScopeStatement(FOR_STMT, std::move(b)),
+    ForStatement(Expression * init, Expression * cond, Expression * l, Statement * t) :
+            Statement(FOR_STMT),
             initializer(init),
             condition(cond),
-            loop(l) {
+            loop(l),
+            then(t) {
     }
 };
 
@@ -126,6 +132,12 @@ public:
             Statement(VARIABLE_STMT),
             type(t),
             name(std::move(n)) { }
+};
+
+class StructStatement : public Statement {
+public:
+    std::string name;
+    std::vector<VariableStatement *> members;
 };
 
 #endif //TARIK_STATEMENTS_H

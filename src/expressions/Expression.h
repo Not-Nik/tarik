@@ -15,47 +15,50 @@ enum ExprType {
     PREFIX_EXPR,
     ASSIGN_EXPR,
     NAME_EXPR,
-    INT_EXPR
+    INT_EXPR,
+    REAL_EXPR
 };
 
 class Expression : public Statement {
 public:
-    ExprType type;
+    ExprType expression_type;
 
-    Expression() = default;
+    Expression() : Statement(), expression_type(NAME_EXPR) { }
 
-    explicit Expression(ExprType t) : Statement(EXPR_STMT) { type = t; }
+    explicit Expression(ExprType t) : Statement(EXPR_STMT) { expression_type = t; }
 
-    virtual std::string print() const { return ""; }
+    [[nodiscard]] virtual std::string print() const { return ""; }
 };
 
 class NameExpression : public Expression {
-    std::string name;
 public:
+    std::string name;
+
     explicit NameExpression(std::string n) :
             Expression(NAME_EXPR),
             name(std::move(n)) { }
 
-    std::string print() const override {
+    [[nodiscard]] std::string print() const override {
         return name;
     }
 };
 
-template <class NumberType>
+template <class NumberType, ExprType expr_type>
 class NumberExpression : public Expression {
-    NumberType i;
 public:
+    NumberType i;
+
     explicit NumberExpression(const std::string & n) :
             Expression(INT_EXPR),
             i(std::stoi(n)) { }
 
-    std::string print() const override {
+    [[nodiscard]] std::string print() const override {
         return std::to_string(i);
     }
 };
 
-using IntExpression = NumberExpression<long int>;
-using RealExpression = NumberExpression<double>;
+using IntExpression = NumberExpression<long int, INT_EXPR>;
+using RealExpression = NumberExpression<double, REAL_EXPR>;
 
 template <char pref>
 class PrefixOperatorExpression : public Expression {
@@ -68,7 +71,7 @@ public:
 
     }
 
-    std::string print() const override {
+    [[nodiscard]] std::string print() const override {
         return std::string({pref}) + operand->print();
     }
 };
@@ -87,7 +90,7 @@ public:
             right(r) {
     }
 
-    std::string print() const override {
+    [[nodiscard]] std::string print() const override {
         return "(" + left->print() + std::string({pref}) + right->print() + ")";
     }
 };
@@ -96,5 +99,21 @@ using AddExpression = BinaryOperatorExpression<DASH_EXPR, '+'>;
 using SubExpression = BinaryOperatorExpression<DASH_EXPR, '-'>;
 using MulExpression = BinaryOperatorExpression<DOT_EXPR, '*'>;
 using DivExpression = BinaryOperatorExpression<DOT_EXPR, '/'>;
+
+class AssignExpression : public Expression {
+public:
+    VariableStatement * variable;
+    Expression * value;
+
+    AssignExpression(VariableStatement * var, Expression * val) :
+            Expression(ASSIGN_EXPR),
+            variable(var),
+            value(val) {
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return "(" + variable->name + " = " + value->print() + ")";
+    }
+};
 
 #endif //TARIK_EXPRESSION_H

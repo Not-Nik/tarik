@@ -6,16 +6,16 @@
 class StructStatement;
 
 enum TypeSize : char {
-    INT8,
-    INT16,
-    INT32,
-    INT64,
-    UINT8,
-    UINT16,
-    UINT32,
-    UINT64,
-    FLOAT32,
-    FLOAT64
+    I8,
+    I16,
+    I32,
+    I64,
+    U8,
+    U16,
+    U32,
+    U64,
+    F32,
+    F64
 };
 
 union TypeUnion {
@@ -29,7 +29,7 @@ public:
     int pointer_level;
     TypeUnion type;
 
-    Type() : type({.size = UINT8}) {
+    Type() : type({.size = U8}) {
         is_primitive = true;
         pointer_level = 0;
     };
