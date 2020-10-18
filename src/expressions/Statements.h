@@ -38,18 +38,29 @@ public:
     [[nodiscard]] virtual std::string print() const { return ""; }
 };
 
-class FuncStatement : public Statement {
+class ScopeStatement : public Statement {
+public:
+    std::vector<Statement *> block;
+
+    ScopeStatement(StmtType t, std::vector<Statement *> b) :
+            Statement(t),
+            block(std::move(b)) { }
+
+    [[nodiscard]] virtual std::string print() const {
+        return "";
+    }
+};
+
+class FuncStatement : public ScopeStatement {
 public:
     std::string name;
     Type return_type;
-    std::vector<Statement *> block;
     std::map<std::string, Type> arguments;
 
     FuncStatement(std::string n, Type ret, std::map<std::string, Type> args, std::vector<Statement *> b) :
-            Statement(FUNC_STMT),
+            ScopeStatement(FUNC_STMT, std::move(b)),
             name(std::move(n)),
             return_type(ret),
-            block(std::move(b)),
             arguments(std::move(args)) { }
 };
 
