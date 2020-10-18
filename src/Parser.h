@@ -11,6 +11,7 @@
 #include "expressions/Statements.h"
 
 class PrefixParselet;
+
 class InfixParselet;
 
 class Parser {
@@ -26,26 +27,33 @@ class Parser {
     std::vector<StructStatement *> structures;
     std::vector<FuncStatement *> functions;
 
-    ExprType get_precedence();
+    Precedence get_precedence();
 
     std::vector<Statement *> block();
+
     Type type();
+
     Type type(Token starter);
 
 public:
     explicit Parser(std::string code, std::string fn = "<undefined>");
+
     ~Parser();
 
     bool iassert(bool cond, std::string what = "", ...);
 
     Token expect(TokenType raw);
+
     bool check_expect(TokenType raw);
+
     bool is_peek(TokenType raw);
 
     VariableStatement * require_var(const std::string & name);
+
     VariableStatement * register_var(VariableStatement * var);
 
     Expression * parse_expression(int precedence = 0);
+
     Statement * parse_statement(bool top_level = true);
 };
 

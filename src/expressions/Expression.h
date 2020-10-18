@@ -7,6 +7,14 @@
 
 #include "Statements.h"
 
+enum Precedence {
+    ASSIGNMENT = 1,
+    SUM,
+    PRODUCT,
+    PREFIX,
+    CALL
+};
+
 // This also does precedence
 enum ExprType {
     CALL_EXPR,
@@ -49,7 +57,7 @@ public:
     NumberType i;
 
     explicit NumberExpression(const std::string & n) :
-            Expression(INT_EXPR),
+            Expression(expr_type),
             i(std::stoi(n)) { }
 
     [[nodiscard]] std::string print() const override {

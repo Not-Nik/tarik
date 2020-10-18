@@ -9,13 +9,13 @@
 
 #include <utility>
 
-ExprType Parser::get_precedence() {
+Precedence Parser::get_precedence() {
     if (lexer.peek().id == SEMICOLON) {
-        return (ExprType) -1;
+        return static_cast<Precedence>(-1);
     }
     if (infix_parslets.count(lexer.peek().id) > 0)
         return infix_parslets[lexer.peek().id]->get_type();
-    return static_cast<ExprType>(0);
+    return static_cast<Precedence>(0);
 }
 
 std::vector<Statement *> Parser::block() {
@@ -25,13 +25,12 @@ std::vector<Statement *> Parser::block() {
     variable_pop_stack.push_back(0);
     while (!lexer.peek().raw.empty() && lexer.peek().id != CURLY_CLOSE) {
         Statement * statement = parse_statement(false);
-        if (res.back()->statement_type != IF_STMT) {
+        if (!res.empty() && res.back()->statement_type != IF_STMT) {
             iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
         } else if (statement->statement_type == ELSE_STMT) {
             ((ElseStatement *) statement)->inverse = (IfStatement *) res.back();
         }
-        res.push_back(parse_statement(false));
-        expect(SEMICOLON);
+        res.push_back(statement);
     }
     for (int i = 0; i < variable_pop_stack.back(); i++)
         variables.pop_back();
@@ -107,6 +106,9 @@ Parser::~Parser() {
 }
 
 bool Parser::iassert(bool cond, std::string what, ...) {
+    if (!cond) {
+        puts("Uh oh");
+    }
     va_list args;
     va_start(args, what);
     vcomperr(cond, what.c_str(), false, filename.c_str(), lexer.where().l, lexer.where().p, args);
@@ -183,16 +185,12 @@ Statement * Parser::parse_statement(bool top_level) {
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) {
                 Type t = type();
 
-                if (!is_peek(NAME))
-                    return parse_statement(false);
                 args.emplace(expect(NAME).raw, t);
 
                 if (lexer.peek().id != PAREN_CLOSE)
-                    if (!check_expect(COMMA))
-                        return parse_statement(false);
+                    expect(COMMA);
             }
-        if (!check_expect(PAREN_CLOSE))
-            return parse_statement(false);
+        expect(PAREN_CLOSE);
         return new FuncStatement(name, type(), args, block());
     } else if (token == RETURN) {
         lexer.consume();

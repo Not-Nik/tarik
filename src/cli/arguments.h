@@ -9,8 +9,7 @@
 
 #define HELP_OPTION 0
 
-class Option
-{
+class Option {
 public:
     std::string name, description;
     int optionID;
@@ -18,15 +17,13 @@ public:
     std::string argumentName;
 };
 
-class ParsedOption
-{
+class ParsedOption {
 public:
     Option * option;
     std::string argument;
 };
 
-class ArgumentParser
-{
+class ArgumentParser {
     std::string name;
     std::vector<std::string> passed;
     std::vector<std::string>::iterator it;
@@ -35,10 +32,11 @@ class ArgumentParser
     std::vector<std::string> inputs;
 protected:
     virtual void help();
+
 public:
     ArgumentParser(int argc, const char * argv[], std::string toolName);
 
-    void addOption(const Option& option);
+    void addOption(const Option & option);
 
     ParsedOption parseNextArg();
 

@@ -27,7 +27,7 @@ enum StmtType {
 
 class Statement {
 public:
-    StmtType statement_type;
+    StmtType statement_type {};
 
     Statement() = default;
 
@@ -46,8 +46,16 @@ public:
             Statement(t),
             block(std::move(b)) { }
 
-    [[nodiscard]] virtual std::string print() const {
-        return "";
+    [[nodiscard]] std::string print() const override {
+        std::string res;
+        for (auto * st : block) {
+            std::string t = st->print();
+            if (st->statement_type == EXPR_STMT)
+                t.push_back(';');
+            res += t + "\n";
+        }
+        res.pop_back();
+        return res;
     }
 };
 
@@ -62,17 +70,35 @@ public:
             name(std::move(n)),
             return_type(ret),
             arguments(std::move(args)) { }
+
+    [[nodiscard]] std::string print() const override {
+        std::string res = "fn " + name + "(";
+        for (auto arg : arguments) {
+            res += "<todo: type to string> " + name + ", ";
+        }
+        if (res.back() != '(')
+            res = res.substr(0, res.size() - 2);
+        return res + ") <todo: type to string> {\n" + ScopeStatement::print() + "\n}";
+    }
 };
 
 class IfStatement : public Statement {
 public:
-    Expression * condition;
+    // Statement so we can print it
+    Statement * condition;
     Statement * then;
 
     IfStatement(Expression * cond, Statement * t) :
             Statement(IF_STMT),
-            condition(cond),
+            condition(reinterpret_cast<Statement *>(cond)),
             then(t) {
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string then_string = then->print();
+        if (then->statement_type == EXPR_STMT)
+            then_string += ";";
+        return "if " + condition->print() + " {\n" + then_string + "\n}";
     }
 };
 
@@ -86,52 +112,86 @@ public:
             inverse(inv),
             then(t) {
     }
+
+    [[nodiscard]] std::string print() const override {
+        std::string then_string = then->print();
+        if (then->statement_type == EXPR_STMT)
+            then_string += ";";
+        return "else " + then_string;
+    }
 };
 
 class ReturnStatement : public Statement {
 public:
-    Expression * value;
+    // Statement so we can print it
+    Statement * value;
 
     explicit ReturnStatement(Expression * val) :
             Statement(RETURN_STMT),
-            value(val) {
+            value(reinterpret_cast<Statement *>(val)) {
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return "return " + value->print() + ";";
     }
 };
 
 class WhileStatement : public Statement {
 public:
-    Expression * condition;
+    Statement * condition;
     Statement * then;
 
     explicit WhileStatement(Expression * cond, Statement * t) :
             Statement(WHILE_STMT),
-            condition(cond),
+            condition(reinterpret_cast<Statement *>(cond)),
             then(t) {
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string then_string = then->print();
+        if (then->statement_type == EXPR_STMT)
+            then_string += ";";
+        return "while " + condition->print() + " {\n" + then_string + "\n}";
     }
 };
 
 class ForStatement : public Statement {
 public:
-    Expression * initializer, * condition, * loop;
+    Statement * initializer, * condition, * loop;
     Statement * then;
 
     ForStatement(Expression * init, Expression * cond, Expression * l, Statement * t) :
             Statement(FOR_STMT),
-            initializer(init),
-            condition(cond),
-            loop(l),
+            initializer(reinterpret_cast<Statement *>(init)),
+            condition(reinterpret_cast<Statement *>(cond)),
+            loop(reinterpret_cast<Statement *>(l)),
             then(t) {
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string then_string = then->print();
+        if (then->statement_type == EXPR_STMT)
+            then_string += ";";
+        return "for " + initializer->print() + "; " + condition->print() + "; " + loop->print() + " {\n" + then_string + "\n}";
     }
 };
 
 class BreakStatement : public Statement {
 public:
     BreakStatement() : Statement(BREAK_STMT) { }
+
+    [[nodiscard]] std::string print() const override {
+        return "break;";
+    }
 };
 
 class ContinueStatement : public Statement {
 public:
     ContinueStatement() : Statement(CONTINUE_STMT) { }
+
+    [[nodiscard]] std::string print() const override {
+        return "continue;";
+    }
 };
 
 class VariableStatement : public Statement {
@@ -143,12 +203,24 @@ public:
             Statement(VARIABLE_STMT),
             type(t),
             name(std::move(n)) { }
+
+    [[nodiscard]] std::string print() const override {
+        return "<todo: type to string> " + name + ";";
+    }
 };
 
 class StructStatement : public Statement {
 public:
     std::string name;
     std::vector<VariableStatement *> members;
+
+    [[nodiscard]] std::string print() const override {
+        std::string res = "struct " + name + " {\n";
+        for (auto * mem : members) {
+            res += mem->print() + "\n";
+        }
+        return res + "\n}";
+    }
 };
 
 #endif //TARIK_STATEMENTS_H

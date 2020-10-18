@@ -22,7 +22,6 @@ void ArgumentParser::addOption(const Option & option) {
 }
 
 void ArgumentParser::help() {
-    std::cout << this->name << "\n";
     std::cout << "Usage: " << this->passed[0] << " [options] inputs\n\n";
     std::cout << "Options:\n";
     for (const auto & option : this->options) {

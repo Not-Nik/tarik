@@ -16,7 +16,7 @@ class InfixParselet {
 public:
     virtual Expression * parse(Parser * parser, const Expression * left, const Token & token) { return {}; }
 
-    virtual ExprType get_type() { return static_cast<ExprType>(0); }
+    virtual Precedence get_type() { return static_cast<Precedence>(0); }
 };
 
 template <class SimpleExpression>
@@ -33,28 +33,28 @@ using RealParselet = SimpleParselet<RealExpression>;
 template <class OperatorExpression>
 class PrefixOperatorParselet : public PrefixParselet {
     Expression * parse(Parser * parser, const Token & token) override {
-        return new OperatorExpression(parser->parse_expression(PREFIX_EXPR));
+        return new OperatorExpression(parser->parse_expression(PREFIX));
     }
 };
 
 using PosParselet = PrefixOperatorParselet<PosExpression>;
 using NegParselet = PrefixOperatorParselet<NegExpression>;
 
-template <class OperatorExpression, ExprType prec>
+template <class OperatorExpression, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
     Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
         return new OperatorExpression(left, parser->parse_expression(prec));
     }
 
-    ExprType get_type() override {
+    Precedence get_type() override {
         return prec;
     }
 };
 
-using AddParselet = BinaryOperatorParselet<AddExpression, DASH_EXPR>;
-using SubParselet = BinaryOperatorParselet<SubExpression, DASH_EXPR>;
-using MulParselet = BinaryOperatorParselet<MulExpression, DOT_EXPR>;
-using DivParselet = BinaryOperatorParselet<DivExpression, DOT_EXPR>;
+using AddParselet = BinaryOperatorParselet<AddExpression, SUM>;
+using SubParselet = BinaryOperatorParselet<SubExpression, SUM>;
+using MulParselet = BinaryOperatorParselet<MulExpression, PRODUCT>;
+using DivParselet = BinaryOperatorParselet<DivExpression, PRODUCT>;
 
 class GroupParselet : public PrefixParselet {
     Expression * parse(Parser * parser, const Token & token) override {
@@ -66,15 +66,15 @@ class GroupParselet : public PrefixParselet {
 
 class AssignParselet : public InfixParselet {
     Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
-        Expression * right = parser->parse_expression(ASSIGN_EXPR - 1);
+        Expression * right = parser->parse_expression(ASSIGNMENT - 1);
 
         parser->iassert(left->expression_type == NAME_EXPR, "Can't assign to expression");
 
         return new AssignExpression(parser->require_var(left->print()), right);
     }
 
-    ExprType get_type() override {
-        return ASSIGN_EXPR;
+    Precedence get_type() override {
+        return ASSIGNMENT;
     }
 };
 
