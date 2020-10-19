@@ -35,7 +35,7 @@ public:
         statement_type = t;
     }
 
-    [[nodiscard]] virtual std::string print() const { return ""; }
+    [[nodiscard]] virtual std::string print() const = 0;
 };
 
 class ScopeStatement : public Statement {
@@ -104,12 +104,10 @@ public:
 
 class ElseStatement : public Statement {
 public:
-    IfStatement * inverse;
     Statement * then;
 
     explicit ElseStatement(IfStatement * inv, Statement * t) :
             Statement(ELSE_STMT),
-            inverse(inv),
             then(t) {
     }
 

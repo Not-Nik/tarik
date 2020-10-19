@@ -28,7 +28,7 @@ std::vector<Statement *> Parser::block() {
         if (!res.empty() && res.back()->statement_type != IF_STMT) {
             iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
         } else if (statement->statement_type == ELSE_STMT) {
-            ((ElseStatement *) statement)->inverse = (IfStatement *) res.back();
+
         }
         res.push_back(statement);
     }
@@ -87,6 +87,7 @@ Parser::Parser(std::string code, std::string fn) :
     // Prefix expressions
     prefix_parslets.emplace(PLUS, new PosParselet());
     prefix_parslets.emplace(MINUS, new NegParselet());
+    prefix_parslets.emplace(ASTERISK, new DerefParselet());
     prefix_parslets.emplace(PAREN_OPEN, new GroupParselet());
 
     // Binary expressions

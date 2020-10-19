@@ -34,8 +34,6 @@ public:
     Expression() : Statement(), expression_type(NAME_EXPR) { }
 
     explicit Expression(ExprType t) : Statement(EXPR_STMT) { expression_type = t; }
-
-    [[nodiscard]] virtual std::string print() const { return ""; }
 };
 
 class NameExpression : public Expression {
@@ -86,6 +84,7 @@ public:
 
 using PosExpression = PrefixOperatorExpression<'+'>;
 using NegExpression = PrefixOperatorExpression<'-'>;
+using DerefExpression = PrefixOperatorExpression<'*'>;
 
 template <ExprType t, char pref>
 class BinaryOperatorExpression : public Expression {
