@@ -103,6 +103,10 @@ Parser::Parser(std::string code, std::string fn) :
 }
 
 Parser::~Parser() {
+    for (auto pre : prefix_parslets)
+        delete pre.second;
+    for (auto in : infix_parslets)
+        delete in.second;
     endfile();
 }
 

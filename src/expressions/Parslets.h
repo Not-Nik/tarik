@@ -71,7 +71,9 @@ class AssignParselet : public InfixParselet {
 
         parser->iassert(left->expression_type == NAME_EXPR, "Can't assign to expression");
 
-        return new AssignExpression(parser->require_var(left->print()), right);
+        std::string var_name = left->print();
+        delete left;
+        return new AssignExpression(parser->require_var(var_name), right);
     }
 
     Precedence get_type() override {

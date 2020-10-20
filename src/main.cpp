@@ -7,6 +7,19 @@
 
 #define TEST_OPTION 1
 
+static int allocs = 0;
+
+void * operator new(size_t size) {
+    void * p = malloc(size);
+    allocs++;
+    return p;
+}
+
+void operator delete(void * p) {
+    free(p);
+    allocs--;
+}
+
 bool test();
 
 int main(int argc, const char * argv[]) {
@@ -20,7 +33,8 @@ int main(int argc, const char * argv[]) {
              "}");
     Statement * s = p.parse_statement();
     std::cout << s->print() << std::endl;
-     */
+    delete s;
+    */
 
     ArgumentParser parser(argc, argv, "tarik");
     parser.addOption(Option {
@@ -37,7 +51,7 @@ int main(int argc, const char * argv[]) {
                 puts("Test succeeded");
             else
                 puts("Test failed");
-            exit(!r);
+            return !r;
         }
     }
     return 0;
@@ -50,12 +64,12 @@ count_suc = 0; count_tested = 0;\
 for (int i = 0; i < 1; i++) { printf("testing %s...", #name);
 #define END_TEST } printf(" done (%i/%i succeeded)\n", count_suc, count_tested); return _st;
 
-#define ASSERT_TOK(type, tok) _st = lexer.peek().id == type;\
+#define ASSERT_TOK(type, tok) {_st = lexer.peek().id == type;\
 _st = _st && lexer.peek().raw == tok;\
 count_tested++;\
 if (!_st) { printf("\nFailed for token '%s': expected '%s'", lexer.peek().raw.c_str(), tok); break; }\
 count_suc++;\
-lexer.consume();
+lexer.consume();}
 
 #define ASSERT_STR_EQ(l, r) {std::string save = l;\
 _st = save == r;\
@@ -63,17 +77,18 @@ count_tested++;\
 if (!_st) { printf("\nFailed for expression '%s': expected '%s'", save.c_str(), r); break; }}\
 count_suc++;
 
-#define ASSERT_EQ(l, r) _st = l == r;\
+#define ASSERT_EQ(l, r) {_st = l == r;\
 count_tested++;\
 if (!_st) { printf("\nFailed for expression '%s': expected '%s'", #l, #r); break; }\
-count_suc++;
+count_suc++;}
 
-#define ASSERT_TRUE(e) _st = e; \
+#define ASSERT_TRUE(e) {_st = e; \
 count_tested++;\
 if (!_st) { printf("\nFailed for expression: expected '%s' to be true", #e); return false; }\
-count_suc++;
+count_suc++;}
 
 bool test() {
+    int overhead = allocs;
     BEGIN_TEST
 
     FIRST_TEST(lexer)
@@ -102,15 +117,27 @@ bool test() {
 
     MID_TEST(expression parsing)
 
-        ASSERT_STR_EQ(Parser("3 + 4 * 5").parse_expression()->print(), "(3+(4*5))")
-        ASSERT_STR_EQ(Parser("-3 + -4 * 5").parse_expression()->print(), "(-3+(-4*5))")
-        ASSERT_STR_EQ(Parser("-name + 4 * -5").parse_expression()->print(), "(-name+(4*-5))")
-        ASSERT_STR_EQ(Parser("(3 + 4) * 5").parse_expression()->print(), "((3+4)*5)")
+        Expression * e = Parser("3 + 4 * 5").parse_expression();
+        ASSERT_STR_EQ(e->print(), "(3+(4*5))")
+        delete e;
+        e = Parser("-3 + -4 * 5").parse_expression();
+        ASSERT_STR_EQ(e->print(), "(-3+(-4*5))")
+        delete e;
+        e = Parser("-name + 4 * -5").parse_expression();
+        ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
+        delete e;
+        e = Parser("(3 + 4) * 5").parse_expression();
+        ASSERT_STR_EQ(e->print(), "((3+4)*5)")
+        delete e;
         {
             Parser tmp = Parser("3 + 4 * 5; 6 + 7 * 8");
-            ASSERT_STR_EQ(tmp.parse_expression()->print(), "(3+(4*5))")
+            e = tmp.parse_expression();
+            ASSERT_STR_EQ(e->print(), "(3+(4*5))")
+            delete e;
             tmp.expect(SEMICOLON);
-            ASSERT_STR_EQ(tmp.parse_expression()->print(), "(6+(7*8))")
+            e = tmp.parse_expression();
+            ASSERT_STR_EQ(e->print(), "(6+(7*8))")
+            delete e;
         }
 
     MID_TEST(statement parsing)
@@ -119,14 +146,16 @@ bool test() {
         IfStatement * ifStatement = (IfStatement *) Parser("if 4 + 4 {}").parse_statement();
         ASSERT_EQ(ifStatement->statement_type, IF_STMT)
         ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
+        delete ifStatement;
 
         // Functions
-        FuncStatement * funcStatement = (FuncStatement *) Parser("fn test_func(i32 arg1, f64 arg2) i8 {}").parse_statement();
-        ASSERT_EQ(funcStatement->statement_type, FUNC_STMT)
-        ASSERT_STR_EQ(funcStatement->name, "test_func")
-        ASSERT_EQ(funcStatement->arguments["arg1"].type.size, I32)
-        ASSERT_EQ(funcStatement->arguments["arg2"].type.size, F64)
-        ASSERT_EQ(funcStatement->return_type.type.size, I8)
+        FuncStatement * func = (FuncStatement *) Parser("fn test_func(i32 arg1, f64 arg2) i8 {}").parse_statement();
+        ASSERT_EQ(func->statement_type, FUNC_STMT)
+        ASSERT_STR_EQ(func->name, "test_func")
+        ASSERT_EQ(func->arguments["arg1"].type.size, I32)
+        ASSERT_EQ(func->arguments["arg2"].type.size, F64)
+        ASSERT_EQ(func->return_type.type.size, I8)
+        delete func;
 
         // Variables and assignments
         Parser p("u8 test_var = 4; test_var = 5;");
@@ -136,9 +165,17 @@ bool test() {
         ASSERT_TRUE(var->type.is_primitive)
         ASSERT_EQ(var->type.pointer_level, 0)
         ASSERT_EQ(var->type.type.size, U8)
+        delete var;
 
-        ASSERT_EQ(((Expression *) p.parse_statement())->expression_type, ASSIGN_EXPR)
-        ASSERT_EQ(((Expression *) p.parse_statement())->expression_type, ASSIGN_EXPR)
+        auto * first = (Expression *) p.parse_statement(), * second = (Expression *) p.parse_statement();
+        ASSERT_EQ(first->expression_type, ASSIGN_EXPR)
+        ASSERT_EQ(second->expression_type, ASSIGN_EXPR)
+        delete first;
+        delete second;
+
+    MID_TEST(memory management)
+
+        ASSERT_EQ(allocs - overhead, 0)
 
     END_TEST
 }

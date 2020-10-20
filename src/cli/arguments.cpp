@@ -30,12 +30,13 @@ void ArgumentParser::help() {
             std::cout << "=<" << option.argumentName << ">";
         std::cout << " - " << option.description << "\n";
     }
-    exit(0);
 }
 
 ParsedOption ArgumentParser::parseNextArg() {
-    if (this->passed.size() == 1)
+    if (this->passed.size() == 1) {
         this->help();
+        return {};
+    }
     if (this->it == this->passed.end()) return {nullptr, ""};
     std::string raw = *it;
     it++;
