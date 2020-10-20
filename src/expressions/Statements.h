@@ -35,6 +35,8 @@ public:
         statement_type = t;
     }
 
+    virtual ~Statement() {};
+
     [[nodiscard]] virtual std::string print() const = 0;
 };
 
@@ -45,6 +47,12 @@ public:
     ScopeStatement(StmtType t, std::vector<Statement *> b) :
             Statement(t),
             block(std::move(b)) { }
+
+    ~ScopeStatement() override {
+        for (auto * st : block) {
+            delete st;
+        }
+    }
 
     [[nodiscard]] std::string print() const override {
         std::string res;
@@ -71,6 +79,8 @@ public:
             return_type(ret),
             arguments(std::move(args)) { }
 
+    // ScopeStatement's destructor is fine
+
     [[nodiscard]] std::string print() const override {
         std::string res = "fn " + name + "(";
         for (auto arg : arguments) {
@@ -94,6 +104,11 @@ public:
             then(t) {
     }
 
+    ~IfStatement() override {
+        delete condition;
+        delete then;
+    }
+
     [[nodiscard]] std::string print() const override {
         std::string then_string = then->print();
         if (then->statement_type == EXPR_STMT)
@@ -109,6 +124,10 @@ public:
     explicit ElseStatement(IfStatement * inv, Statement * t) :
             Statement(ELSE_STMT),
             then(t) {
+    }
+
+    ~ElseStatement() override {
+        delete then;
     }
 
     [[nodiscard]] std::string print() const override {
@@ -129,6 +148,10 @@ public:
             value(reinterpret_cast<Statement *>(val)) {
     }
 
+    ~ReturnStatement() override {
+        delete value;
+    }
+
     [[nodiscard]] std::string print() const override {
         return "return " + value->print() + ";";
     }
@@ -143,6 +166,11 @@ public:
             Statement(WHILE_STMT),
             condition(reinterpret_cast<Statement *>(cond)),
             then(t) {
+    }
+
+    ~WhileStatement() override {
+        delete condition;
+        delete then;
     }
 
     [[nodiscard]] std::string print() const override {
@@ -164,6 +192,13 @@ public:
             condition(reinterpret_cast<Statement *>(cond)),
             loop(reinterpret_cast<Statement *>(l)),
             then(t) {
+    }
+
+    ~ForStatement() override {
+        delete initializer;
+        delete condition;
+        delete loop;
+        delete then;
     }
 
     [[nodiscard]] std::string print() const override {
@@ -211,6 +246,12 @@ class StructStatement : public Statement {
 public:
     std::string name;
     std::vector<VariableStatement *> members;
+
+    ~StructStatement() override{
+        for (auto * m : members) {
+            delete m;
+        }
+    }
 
     [[nodiscard]] std::string print() const override {
         std::string res = "struct " + name + " {\n";

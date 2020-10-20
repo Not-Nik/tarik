@@ -37,7 +37,7 @@ int main(int argc, const char * argv[]) {
                 puts("Test succeeded");
             else
                 puts("Test failed");
-            exit(r);
+            exit(!r);
         }
     }
     return 0;

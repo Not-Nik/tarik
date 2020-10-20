@@ -77,6 +77,10 @@ public:
 
     }
 
+    ~PrefixOperatorExpression() override {
+        delete operand;
+    }
+
     [[nodiscard]] std::string print() const override {
         return std::string({pref}) + operand->print();
     }
@@ -95,6 +99,11 @@ public:
             Expression(t),
             left(l),
             right(r) {
+    }
+
+    ~BinaryOperatorExpression() override {
+        delete left;
+        delete right;
     }
 
     [[nodiscard]] std::string print() const override {
@@ -116,6 +125,10 @@ public:
             Expression(ASSIGN_EXPR),
             variable(var),
             value(val) {
+    }
+
+    ~AssignExpression() override {
+        delete value;
     }
 
     [[nodiscard]] std::string print() const override {
