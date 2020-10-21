@@ -110,10 +110,12 @@ Parser::~Parser() {
     endfile();
 }
 
+Parser * Parser::variable_less() {
+    this->has_variables = false;
+    return this;
+}
+
 bool Parser::iassert(bool cond, std::string what, ...) {
-    if (!cond) {
-        puts("Uh oh");
-    }
     va_list args;
     va_start(args, what);
     vcomperr(cond, what.c_str(), false, filename.c_str(), lexer.where().l, lexer.where().p, args);
@@ -147,7 +149,8 @@ VariableStatement * Parser::require_var(const std::string & name) {
         if (var->name == name)
             return var;
     }
-    iassert(false, "Undefined variable %s", name.c_str());
+    if (has_variables)
+        iassert(false, "Undefined variable %s", name.c_str());
     return nullptr;
 }
 

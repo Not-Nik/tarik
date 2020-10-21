@@ -97,6 +97,8 @@ bool endfile() {
                     errorCount, errorCount > 1 ? "errors" : "error");
         else
             fprintf(stderr, "%i %s generated.", errorCount, errorCount > 1 ? "errors" : "error");
+        errorCount = 0;
+        warnCount = 0;
 #ifndef MANU_EXIT
         exit(1);
 #else
@@ -104,5 +106,7 @@ bool endfile() {
 #endif
     } else if (warnCount > 0)
         fprintf(stderr, "%i %s generated.", warnCount, warnCount > 1 ? "warnings" : "warning");
+    errorCount = 0;
+    warnCount = 0;
     return true;
 }

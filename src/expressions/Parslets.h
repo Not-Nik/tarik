@@ -30,10 +30,23 @@ using NameParselet = SimpleParselet<NameExpression>;
 using IntParselet = SimpleParselet<IntExpression>;
 using RealParselet = SimpleParselet<RealExpression>;
 
+#define TEST_VARIABLE_PRIMITIVE_EXPR(name) \
+        if (name->expression_type == NAME_EXPR) { \
+            VariableStatement * var = parser->require_var(name->print()); \
+            if (var) { \
+                Type t = var->type; \
+                parser->iassert(t.is_primitive || t.pointer_level > 0, "Invalid operand to binary expression"); \
+            } \
+        }
+
 template <class OperatorExpression>
 class PrefixOperatorParselet : public PrefixParselet {
     Expression * parse(Parser * parser, const Token & token) override {
-        return new OperatorExpression(parser->parse_expression(PREFIX));
+        Expression * right = parser->parse_expression(PREFIX);
+
+        TEST_VARIABLE_PRIMITIVE_EXPR(right)
+
+        return new OperatorExpression(right);
     }
 };
 
@@ -44,7 +57,12 @@ using DerefParselet = PrefixOperatorParselet<DerefExpression>;
 template <class OperatorExpression, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
     Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
-        return new OperatorExpression(left, parser->parse_expression(prec));
+        Expression * right = parser->parse_expression(prec);
+
+        TEST_VARIABLE_PRIMITIVE_EXPR(left)
+        TEST_VARIABLE_PRIMITIVE_EXPR(right)
+
+        return new OperatorExpression(left, right);
     }
 
     Precedence get_type() override {

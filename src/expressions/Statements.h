@@ -35,7 +35,7 @@ public:
         statement_type = t;
     }
 
-    virtual ~Statement() {};
+    virtual ~Statement() { };
 
     [[nodiscard]] virtual std::string print() const = 0;
 };
@@ -247,10 +247,24 @@ public:
     std::string name;
     std::vector<VariableStatement *> members;
 
-    ~StructStatement() override{
+    ~StructStatement() override {
         for (auto * m : members) {
             delete m;
         }
+    }
+
+    bool has_member(std::string name) {
+        return std::any_of(members.front(), members.back(), [name](const VariableStatement & mem) {
+            return mem.name == name;
+        });
+    }
+
+    Type get_member_type(std::string name) {
+        for (auto * mem : members) {
+            if (mem->name == name)
+                return mem->type;
+        }
+        return {};
     }
 
     [[nodiscard]] std::string print() const override {

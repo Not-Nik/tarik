@@ -17,6 +17,7 @@ class InfixParselet;
 class Parser {
     Lexer lexer;
     std::string filename;
+    bool has_variables = true;
 
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
@@ -39,6 +40,8 @@ public:
     explicit Parser(std::string code, std::string fn = "<undefined>");
 
     ~Parser();
+
+    Parser * variable_less();
 
     bool iassert(bool cond, std::string what = "", ...);
 

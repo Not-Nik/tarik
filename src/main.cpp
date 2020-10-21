@@ -123,7 +123,7 @@ bool test() {
         e = Parser("-3 + -4 * 5").parse_expression();
         ASSERT_STR_EQ(e->print(), "(-3+(-4*5))")
         delete e;
-        e = Parser("-name + 4 * -5").parse_expression();
+        e = Parser("-name + 4 * -5").variable_less()->parse_expression();
         ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
         delete e;
         e = Parser("(3 + 4) * 5").parse_expression();
