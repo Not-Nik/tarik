@@ -3,8 +3,6 @@
 #include "Parser.h"
 #include "cli/arguments.h"
 
-#include <iostream>
-
 #define TEST_OPTION 1
 
 static int allocs = 0;
@@ -15,7 +13,7 @@ void * operator new(size_t size) {
     return p;
 }
 
-void operator delete(void * p) {
+void operator delete(void * p) noexcept {
     free(p);
     allocs--;
 }
@@ -77,9 +75,10 @@ count_tested++;\
 if (!_st) { printf("\nFailed for expression '%s': expected '%s'", save.c_str(), r); break; }}\
 count_suc++;
 
-#define ASSERT_EQ(l, r) {_st = l == r;\
+#define ASSERT_EQ(l, r) { auto save = l; \
+_st = l == r;\
 count_tested++;\
-if (!_st) { printf("\nFailed for expression '%s': expected '%s'", #l, #r); break; }\
+if (!_st) { printf("\nFailed for expression '%s': expected '%s' found '%s'", #l, #r, std::to_string(save).c_str()); break; }\
 count_suc++;}
 
 #define ASSERT_TRUE(e) {_st = e; \
@@ -123,7 +122,7 @@ bool test() {
         e = Parser("-3 + -4 * 5").parse_expression();
         ASSERT_STR_EQ(e->print(), "(-3+(-4*5))")
         delete e;
-        e = Parser("-name + 4 * -5").variable_less()->parse_expression();
+        e = Parser("-name + 4 * -5").identifier_less()->parse_expression();
         ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
         delete e;
         e = Parser("(3 + 4) * 5").parse_expression();
@@ -139,6 +138,10 @@ bool test() {
             ASSERT_STR_EQ(e->print(), "(6+(7*8))")
             delete e;
         }
+
+        e = Parser("func(1, 2, 3, 4)").identifier_less()->parse_expression();
+        ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
+        delete e;
 
     MID_TEST(statement parsing)
 

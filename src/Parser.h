@@ -15,9 +15,11 @@ class PrefixParselet;
 class InfixParselet;
 
 class Parser {
+    friend class CallParselet;
+
     Lexer lexer;
     std::string filename;
-    bool has_variables = true;
+    bool has_identifiers = true;
 
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
@@ -41,7 +43,7 @@ public:
 
     ~Parser();
 
-    Parser * variable_less();
+    Parser * identifier_less();
 
     bool iassert(bool cond, std::string what = "", ...);
 
@@ -54,6 +56,8 @@ public:
     VariableStatement * require_var(const std::string & name);
 
     VariableStatement * register_var(VariableStatement * var);
+
+    FuncStatement * require_func(const std::string & name);
 
     Expression * parse_expression(int precedence = 0);
 

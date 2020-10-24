@@ -15,7 +15,6 @@ enum Precedence {
     CALL
 };
 
-// This also does precedence
 enum ExprType {
     CALL_EXPR,
     DASH_EXPR, // add subtract
@@ -133,6 +132,36 @@ public:
 
     [[nodiscard]] std::string print() const override {
         return "(" + variable->name + " = " + value->print() + ")";
+    }
+};
+
+class CallExpression : public Expression {
+public:
+    std::string function;
+    std::vector<Expression *> arguments;
+
+    CallExpression(std::string name, std::vector<Expression *> args) :
+            Expression(CALL_EXPR),
+            function(std::move(name)),
+            arguments(std::move(args)) {
+    }
+
+    ~CallExpression() override {
+        for (auto * arg : arguments) {
+            delete arg;
+        }
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string arg_string;
+        for (auto arg : arguments) {
+            arg_string += arg->print() + ", ";
+        }
+        if (!arg_string.empty()) {
+            arg_string.pop_back();
+            arg_string.pop_back();
+        }
+        return function + "(" + arg_string + ")";
     }
 };
 

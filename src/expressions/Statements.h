@@ -31,6 +31,10 @@ public:
 
     Statement() = default;
 
+    Statement(const Statement &) = delete;
+
+    Statement(const Statement &&) = delete;
+
     explicit Statement(StmtType t) {
         statement_type = t;
     }

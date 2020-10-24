@@ -96,6 +96,9 @@ Parser::Parser(std::string code, std::string fn) :
     infix_parslets.emplace(ASTERISK, new MulParselet());
     infix_parslets.emplace(SLASH, new DivParselet());
 
+    // Call
+    infix_parslets.emplace(PAREN_OPEN, new CallParselet());
+
     // Assign expressions
     infix_parslets.emplace(EQUAL, new AssignParselet());
 
@@ -110,8 +113,8 @@ Parser::~Parser() {
     endfile();
 }
 
-Parser * Parser::variable_less() {
-    this->has_variables = false;
+Parser * Parser::identifier_less() {
+    this->has_identifiers = false;
     return this;
 }
 
@@ -149,7 +152,7 @@ VariableStatement * Parser::require_var(const std::string & name) {
         if (var->name == name)
             return var;
     }
-    if (has_variables)
+    if (has_identifiers)
         iassert(false, "Undefined variable %s", name.c_str());
     return nullptr;
 }
@@ -158,6 +161,16 @@ VariableStatement * Parser::register_var(VariableStatement * var) {
     variable_pop_stack.back()++;
     variables.push_back(var);
     return variables.back();
+}
+
+FuncStatement * Parser::require_func(const std::string & name) {
+    for (auto * func : functions) {
+        if (func->name == name)
+            return func;
+    }
+    if (has_identifiers)
+        iassert(false, "Undefined function %s", name.c_str());
+    return nullptr;
 }
 
 Expression * Parser::parse_expression(int precedence) {
@@ -199,7 +212,8 @@ Statement * Parser::parse_statement(bool top_level) {
                     expect(COMMA);
             }
         expect(PAREN_CLOSE);
-        return new FuncStatement(name, type(), args, block());
+        functions.push_back(new FuncStatement(name, type(), args, block()));
+        return functions.back();
     } else if (token == RETURN) {
         lexer.consume();
         auto * s = new ReturnStatement(parse_expression());

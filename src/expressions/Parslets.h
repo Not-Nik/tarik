@@ -99,4 +99,30 @@ class AssignParselet : public InfixParselet {
     }
 };
 
+class CallParselet : public InfixParselet {
+    Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
+        parser->iassert(left->expression_type == NAME_EXPR, "Can't call expression");
+        FuncStatement * func = parser->require_func(left->print());
+        std::vector<Expression *> args;
+
+        while (!parser->lexer.peek().raw.empty() && parser->lexer.peek().id != PAREN_CLOSE) {
+            args.push_back(parser->parse_expression());
+            if (args.back()->expression_type == NAME_EXPR)
+                parser->require_var(args.back()->print());
+
+            if (parser->lexer.peek().id != PAREN_CLOSE)
+                parser->expect(COMMA);
+        }
+
+        std::string name = left->print();
+        delete left;
+
+        return new CallExpression(name, args);
+    }
+
+    Precedence get_type() override {
+        return CALL;
+    }
+};
+
 #endif //TARIK_PARSLETS_H
