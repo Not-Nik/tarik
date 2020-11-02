@@ -25,14 +25,15 @@ int main(int argc, const char * argv[]) {
     Parser p("fn main() u8 {\n"
              "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
              "  some_int = some_int + 7;\n"
-             "  if some_int\n"
+             "  if some_int {\n"
              "      some_int = 0;\n"
+             "  }\n"
              "  return some_int;\n"
              "}");
     Statement * s = p.parse_statement();
     std::cout << s->print() << std::endl;
     delete s;
-    */
+     */
 
     ArgumentParser parser(argc, argv, "tarik");
     parser.addOption(Option {

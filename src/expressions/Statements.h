@@ -18,7 +18,6 @@ enum StmtType {
     ELSE_STMT,
     RETURN_STMT,
     WHILE_STMT,
-    FOR_STMT,
     BREAK_STMT,
     CONTINUE_STMT,
     VARIABLE_STMT,
@@ -172,35 +171,6 @@ public:
         if (then->statement_type == EXPR_STMT)
             then_string += ";";
         return "while " + condition->print() + " {\n" + then_string + "\n}";
-    }
-};
-
-class ForStatement : public Statement {
-public:
-    Statement *initializer, *condition, *loop;
-    Statement *then;
-
-    ForStatement(LexerPos o, Expression *init, Expression *cond, Expression *l, Statement *t)
-        : Statement(FOR_STMT, o),
-          initializer(reinterpret_cast<Statement *>(init)),
-          condition(reinterpret_cast<Statement *>(cond)),
-          loop(reinterpret_cast<Statement *>(l)),
-          then(t) {
-    }
-
-    ~ForStatement() override {
-        delete initializer;
-        delete condition;
-        delete loop;
-        delete then;
-    }
-
-    [[nodiscard]] std::string print() const override {
-        std::string then_string = then->print();
-        if (then->statement_type == EXPR_STMT)
-            then_string += ";";
-        return "for " + initializer->print() + "; " + condition->print() + "; " + loop->print() + " {\n" + then_string
-            + "\n}";
     }
 };
 

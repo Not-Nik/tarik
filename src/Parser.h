@@ -33,6 +33,7 @@ class Parser {
     Precedence get_precedence();
 
     std::vector<Statement *> block();
+    Statement * scope();
 
     Type type();
 
