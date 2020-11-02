@@ -240,7 +240,8 @@ Statement *Parser::parse_statement(bool top_level) {
     } else if (token == TYPE or token == USER_TYPE) {
         Type t = type();
 
-        std::string name = expect(NAME).raw;
+        iassert(is_peek(NAME), "Expected a NAME found '%s' instead", lexer.peek().raw.c_str());
+        std::string name = lexer.peek().raw;
 
         if (lexer.peek(1).id != EQUAL) {
             lexer.consume();
