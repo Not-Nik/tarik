@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "Types.h"
+#include "../Lexer.h"
 
 class Expression;
 
@@ -27,7 +28,8 @@ enum StmtType {
 
 class Statement {
 public:
-    StmtType statement_type {};
+    StmtType statement_type{};
+    LexerPos origin;
 
     Statement() = default;
 
@@ -35,11 +37,12 @@ public:
 
     Statement(const Statement &&) = delete;
 
-    explicit Statement(StmtType t) {
+    explicit Statement(StmtType t, LexerPos o) {
         statement_type = t;
+        origin = o;
     }
 
-    virtual ~Statement() { };
+    virtual ~Statement() {};
 
     [[nodiscard]] virtual std::string print() const = 0;
 };
@@ -48,19 +51,17 @@ class ScopeStatement : public Statement {
 public:
     std::vector<Statement *> block;
 
-    ScopeStatement(StmtType t, std::vector<Statement *> b) :
-            Statement(t),
-            block(std::move(b)) { }
+    ScopeStatement(StmtType t, LexerPos o, std::vector<Statement *> b) : Statement(t, o), block(std::move(b)) {}
 
     ~ScopeStatement() override {
-        for (auto * st : block) {
+        for (auto *st : block) {
             delete st;
         }
     }
 
     [[nodiscard]] std::string print() const override {
         std::string res;
-        for (auto * st : block) {
+        for (auto *st : block) {
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
                 t.push_back(';');
@@ -77,11 +78,8 @@ public:
     Type return_type;
     std::map<std::string, Type> arguments;
 
-    FuncStatement(std::string n, Type ret, std::map<std::string, Type> args, std::vector<Statement *> b) :
-            ScopeStatement(FUNC_STMT, std::move(b)),
-            name(std::move(n)),
-            return_type(ret),
-            arguments(std::move(args)) { }
+    FuncStatement(LexerPos o, std::string n, Type ret, std::map<std::string, Type> args, std::vector<Statement *> b)
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
 
     // ScopeStatement's destructor is fine
 
@@ -99,13 +97,11 @@ public:
 class IfStatement : public Statement {
 public:
     // Statement so we can print it
-    Statement * condition;
-    Statement * then;
+    Statement *condition;
+    Statement *then;
 
-    IfStatement(Expression * cond, Statement * t) :
-            Statement(IF_STMT),
-            condition(reinterpret_cast<Statement *>(cond)),
-            then(t) {
+    IfStatement(LexerPos o, Expression *cond, Statement *t)
+        : Statement(IF_STMT, o), condition(reinterpret_cast<Statement *>(cond)), then(t) {
     }
 
     ~IfStatement() override {
@@ -123,11 +119,9 @@ public:
 
 class ElseStatement : public Statement {
 public:
-    Statement * then;
+    Statement *then;
 
-    explicit ElseStatement(IfStatement * inv, Statement * t) :
-            Statement(ELSE_STMT),
-            then(t) {
+    explicit ElseStatement(LexerPos o, IfStatement *inv, Statement *t) : Statement(ELSE_STMT, o), then(t) {
     }
 
     ~ElseStatement() override {
@@ -145,11 +139,9 @@ public:
 class ReturnStatement : public Statement {
 public:
     // Statement so we can print it
-    Statement * value;
+    Statement *value;
 
-    explicit ReturnStatement(Expression * val) :
-            Statement(RETURN_STMT),
-            value(reinterpret_cast<Statement *>(val)) {
+    explicit ReturnStatement(LexerPos o, Expression *val) : Statement(RETURN_STMT, o), value(reinterpret_cast<Statement *>(val)) {
     }
 
     ~ReturnStatement() override {
@@ -163,13 +155,11 @@ public:
 
 class WhileStatement : public Statement {
 public:
-    Statement * condition;
-    Statement * then;
+    Statement *condition;
+    Statement *then;
 
-    explicit WhileStatement(Expression * cond, Statement * t) :
-            Statement(WHILE_STMT),
-            condition(reinterpret_cast<Statement *>(cond)),
-            then(t) {
+    explicit WhileStatement(LexerPos o, Expression *cond, Statement *t)
+        : Statement(WHILE_STMT, o), condition(reinterpret_cast<Statement *>(cond)), then(t) {
     }
 
     ~WhileStatement() override {
@@ -187,15 +177,15 @@ public:
 
 class ForStatement : public Statement {
 public:
-    Statement * initializer, * condition, * loop;
-    Statement * then;
+    Statement *initializer, *condition, *loop;
+    Statement *then;
 
-    ForStatement(Expression * init, Expression * cond, Expression * l, Statement * t) :
-            Statement(FOR_STMT),
-            initializer(reinterpret_cast<Statement *>(init)),
-            condition(reinterpret_cast<Statement *>(cond)),
-            loop(reinterpret_cast<Statement *>(l)),
-            then(t) {
+    ForStatement(LexerPos o, Expression *init, Expression *cond, Expression *l, Statement *t)
+        : Statement(FOR_STMT, o),
+          initializer(reinterpret_cast<Statement *>(init)),
+          condition(reinterpret_cast<Statement *>(cond)),
+          loop(reinterpret_cast<Statement *>(l)),
+          then(t) {
     }
 
     ~ForStatement() override {
@@ -209,13 +199,14 @@ public:
         std::string then_string = then->print();
         if (then->statement_type == EXPR_STMT)
             then_string += ";";
-        return "for " + initializer->print() + "; " + condition->print() + "; " + loop->print() + " {\n" + then_string + "\n}";
+        return "for " + initializer->print() + "; " + condition->print() + "; " + loop->print() + " {\n" + then_string
+            + "\n}";
     }
 };
 
 class BreakStatement : public Statement {
 public:
-    BreakStatement() : Statement(BREAK_STMT) { }
+    explicit BreakStatement(LexerPos o) : Statement(BREAK_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
         return "break;";
@@ -224,7 +215,7 @@ public:
 
 class ContinueStatement : public Statement {
 public:
-    ContinueStatement() : Statement(CONTINUE_STMT) { }
+    explicit ContinueStatement(LexerPos o) : Statement(CONTINUE_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
         return "continue;";
@@ -236,10 +227,7 @@ public:
     Type type;
     std::string name;
 
-    VariableStatement(Type t, std::string n) :
-            Statement(VARIABLE_STMT),
-            type(t),
-            name(std::move(n)) { }
+    VariableStatement(LexerPos o, Type t, std::string n) : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return "<todo: type to string> " + name + ";";
@@ -252,19 +240,19 @@ public:
     std::vector<VariableStatement *> members;
 
     ~StructStatement() override {
-        for (auto * m : members) {
+        for (auto *m : members) {
             delete m;
         }
     }
 
     bool has_member(std::string name) {
-        return std::any_of(members.front(), members.back(), [name](const VariableStatement & mem) {
+        return std::any_of(members.front(), members.back(), [name](const VariableStatement &mem) {
             return mem.name == name;
         });
     }
 
     Type get_member_type(std::string name) {
-        for (auto * mem : members) {
+        for (auto *mem : members) {
             if (mem->name == name)
                 return mem->type;
         }
@@ -273,7 +261,7 @@ public:
 
     [[nodiscard]] std::string print() const override {
         std::string res = "struct " + name + " {\n";
-        for (auto * mem : members) {
+        for (auto *mem : members) {
             res += mem->print() + "\n";
         }
         return res + "\n}";

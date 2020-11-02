@@ -140,6 +140,6 @@ Token Lexer::consume() {
     return t;
 }
 
-typeof(Lexer::pos) Lexer::where() {
+LexerPos Lexer::where() {
     return this->pos;
 }

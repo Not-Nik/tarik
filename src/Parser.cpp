@@ -212,26 +212,26 @@ Statement * Parser::parse_statement(bool top_level) {
                     expect(COMMA);
             }
         expect(PAREN_CLOSE);
-        functions.push_back(new FuncStatement(name, type(), args, block()));
+        functions.push_back(new FuncStatement(lexer.where(), name, type(), args, block()));
         return functions.back();
     } else if (token == RETURN) {
         lexer.consume();
-        auto * s = new ReturnStatement(parse_expression());
+        auto * s = new ReturnStatement(lexer.where(), parse_expression());
         expect(SEMICOLON);
         return s;
     } else if (token == IF) {
         lexer.consume();
-        return new IfStatement(parse_expression(), parse_statement(false));
+        return new IfStatement(lexer.where(), parse_expression(), parse_statement(false));
     } else if (token == ELSE) {
         lexer.consume();
-        return new ElseStatement(nullptr, parse_statement(false));
+        return new ElseStatement(lexer.where(), nullptr, parse_statement(false));
     } else if (token == WHILE) {
         lexer.consume();
-        return new WhileStatement(parse_expression(), parse_statement(false));
+        return new WhileStatement(lexer.where(), parse_expression(), parse_statement(false));
     } else if (token == FOR) {
 
     } else if (token == CURLY_OPEN) {
-        return new ScopeStatement(SCOPE_STMT, block());
+        return new ScopeStatement(SCOPE_STMT, lexer.where(), block());
     } else if (token == TYPE or token == USER_TYPE) {
         Type t = type();
 
@@ -244,7 +244,7 @@ Statement * Parser::parse_statement(bool top_level) {
             expect(SEMICOLON);
         }
 
-        return register_var(new VariableStatement(t, name));
+        return register_var(new VariableStatement(lexer.where(), t, name));
     }
     Expression * e = parse_expression();
     if (e == reinterpret_cast<Expression *>(-1)) {

@@ -32,7 +32,7 @@ public:
 
     Expression() : Statement(), expression_type(NAME_EXPR) { }
 
-    explicit Expression(ExprType t) : Statement(EXPR_STMT) { expression_type = t; }
+    explicit Expression(ExprType t) : Statement(EXPR_STMT, {}) { expression_type = t; }
 };
 
 class NameExpression : public Expression {

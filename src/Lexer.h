@@ -7,12 +7,14 @@
 
 #include <sstream>
 
+struct LexerPos {
+    int l, p;
+};
+
 class Lexer {
     std::string code;
 
-    struct {
-        int l, p;
-    } pos {0, 0};
+    LexerPos pos {0, 0};
 
     static bool operator_startswith(char c);
 
@@ -25,7 +27,7 @@ public:
 
     Token consume();
 
-    typeof(Lexer::pos) where();
+    LexerPos where();
 };
 
 #endif //TARIK_LEXER_H

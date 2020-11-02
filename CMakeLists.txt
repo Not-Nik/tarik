@@ -20,7 +20,7 @@ add_executable(tarik
         src/expressions/Expression.h
         src/expressions/Parslets.h
         src/expressions/Statements.h
-        src/expressions/Types.h)
+        src/expressions/Types.h src/testing.h)
 
 target_link_libraries(tarik comperr)
 target_link_libraries(tarik magic_enum)
