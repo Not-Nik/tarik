@@ -96,10 +96,12 @@ class AssignParselet : public InfixParselet {
         Expression *right = parser->parse_expression(ASSIGNMENT - 1);
 
         parser->iassert(left->expression_type == VARREF_EXPR, "Can't assign to expression");
-
-        std::string var_name = left->print();
+        VariableStatement * var = ((VariableReferenceExpression *) left)->variable;
         delete left;
-        return new AssignExpression(parser->require_var(var_name), right);
+        parser->iassert(var->type.is_compatible(right->get_type()),
+                        "Incompatible types for assignment");
+
+        return new AssignExpression(var, right);
     }
 
     Precedence get_type() override {
