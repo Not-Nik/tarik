@@ -19,7 +19,6 @@ class Parser {
 
     Lexer lexer;
     std::string filename;
-    bool has_identifiers = true;
 
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
@@ -37,16 +36,12 @@ class Parser {
 
     Type type();
 
-    Type type(Token starter);
-
 public:
     explicit Parser(std::string code, std::string fn = "<undefined>");
 
     ~Parser();
 
-    Parser *identifier_less();
-
-    bool iassert(bool cond, std::string what = "", ...);
+    bool iassert(bool cond, std::string what, ...);
 
     Token expect(TokenType raw);
 

@@ -44,16 +44,12 @@ Statement *Parser::scope() {
 }
 
 Type Parser::type() {
-    return type(lexer.consume());
-}
-
-Type Parser::type(Token starter) {
-    iassert(starter.id == TYPE or starter.id == USER_TYPE, "Expected type name");
+    iassert(lexer.peek().id == TYPE or lexer.peek().id == USER_TYPE, "Expected type name");
     Type t;
 
-    if (starter.id == TYPE) {
+    if (lexer.peek().id == TYPE) {
         std::string type_name;
-        for (auto c : starter.raw)
+        for (auto c : lexer.peek().raw)
             type_name.push_back(toupper(c));
         auto size = magic_enum::enum_cast<TypeSize>(type_name);
         iassert(size.has_value(), "FATAL INTERNAL ERROR: Couldn't find enum member for built-in type");
@@ -63,22 +59,23 @@ Type Parser::type(Token starter) {
     } else {
         StructStatement *structure;
         for (StructStatement *st : structures) {
-            if (st->name == starter.raw) {
+            if (st->name == lexer.peek().raw) {
                 structure = st;
                 break;
             }
         }
-        iassert(structure, "Undefined structure %s", starter.raw.c_str());
+        iassert(structure, "Undefined structure %s", lexer.peek().raw.c_str());
         t.type.user_type = structure;
         t.is_primitive = false;
     }
-
+    lexer.consume();
     while (!lexer.peek().raw.empty() && lexer.peek().id == ASTERISK) {
         t.pointer_level++;
         lexer.consume();
     }
     return t;
 }
+
 
 Parser::Parser(std::string code, std::string fn)
     : lexer(std::move(code)), filename(std::move(fn)) {
@@ -114,11 +111,6 @@ Parser::~Parser() {
     for (auto in : infix_parslets)
         delete in.second;
     endfile();
-}
-
-Parser *Parser::identifier_less() {
-    this->has_identifiers = false;
-    return this;
 }
 
 bool Parser::iassert(bool cond, std::string what, ...) {
@@ -158,10 +150,7 @@ VariableStatement *Parser::require_var(const std::string &name) {
         if (var->name == name)
             return var;
     }
-    if (has_identifiers)
-        iassert(false, "Undefined variable %s", name.c_str());
-    else
-        return new VariableStatement({}, Type(), name);
+    iassert(false, "Undefined variable %s", name.c_str());
     return nullptr;
 }
 
@@ -176,10 +165,7 @@ FuncStatement *Parser::require_func(const std::string &name) {
         if (func->name == name)
             return func;
     }
-    if (has_identifiers)
-        iassert(false, "Undefined function %s", name.c_str());
-    else
-        return new FuncStatement({}, name, Type(), {}, {});
+    iassert(false, "Undefined function %s", name.c_str());
     return nullptr;
 }
 

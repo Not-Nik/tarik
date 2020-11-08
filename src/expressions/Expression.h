@@ -190,7 +190,7 @@ public:
         return function->name + "(" + arg_string + ")";
     }
 
-    Type get_type() const override {
+    [[nodiscard]] Type get_type() const override {
         return function->return_type;
     }
 };

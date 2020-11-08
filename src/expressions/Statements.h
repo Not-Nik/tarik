@@ -28,7 +28,7 @@ enum StmtType {
 class Statement {
 public:
     StmtType statement_type{};
-    LexerPos origin;
+    [[maybe_unused]] LexerPos origin{};
 
     Statement() = default;
 
@@ -36,12 +36,13 @@ public:
 
     Statement(const Statement &&) = delete;
 
-    explicit Statement(StmtType t, LexerPos o) {
+    explicit Statement(StmtType t, LexerPos o)
+        : origin(o) {
         statement_type = t;
         origin = o;
     }
 
-    virtual ~Statement() {};
+    virtual ~Statement() = default;;
 
     [[nodiscard]] virtual std::string print() const = 0;
 };
@@ -194,7 +195,11 @@ public:
     Type return_type;
     std::vector<VariableStatement *> arguments;
 
-    FuncStatement(LexerPos o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
+    FuncStatement(LexerPos o,
+                  std::string n,
+                  Type ret,
+                  std::vector<VariableStatement *> args,
+                  std::vector<Statement *> b)
         : ScopeStatement(FUNC_STMT,
                          o,
                          std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
@@ -228,15 +233,15 @@ public:
         }
     }
 
-    bool has_member(std::string name) {
-        return std::any_of(members.front(), members.back(), [name](const VariableStatement &mem) {
-            return mem.name == name;
+    bool has_member(const std::string &n) {
+        return std::any_of(members.front(), members.back(), [n](const VariableStatement &mem) {
+            return mem.name == n;
         });
     }
 
-    Type get_member_type(std::string name) {
+    Type get_member_type(const std::string &n) {
         for (auto *mem : members) {
-            if (mem->name == name)
+            if (mem->name == n)
                 return mem->type;
         }
         return {};
