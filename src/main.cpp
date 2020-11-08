@@ -5,19 +5,6 @@
 
 #define TEST_OPTION 1
 
-static int allocs = 0;
-
-void *operator new(size_t size) {
-    void *p = malloc(size);
-    allocs++;
-    return p;
-}
-
-void operator delete(void *p) noexcept {
-    free(p);
-    allocs--;
-}
-
 bool test();
 
 int main(int argc, const char *argv[]) {

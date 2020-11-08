@@ -3,6 +3,19 @@
 #ifndef TARIK_SRC_TESTING_H_
 #define TARIK_SRC_TESTING_H_
 
+static int allocs = 0;
+
+void *operator new(size_t size) {
+    void *p = malloc(size);
+    allocs++;
+    return p;
+}
+
+void operator delete(void *p) noexcept {
+    free(p);
+    allocs--;
+}
+
 #define BEGIN_TEST bool _st = true; int count_suc = 0; int count_tested = 0;
 #define FIRST_TEST(name) for (int i = 0; i < 1; i++) { printf("testing %s...", #name);
 #define MID_TEST(name) } printf(" done (%i/%i succeeded)\n", count_suc, count_tested); \
