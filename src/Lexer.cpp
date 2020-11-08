@@ -4,7 +4,8 @@
 
 #include <utility>
 
-Lexer::Lexer(std::string c) : code(std::move(c)) {
+Lexer::Lexer(std::string c)
+    : code(std::move(c)) {
 }
 
 bool Lexer::operator_startswith(char c) {
@@ -12,7 +13,9 @@ bool Lexer::operator_startswith(char c) {
 }
 
 bool Lexer::operator_startswith(std::string c) {
-    return std::any_of(operators.begin(), operators.end(), [c](auto op) { return op.first.find(c) != std::string::npos; });
+    return std::any_of(operators.begin(),
+                       operators.end(),
+                       [c](auto op) { return op.first.find(c) != std::string::npos; });
 }
 
 bool isignorable(char c) {
@@ -47,7 +50,7 @@ Token Lexer::peek(int dist) {
         }
 
         if (c == '#') {
-            for (; code[i] != '\n'; i++) { }
+            for (; code[i] != '\n'; i++) {}
             continue;
         }
 

@@ -80,9 +80,8 @@ Type Parser::type(Token starter) {
     return t;
 }
 
-Parser::Parser(std::string code, std::string fn) :
-        lexer(std::move(code)),
-        filename(std::move(fn)) {
+Parser::Parser(std::string code, std::string fn)
+    : lexer(std::move(code)), filename(std::move(fn)) {
     // Trivial expressions
     prefix_parslets.emplace(NAME, new NameParselet());
     prefix_parslets.emplace(INTEGER, new IntParselet());
@@ -161,6 +160,8 @@ VariableStatement *Parser::require_var(const std::string &name) {
     }
     if (has_identifiers)
         iassert(false, "Undefined variable %s", name.c_str());
+    else
+        return new VariableStatement({}, Type(), name);
     return nullptr;
 }
 
@@ -177,7 +178,14 @@ FuncStatement *Parser::require_func(const std::string &name) {
     }
     if (has_identifiers)
         iassert(false, "Undefined function %s", name.c_str());
+    else
+        return new FuncStatement({}, name, Type(), {}, {});
     return nullptr;
+}
+
+FuncStatement *Parser::register_func(FuncStatement *func) {
+    functions.push_back(func);
+    return func;
 }
 
 Expression *Parser::parse_expression(int precedence) {
@@ -196,6 +204,9 @@ Expression *Parser::parse_expression(int precedence) {
         left = infix->parse(this, left, token);
     }
 
+    iassert(left->expression_type != NAME_EXPR,
+            "Internal: returned name expression. Please report this bug at the tarik repo.");
+
     return left;
 }
 
@@ -206,14 +217,12 @@ Statement *Parser::parse_statement(bool top_level) {
         lexer.consume();
         std::string name = expect(NAME).raw;
 
-        std::map<std::string, Type> args;
+        std::vector<VariableStatement *> args;
         if (!check_expect(PAREN_OPEN))
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
         else
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) {
-                Type t = type();
-
-                args.emplace(expect(NAME).raw, t);
+                args.push_back(register_var(new VariableStatement(lexer.where(), type(), expect(NAME).raw)));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);

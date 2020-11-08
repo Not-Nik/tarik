@@ -50,7 +50,8 @@ class ScopeStatement : public Statement {
 public:
     std::vector<Statement *> block;
 
-    ScopeStatement(StmtType t, LexerPos o, std::vector<Statement *> b) : Statement(t, o), block(std::move(b)) {}
+    ScopeStatement(StmtType t, LexerPos o, std::vector<Statement *> b)
+        : Statement(t, o), block(std::move(b)) {}
 
     ~ScopeStatement() override {
         for (auto *st : block) {
@@ -68,28 +69,6 @@ public:
         }
         res.pop_back();
         return res;
-    }
-};
-
-class FuncStatement : public ScopeStatement {
-public:
-    std::string name;
-    Type return_type;
-    std::map<std::string, Type> arguments;
-
-    FuncStatement(LexerPos o, std::string n, Type ret, std::map<std::string, Type> args, std::vector<Statement *> b)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
-
-    // ScopeStatement's destructor is fine
-
-    [[nodiscard]] std::string print() const override {
-        std::string res = "fn " + name + "(";
-        for (auto arg : arguments) {
-            res += "<todo: type to string> " + name + ", ";
-        }
-        if (res.back() != '(')
-            res = res.substr(0, res.size() - 2);
-        return res + ") <todo: type to string> {\n" + ScopeStatement::print() + "\n}";
     }
 };
 
@@ -120,7 +99,8 @@ class ElseStatement : public Statement {
 public:
     Statement *then;
 
-    explicit ElseStatement(LexerPos o, IfStatement *inv, Statement *t) : Statement(ELSE_STMT, o), then(t) {
+    explicit ElseStatement(LexerPos o, IfStatement *inv, Statement *t)
+        : Statement(ELSE_STMT, o), then(t) {
     }
 
     ~ElseStatement() override {
@@ -140,7 +120,8 @@ public:
     // Statement so we can print it
     Statement *value;
 
-    explicit ReturnStatement(LexerPos o, Expression *val) : Statement(RETURN_STMT, o), value(reinterpret_cast<Statement *>(val)) {
+    explicit ReturnStatement(LexerPos o, Expression *val)
+        : Statement(RETURN_STMT, o), value(reinterpret_cast<Statement *>(val)) {
     }
 
     ~ReturnStatement() override {
@@ -176,7 +157,8 @@ public:
 
 class BreakStatement : public Statement {
 public:
-    explicit BreakStatement(LexerPos o) : Statement(BREAK_STMT, o) {}
+    explicit BreakStatement(LexerPos o)
+        : Statement(BREAK_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
         return "break;";
@@ -185,7 +167,8 @@ public:
 
 class ContinueStatement : public Statement {
 public:
-    explicit ContinueStatement(LexerPos o) : Statement(CONTINUE_STMT, o) {}
+    explicit ContinueStatement(LexerPos o)
+        : Statement(CONTINUE_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
         return "continue;";
@@ -197,10 +180,40 @@ public:
     Type type;
     std::string name;
 
-    VariableStatement(LexerPos o, Type t, std::string n) : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
+    VariableStatement(LexerPos o, Type t, std::string n)
+        : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return "<todo: type to string> " + name + ";";
+    }
+};
+
+class FuncStatement : public ScopeStatement {
+public:
+    std::string name;
+    Type return_type;
+    std::vector<VariableStatement *> arguments;
+
+    FuncStatement(LexerPos o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
+        : ScopeStatement(FUNC_STMT,
+                         o,
+                         std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
+
+    ~FuncStatement() override {
+        ScopeStatement::~ScopeStatement();
+        for (auto *arg : arguments) {
+            delete arg;
+        }
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string res = "fn " + name + "(";
+        for (auto arg : arguments) {
+            res += "<todo: type to string> , ";
+        }
+        if (res.back() != '(')
+            res = res.substr(0, res.size() - 2);
+        return res + ") <todo: type to string> {\n" + ScopeStatement::print() + "\n}";
     }
 };
 

@@ -94,7 +94,8 @@ static std::map<std::string, TokenType> keywords = {
 
 class Token {
 public:
-    explicit Token(TokenType id, std::string s) : raw(std::move(s)), id(id) {
+    explicit Token(TokenType id, std::string s)
+        : raw(std::move(s)), id(id) {
     }
 
     TokenType id;

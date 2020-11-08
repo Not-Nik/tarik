@@ -33,7 +33,7 @@ class Parser {
     Precedence get_precedence();
 
     std::vector<Statement *> block();
-    Statement * scope();
+    Statement *scope();
 
     Type type();
 
@@ -44,7 +44,7 @@ public:
 
     ~Parser();
 
-    Parser * identifier_less();
+    Parser *identifier_less();
 
     bool iassert(bool cond, std::string what = "", ...);
 
@@ -54,16 +54,17 @@ public:
 
     bool is_peek(TokenType raw);
 
-    VariableStatement * require_var(const std::string & name);
+    VariableStatement *require_var(const std::string &name);
 
-    VariableStatement * register_var(VariableStatement * var);
+    VariableStatement *register_var(VariableStatement *var);
 
-    FuncStatement * require_func(const std::string & name);
+    FuncStatement *require_func(const std::string &name);
 
-    Expression * parse_expression(int precedence = 0);
+    FuncStatement *register_func(FuncStatement *func);
 
-    Statement * parse_statement(bool top_level = true);
+    Expression *parse_expression(int precedence = 0);
+
+    Statement *parse_statement(bool top_level = true);
 };
-
 
 #endif //TARIK_PARSER_H

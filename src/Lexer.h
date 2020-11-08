@@ -14,7 +14,7 @@ struct LexerPos {
 class Lexer {
     std::string code;
 
-    LexerPos pos {0, 0};
+    LexerPos pos{0, 0};
 
     static bool operator_startswith(char c);
 

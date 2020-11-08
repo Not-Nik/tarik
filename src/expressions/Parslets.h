@@ -9,41 +9,49 @@
 
 class PrefixParselet {
 public:
-    virtual Expression * parse(Parser * parser, const Token & token) { return {}; }
+    virtual Expression *parse(Parser *parser, const Token &token) { return {}; }
 };
 
 class InfixParselet {
 public:
-    virtual Expression * parse(Parser * parser, const Expression * left, const Token & token) { return {}; }
+    virtual Expression *parse(Parser *parser, const Expression *left, const Token &token) { return {}; }
 
     virtual Precedence get_type() { return static_cast<Precedence>(0); }
 };
 
 template <class SimpleExpression>
 class SimpleParselet : public PrefixParselet {
-    Expression * parse(Parser * parser, const Token & token) override {
+    Expression *parse(Parser *parser, const Token &token) override {
         return (Expression *) new SimpleExpression(token.raw);
     }
 };
 
-using NameParselet = SimpleParselet<NameExpression>;
 using IntParselet = SimpleParselet<IntExpression>;
 using RealParselet = SimpleParselet<RealExpression>;
 
+class NameParselet : public PrefixParselet {
+    Expression *parse(Parser *parser, const Token &token) override {
+        if (parser->is_peek(PAREN_OPEN)) {
+            return new NameExpression(token.raw);
+        } else {
+            return new VariableReferenceExpression(parser->require_var(token.raw));
+        }
+    }
+};
+
 #define TEST_VARIABLE_PRIMITIVE_EXPR(name) \
-        if (name->expression_type == NAME_EXPR) { \
-            VariableStatement * var = parser->require_var(name->print()); \
+        if (name->expression_type == VARREF_EXPR) { \
+            auto * var = (VariableReferenceExpression *)name; \
             if (var) { \
-                Type t = var->type; \
+                Type t = var->get_type(); \
                 parser->iassert(t.is_primitive || t.pointer_level > 0, "Invalid operand to binary expression"); \
             } \
         }
 
 template <class OperatorExpression>
 class PrefixOperatorParselet : public PrefixParselet {
-    Expression * parse(Parser * parser, const Token & token) override {
-        Expression * right = parser->parse_expression(PREFIX);
-
+    Expression *parse(Parser *parser, const Token &token) override {
+        Expression *right = parser->parse_expression(PREFIX);;
         TEST_VARIABLE_PRIMITIVE_EXPR(right)
 
         return new OperatorExpression(right);
@@ -56,8 +64,8 @@ using DerefParselet = PrefixOperatorParselet<DerefExpression>;
 
 template <class OperatorExpression, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
-    Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
-        Expression * right = parser->parse_expression(prec);
+    Expression *parse(Parser *parser, const Expression *left, const Token &token) override {
+        Expression *right = parser->parse_expression(prec);
 
         TEST_VARIABLE_PRIMITIVE_EXPR(left)
         TEST_VARIABLE_PRIMITIVE_EXPR(right)
@@ -76,18 +84,18 @@ using MulParselet = BinaryOperatorParselet<MulExpression, PRODUCT>;
 using DivParselet = BinaryOperatorParselet<DivExpression, PRODUCT>;
 
 class GroupParselet : public PrefixParselet {
-    Expression * parse(Parser * parser, const Token & token) override {
-        Expression * e = parser->parse_expression();
+    Expression *parse(Parser *parser, const Token &token) override {
+        Expression *e = parser->parse_expression();
         parser->expect(PAREN_CLOSE);
         return e;
     }
 };
 
 class AssignParselet : public InfixParselet {
-    Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
-        Expression * right = parser->parse_expression(ASSIGNMENT - 1);
+    Expression *parse(Parser *parser, const Expression *left, const Token &token) override {
+        Expression *right = parser->parse_expression(ASSIGNMENT - 1);
 
-        parser->iassert(left->expression_type == NAME_EXPR, "Can't assign to expression");
+        parser->iassert(left->expression_type == VARREF_EXPR, "Can't assign to expression");
 
         std::string var_name = left->print();
         delete left;
@@ -100,24 +108,37 @@ class AssignParselet : public InfixParselet {
 };
 
 class CallParselet : public InfixParselet {
-    Expression * parse(Parser * parser, const Expression * left, const Token & token) override {
+    Expression *parse(Parser *parser, const Expression *left, const Token &token) override {
         parser->iassert(left->expression_type == NAME_EXPR, "Can't call expression");
-        FuncStatement * func = parser->require_func(left->print());
+        FuncStatement *func = parser->require_func(left->print());
         std::vector<Expression *> args;
+
+        int i = 0;
 
         while (!parser->lexer.peek().raw.empty() && parser->lexer.peek().id != PAREN_CLOSE) {
             args.push_back(parser->parse_expression());
-            if (args.back()->expression_type == NAME_EXPR)
-                parser->require_var(args.back()->print());
+
+            if (i < func->arguments.size()) {
+                parser->iassert(args.back()->get_type().is_compatible(func->arguments[i]->type), "");
+            }
 
             if (parser->lexer.peek().id != PAREN_CLOSE)
                 parser->expect(COMMA);
         }
 
-        std::string name = left->print();
+        parser->iassert(args.size() >= func->arguments.size(),
+                        "Too few arguments, expected %i found %i.",
+                        func->arguments.size(),
+                        args.size());
+
+        parser->iassert(args.size() <= func->arguments.size(),
+                        "Too many arguments, expected %i found %i.",
+                        func->arguments.size(),
+                        args.size());
+
         delete left;
 
-        return new CallExpression(name, args);
+        return new CallExpression(func, args);
     }
 
     Precedence get_type() override {
