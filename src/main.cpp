@@ -1,5 +1,6 @@
 // tarik (c) Nikolas Wipper 2020
 
+#include <iostream>
 #include "Parser.h"
 #include "cli/arguments.h"
 
@@ -8,7 +9,6 @@
 bool test();
 
 int main(int argc, const char *argv[]) {
-    /*
     Parser p("fn main() u8 {\n"
              "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
              "  some_int = some_int + 7;\n"
@@ -20,7 +20,6 @@ int main(int argc, const char *argv[]) {
     Statement * s = p.parse_statement();
     std::cout << s->print() << std::endl;
     delete s;
-     */
 
     ArgumentParser parser(argc, argv, "tarik");
     parser.addOption(Option{
@@ -146,11 +145,11 @@ bool test() {
         ASSERT_TRUE(var->type.is_primitive)
         ASSERT_EQ(var->type.pointer_level, 0)
         ASSERT_EQ(var->type.type.size, U8)
-        delete var;
 
         auto *first = (Expression *) p.parse_statement(), *second = (Expression *) p.parse_statement();
         ASSERT_EQ(first->expression_type, ASSIGN_EXPR)
         ASSERT_EQ(second->expression_type, ASSIGN_EXPR)
+        delete var;
         delete first;
         delete second;
 

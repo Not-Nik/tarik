@@ -205,7 +205,6 @@ public:
                          std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
 
     ~FuncStatement() override {
-        ScopeStatement::~ScopeStatement();
         for (auto *arg : arguments) {
             delete arg;
         }
