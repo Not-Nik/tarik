@@ -5,6 +5,7 @@
 
 #include <map>
 #include <utility>
+#include <algorithm>
 
 #include "Types.h"
 #include "../Lexer.h"

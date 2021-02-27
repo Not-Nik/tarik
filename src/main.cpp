@@ -9,6 +9,7 @@
 bool test();
 
 int main(int argc, const char *argv[]) {
+    /*
     Parser p("fn main() u8 {\n"
              "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
              "  some_int = some_int + 7;\n"
@@ -20,6 +21,7 @@ int main(int argc, const char *argv[]) {
     Statement * s = p.parse_statement();
     std::cout << s->print() << std::endl;
     delete s;
+    */
 
     ArgumentParser parser(argc, argv, "tarik");
     parser.addOption(Option{

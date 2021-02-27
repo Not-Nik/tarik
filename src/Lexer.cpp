@@ -3,6 +3,7 @@
 #include "Lexer.h"
 
 #include <utility>
+#include <algorithm>
 
 Lexer::Lexer(std::string c)
     : code(std::move(c)) {
