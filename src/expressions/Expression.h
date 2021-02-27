@@ -93,7 +93,6 @@ public:
 
     explicit PrefixOperatorExpression(Expression *op)
         : Expression(PREFIX_EXPR), operand(op) {
-
     }
 
     ~PrefixOperatorExpression() override {
@@ -165,10 +164,10 @@ public:
 
 class CallExpression : public Expression {
 public:
-    FuncStatement* function;
+    FuncStatement *function;
     std::vector<Expression *> arguments;
 
-    CallExpression(FuncStatement* func, std::vector<Expression *> args)
+    CallExpression(FuncStatement *func, std::vector<Expression *> args)
         : Expression(CALL_EXPR), function(func), arguments(std::move(args)) {
     }
 

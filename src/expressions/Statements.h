@@ -201,9 +201,8 @@ public:
                   Type ret,
                   std::vector<VariableStatement *> args,
                   std::vector<Statement *> b)
-        : ScopeStatement(FUNC_STMT,
-                         o,
-                         std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret),
+          arguments(std::move(args)) {}
 
     ~FuncStatement() override {
         for (auto *arg : arguments) {

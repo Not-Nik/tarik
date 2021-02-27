@@ -96,7 +96,7 @@ class AssignParselet : public InfixParselet {
         Expression *right = parser->parse_expression(ASSIGNMENT - 1);
 
         parser->iassert(left->expression_type == VARREF_EXPR, "Can't assign to expression");
-        VariableStatement * var = ((VariableReferenceExpression *) left)->variable;
+        VariableStatement *var = ((VariableReferenceExpression *) left)->variable;
         delete left;
         if (var) {
             parser->iassert(var->type.is_compatible(right->get_type()), "Incompatible types for assignment");

@@ -1,6 +1,5 @@
 // tarik (c) Nikolas Wipper 2020
 
-#include <iostream>
 #include "Parser.h"
 #include "cli/arguments.h"
 

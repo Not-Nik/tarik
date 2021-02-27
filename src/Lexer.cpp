@@ -19,10 +19,6 @@ bool Lexer::operator_startswith(std::string c) {
                        [c](auto op) { return op.first.find(c) != std::string::npos; });
 }
 
-bool isignorable(char c) {
-    return c == '\t' || c == '\n' || c == '\r' || c == ' ';
-}
-
 Token Lexer::peek(int dist) {
     std::string tok;
     bool num = false, real = false, op = false, string = false;
@@ -30,7 +26,7 @@ Token Lexer::peek(int dist) {
     int d = 0;
     while (dist--) {
         d += peek(dist).raw.size();
-        while (isignorable(code[d])) {
+        while (isspace(code[d])) {
             d++;
         }
     }
@@ -73,7 +69,7 @@ Token Lexer::peek(int dist) {
             continue;
         }
 
-        if (op || isignorable(c))
+        if (op || isspace(c))
             break;
 
         if (isnumber(c)) {
@@ -134,7 +130,7 @@ Token Lexer::consume() {
     Token t = peek();
     code.erase(0, t.raw.size());
     pos.p += t.raw.size();
-    while (isignorable(code[0])) {
+    while (isspace(code[0])) {
         if (code[0] == '\n')
             pos = {.l = pos.l + 1, .p=0};
         else

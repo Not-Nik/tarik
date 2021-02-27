@@ -28,7 +28,6 @@ std::vector<Statement *> Parser::block() {
         if (!res.empty() && res.back()->statement_type != IF_STMT) {
             iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
         } else if (statement->statement_type == ELSE_STMT) {
-
         }
         res.push_back(statement);
     }
@@ -75,7 +74,6 @@ Type Parser::type() {
     }
     return t;
 }
-
 
 Parser::Parser(std::string code, std::string fn)
     : lexer(std::move(code)), filename(std::move(fn)) {
