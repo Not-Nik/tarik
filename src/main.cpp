@@ -8,20 +8,6 @@
 bool test();
 
 int main(int argc, const char *argv[]) {
-    /*
-    Parser p("fn main() u8 {\n"
-             "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
-             "  some_int = some_int + 7;\n"
-             "  if some_int {\n"
-             "      some_int = 0;\n"
-             "  }\n"
-             "  return some_int;\n"
-             "}");
-    Statement * s = p.parse_statement();
-    std::cout << s->print() << std::endl;
-    delete s;
-    */
-
     ArgumentParser parser(argc, argv, "tarik");
     parser.addOption(Option{
         .name = "test", .description = "Run internal tarik tests", .optionID = TEST_OPTION, .hasArg = false
@@ -131,6 +117,7 @@ bool test() {
         FuncStatement *func = (FuncStatement *) Parser("fn test_func(i32 arg1, f64 arg2) i8 {}").parse_statement();
         ASSERT_EQ(func->statement_type, FUNC_STMT)
         ASSERT_STR_EQ(func->name, "test_func")
+        ASSERT_TRUE(func->return_type == Type(I8))
         ASSERT_STR_EQ(func->arguments[0]->name, "arg1")
         ASSERT_EQ(func->arguments[0]->type.type.size, I32)
         ASSERT_STR_EQ(func->arguments[1]->name, "arg2")
@@ -153,6 +140,55 @@ bool test() {
         delete var;
         delete first;
         delete second;
+
+    MID_TEST(full)
+
+        Parser p("fn main() u8 {\n"
+                 "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
+                 "  some_int = some_int + 7;\n"
+                 "  if some_int {\n"
+                 "      some_int = 0;\n"
+                 "  }\n"
+                 "  return some_int;\n"
+                 "}");
+        Statement *s = p.parse_statement();
+
+        ASSERT_EQ(s->statement_type, FUNC_STMT)
+
+        auto *f = (FuncStatement *) s;
+
+        ASSERT_STR_EQ(f->name, "main")
+        ASSERT_TRUE(f->return_type == Type(U8))
+
+        ASSERT_EQ(f->arguments.size(), 0)
+
+        ASSERT_EQ(f->block.size(), 5)
+        ASSERT_EQ(f->block[0]->statement_type, VARIABLE_STMT)
+        ASSERT_EQ(f->block[1]->statement_type, EXPR_STMT)
+        ASSERT_EQ(f->block[2]->statement_type, EXPR_STMT)
+        ASSERT_EQ(f->block[3]->statement_type, IF_STMT)
+        ASSERT_EQ(f->block[4]->statement_type, RETURN_STMT)
+
+        auto *if_stmt = (IfStatement *) f->block[3];
+
+        ASSERT_EQ(if_stmt->then->statement_type, SCOPE_STMT)
+        ASSERT_EQ(if_stmt->condition->statement_type, EXPR_STMT)
+
+        auto if_cond = (Expression *) if_stmt->condition;
+
+        ASSERT_EQ(if_cond->expression_type, VARREF_EXPR)
+
+        auto if_scope = (ScopeStatement *) if_stmt->then;
+
+        ASSERT_EQ(if_scope->block.size(), 1)
+        ASSERT_EQ(if_scope->block[0]->statement_type, EXPR_STMT)
+
+        auto *ret_stmt = (ReturnStatement *) f->block[4];
+
+        ASSERT_EQ(ret_stmt->value->statement_type, EXPR_STMT)
+        ASSERT_EQ(((Expression *) ret_stmt->value)->expression_type, VARREF_EXPR)
+
+        delete s;
 
     MID_TEST(memory management)
 

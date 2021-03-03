@@ -76,7 +76,7 @@ public:
 
 class IfStatement : public Statement {
 public:
-    // Statement so we can print it
+    // Statement, instead of expression, so we can print it
     Statement *condition;
     Statement *then;
 
@@ -119,7 +119,7 @@ public:
 
 class ReturnStatement : public Statement {
 public:
-    // Statement so we can print it
+    // Statement, instead of expression, so we can print it
     Statement *value;
 
     explicit ReturnStatement(LexerPos o, Expression *val)
@@ -137,6 +137,7 @@ public:
 
 class WhileStatement : public Statement {
 public:
+    // Statement, instead of expression, so we can print it
     Statement *condition;
     Statement *then;
 

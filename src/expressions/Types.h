@@ -26,6 +26,9 @@ public:
         pointer_level = 0;
     };
 
+    explicit Type(TypeSize ts, int pl = 0)
+        : type({.size = ts}), is_primitive(true), pointer_level(pl) {}
+
     Type(TypeUnion t, bool prim, int p)
         : is_primitive(prim), pointer_level(p), type(t) {
     }
@@ -33,6 +36,11 @@ public:
     [[nodiscard]] bool is_compatible(const Type &t) const {
         return (is_primitive && t.is_primitive)
             || (!is_primitive && !t.is_primitive && type.user_type == t.type.user_type);
+    }
+
+    bool operator==(const Type &other) {
+        return is_primitive == other.is_primitive && pointer_level == other.pointer_level
+            && (is_primitive ? type.size == other.type.size : type.user_type == other.type.user_type);
     }
 };
 
