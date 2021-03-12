@@ -2,7 +2,6 @@
 
 #include "Parser.h"
 
-#include <magic_enum.hpp>
 #include "expressions/Parslets.h"
 
 #include <comperr.h>
@@ -50,11 +49,9 @@ Type Parser::type() {
         std::string type_name;
         for (auto c : lexer.peek().raw)
             type_name.push_back(toupper(c));
-        auto size = magic_enum::enum_cast<TypeSize>(type_name);
-        iassert(size.has_value(), "FATAL INTERNAL ERROR: Couldn't find enum member for built-in type");
-        if (size.has_value()) {
-            t.type.size = size.value();
-        }
+        TypeSize size = to_typesize(type_name);
+        iassert(size != (TypeSize) -1, "FATAL INTERNAL ERROR: Couldn't find enum member for built-in type");
+        t.type.size = size;
     } else {
         StructStatement *structure;
         for (StructStatement *st : structures) {
@@ -120,10 +117,8 @@ bool Parser::iassert(bool cond, std::string what, ...) {
 }
 
 Token Parser::expect(TokenType raw) {
-    auto s = magic_enum::enum_name(raw);
-    std::stringstream ss;
-    ss << s;
-    iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", ss.str().c_str(), lexer.peek().raw.c_str());
+    std::string s = to_string(raw);
+    iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     return lexer.consume();
 }
 
@@ -132,10 +127,8 @@ bool Parser::is_peek(TokenType raw) {
 }
 
 bool Parser::check_expect(TokenType raw) {
-    auto s = magic_enum::enum_name(raw);
-    std::stringstream ss;
-    ss << s;
-    bool r = iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", ss.str().c_str(), lexer.peek().raw.c_str());
+    std::string s = to_string(raw);
+    bool r = iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     lexer.consume();
     return r;
 }

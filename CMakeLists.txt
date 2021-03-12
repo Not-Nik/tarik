@@ -6,7 +6,6 @@ set(CMAKE_CXX_STANDARD 17)
 add_compile_definitions(MANU_EXIT)
 
 add_subdirectory(src/libcomperr)
-add_subdirectory(src/magic_enum)
 
 add_executable(tarik
         src/main.cpp
@@ -23,4 +22,4 @@ add_executable(tarik
         src/expressions/Statements.h
         src/expressions/Types.h)
 
-target_link_libraries(tarik comperr magic_enum)
+target_link_libraries(tarik comperr)

@@ -92,6 +92,12 @@ static std::map<std::string, TokenType> keywords = {
         {"f64",      TYPE},
 };
 
+inline std::string to_string(const TokenType &tt) {
+    for (auto op : operators) if (op.second == tt) return op.first;
+    for (auto key : keywords) if (key.second == tt) return key.first;
+    return "";
+}
+
 class Token {
 public:
     explicit Token(TokenType id, std::string s)
