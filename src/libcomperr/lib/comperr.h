@@ -10,18 +10,13 @@
 
 #else
 #include <cstdarg>
+
 extern "C" {
 #endif
 
-bool comperr(
-        bool condition, const char * message, bool warning,
-        const char * fileName, int lineNumber, int row, ...
-);
+bool comperr(bool condition, const char *message, bool warning, const char *fileName, int lineNumber, int row, ...);
 
-bool vcomperr(
-        bool condition, const char * message, bool warning,
-        const char * fileName, int lineNumber, int row, va_list va
-);
+bool vcomperr(bool condition, const char *message, bool warning, const char *fileName, int lineNumber, int row, va_list va);
 
 bool endfile();
 

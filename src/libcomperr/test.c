@@ -2,8 +2,7 @@
 
 #include "comperr.h"
 
-int main()
-{
+int main() {
     comperr(false, "Test warning", true, "Makefile", 0, 5);
     comperr(false, "Test error 1", false, "Makefile", 1, 3);
     comperr(false, "Test error 2", false, "Makefile", 3, 10);

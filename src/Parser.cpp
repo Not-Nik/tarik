@@ -135,10 +135,7 @@ bool Parser::check_expect(TokenType raw) {
     auto s = magic_enum::enum_name(raw);
     std::stringstream ss;
     ss << s;
-    bool r = iassert(lexer.peek().id == raw,
-                     "Expected a %s found '%s' instead",
-                     ss.str().c_str(),
-                     lexer.peek().raw.c_str());
+    bool r = iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", ss.str().c_str(), lexer.peek().raw.c_str());
     lexer.consume();
     return r;
 }
@@ -188,14 +185,16 @@ Expression *Parser::parse_expression(int precedence) {
         left = infix->parse(this, left, token);
     }
 
-    iassert(left->expression_type != NAME_EXPR,
-            "Internal: returned name expression. Please report this bug at the tarik repo.");
+    iassert(left->expression_type != NAME_EXPR, "Internal: returned name expression. Please report this bug at the tarik repo.");
 
     return left;
 }
 
 Statement *Parser::parse_statement(bool top_level) {
     TokenType token = lexer.peek().id;
+    if (token != FUNC && token != TYPE && token != USER_TYPE)
+        iassert(!top_level, "Expected function or variable definition");
+
     if (token == FUNC) {
         iassert(top_level, "Function definition is not allowed here");
         lexer.consume();

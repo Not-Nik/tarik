@@ -14,10 +14,7 @@
 static short errorCount = 0;
 static short warnCount = 0;
 
-bool comperr(
-        bool condition, const char * message, bool warning,
-        const char * fileName, int lineNumber, int row, ...
-) {
+bool comperr(bool condition, const char *message, bool warning, const char *fileName, int lineNumber, int row, ...) {
     va_list args;
     va_start (args, row);
     bool r = vcomperr(condition, message, warning, fileName, lineNumber, row, args);
@@ -25,18 +22,15 @@ bool comperr(
     return r;
 }
 
-bool vcomperr(
-        bool condition, const char * message, bool warning,
-        const char * fileName, int lineNumber, int row, va_list va
-) {
+bool vcomperr(bool condition, const char *message, bool warning, const char *fileName, int lineNumber, int row, va_list va) {
     if (!condition) {
-        FILE * outputStream = stderr;
+        FILE *outputStream = stderr;
 #ifndef STDERR_WARN
         if (warning)
             outputStream = stdout;
 #endif
 
-        FILE * fp;
+        FILE *fp;
         fp = fopen(fileName, "r");
         const char empty[] = "empty";
 
@@ -47,7 +41,8 @@ bool vcomperr(
         char buffer[strlen(message) * 4];
         vsnprintf(buffer, strlen(message) * 4, message, va);
 
-        fprintf(outputStream, "%s%s:%i:%i: %s%s:%s %s\n",
+        fprintf(outputStream,
+                "%s%s:%i:%i: %s%s:%s %s\n",
                 ANSI_COLOR_WHITE,
                 fileName,
                 lineNumber + 1,
@@ -93,10 +88,14 @@ bool vcomperr(
 bool endfile() {
     if (errorCount > 0) {
         if (warnCount > 0)
-            fprintf(stderr, "%i %s and %i %s generated.", warnCount, warnCount > 1 ? "warnings" : "warning",
-                    errorCount, errorCount > 1 ? "errors" : "error");
+            fprintf(stderr,
+                    "%i %s and %i %s generated.\n",
+                    warnCount,
+                    warnCount > 1 ? "warnings" : "warning",
+                    errorCount,
+                    errorCount > 1 ? "errors" : "error");
         else
-            fprintf(stderr, "%i %s generated.", errorCount, errorCount > 1 ? "errors" : "error");
+            fprintf(stderr, "%i %s generated.\n", errorCount, errorCount > 1 ? "errors" : "error");
         errorCount = 0;
         warnCount = 0;
 #ifndef MANU_EXIT
@@ -105,7 +104,7 @@ bool endfile() {
         return false;
 #endif
     } else if (warnCount > 0)
-        fprintf(stderr, "%i %s generated.", warnCount, warnCount > 1 ? "warnings" : "warning");
+        fprintf(stderr, "%i %s generated.\n", warnCount, warnCount > 1 ? "warnings" : "warning");
     errorCount = 0;
     warnCount = 0;
     return true;

@@ -108,7 +108,7 @@ bool test() {
     MID_TEST(statement parsing)
 
         // If/while (they're syntactically the same)
-        IfStatement *ifStatement = (IfStatement *) Parser("if 4 + 4 {}").parse_statement();
+        IfStatement *ifStatement = (IfStatement *) Parser("if 4 + 4 {}").parse_statement(false);
         ASSERT_EQ(ifStatement->statement_type, IF_STMT)
         ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
         delete ifStatement;
@@ -134,7 +134,7 @@ bool test() {
         ASSERT_EQ(var->type.pointer_level, 0)
         ASSERT_EQ(var->type.type.size, U8)
 
-        auto *first = (Expression *) p.parse_statement(), *second = (Expression *) p.parse_statement();
+        auto *first = (Expression *) p.parse_statement(false), *second = (Expression *) p.parse_statement(false);
         ASSERT_EQ(first->expression_type, ASSIGN_EXPR)
         ASSERT_EQ(second->expression_type, ASSIGN_EXPR)
         delete var;
