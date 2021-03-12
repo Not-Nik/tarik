@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_PARSER_H
-#define TARIK_PARSER_H
+#ifndef TARIK_PARSER_H_
+#define TARIK_PARSER_H_
 
 #include <map>
 #include <vector>
@@ -62,4 +62,4 @@ public:
     Statement *parse_statement(bool top_level = true);
 };
 
-#endif //TARIK_PARSER_H
+#endif //TARIK_PARSER_H_

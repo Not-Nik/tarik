@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_ARGUMENTS_H
-#define TARIK_ARGUMENTS_H
+#ifndef TARIK_ARGUMENTS_H_
+#define TARIK_ARGUMENTS_H_
 
 #include <map>
 #include <vector>
@@ -43,4 +43,4 @@ public:
     std::vector<std::string> getInputs() { return this->inputs; }
 };
 
-#endif //TARIK_ARGUMENTS_H
+#endif //TARIK_ARGUMENTS_H_

@@ -1,7 +1,7 @@
 // Matrix (c) Nikolas Wipper 2020
 
-#ifndef TARIK_TOKEN_H
-#define TARIK_TOKEN_H
+#ifndef TARIK_TOKEN_H_
+#define TARIK_TOKEN_H_
 
 #include <map>
 #include <string>
@@ -108,4 +108,4 @@ public:
     std::string raw;
 };
 
-#endif //TARIK_TOKEN_H
+#endif //TARIK_TOKEN_H_

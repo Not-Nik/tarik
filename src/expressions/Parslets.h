@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_PARSLETS_H
-#define TARIK_PARSLETS_H
+#ifndef TARIK_PARSLETS_H_
+#define TARIK_PARSLETS_H_
 
 #include "Expression.h"
 #include "../Token.h"
@@ -149,4 +149,4 @@ class CallParselet : public InfixParselet {
     }
 };
 
-#endif //TARIK_PARSLETS_H
+#endif //TARIK_PARSLETS_H_

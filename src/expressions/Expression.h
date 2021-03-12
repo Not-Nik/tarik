@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_EXPRESSION_H
-#define TARIK_EXPRESSION_H
+#ifndef TARIK_EXPRESSION_H_
+#define TARIK_EXPRESSION_H_
 
 #include <utility>
 
@@ -194,4 +194,4 @@ public:
     }
 };
 
-#endif //TARIK_EXPRESSION_H
+#endif //TARIK_EXPRESSION_H_

@@ -1,7 +1,7 @@
 // Seno (c) Nikolas Wipper 2020
 
-#ifndef SENO_TYPES_H
-#define SENO_TYPES_H
+#ifndef TARIK_TYPES_H_
+#define TARIK_TYPES_H_
 
 #include <string>
 
@@ -73,4 +73,4 @@ public:
     }
 };
 
-#endif //SENO_TYPES_H
+#endif //TARIK_TYPES_H_

@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_LEXER_H
-#define TARIK_LEXER_H
+#ifndef TARIK_LEXER_H_
+#define TARIK_LEXER_H_
 
 #include "Token.h"
 
@@ -30,4 +30,4 @@ public:
     LexerPos where();
 };
 
-#endif //TARIK_LEXER_H
+#endif //TARIK_LEXER_H_
