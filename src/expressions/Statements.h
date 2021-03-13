@@ -4,6 +4,7 @@
 #define TARIK_STATEMENTS_H_
 
 #include <map>
+#include <vector>
 #include <utility>
 #include <algorithm>
 
@@ -13,17 +14,7 @@
 class Expression;
 
 enum StmtType {
-    SCOPE_STMT,
-    FUNC_STMT,
-    IF_STMT,
-    ELSE_STMT,
-    RETURN_STMT,
-    WHILE_STMT,
-    BREAK_STMT,
-    CONTINUE_STMT,
-    VARIABLE_STMT,
-    STRUCT_STMT,
-    EXPR_STMT
+    SCOPE_STMT, FUNC_STMT, IF_STMT, ELSE_STMT, RETURN_STMT, WHILE_STMT, BREAK_STMT, CONTINUE_STMT, VARIABLE_STMT, STRUCT_STMT, EXPR_STMT
 };
 
 class Statement {
@@ -187,7 +178,7 @@ public:
         : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
-        return "<todo: type to string> " + name + ";";
+        return (std::string) type + " " + name + ";";
     }
 };
 
@@ -197,13 +188,8 @@ public:
     Type return_type;
     std::vector<VariableStatement *> arguments;
 
-    FuncStatement(LexerPos o,
-                  std::string n,
-                  Type ret,
-                  std::vector<VariableStatement *> args,
-                  std::vector<Statement *> b)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret),
-          arguments(std::move(args)) {}
+    FuncStatement(LexerPos o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
 
     ~FuncStatement() override {
         for (auto *arg : arguments) {
@@ -214,11 +200,11 @@ public:
     [[nodiscard]] std::string print() const override {
         std::string res = "fn " + name + "(";
         for (auto arg : arguments) {
-            res += "<todo: type to string> , ";
+            res += (std::string) arg->type + ", ";
         }
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
-        return res + ") <todo: type to string> {\n" + ScopeStatement::print() + "\n}";
+        return res + ") " + (std::string) return_type + " {\n" + ScopeStatement::print() + "\n}";
     }
 };
 

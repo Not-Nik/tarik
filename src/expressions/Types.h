@@ -67,10 +67,12 @@ public:
         return (is_primitive && t.is_primitive) || (!is_primitive && !t.is_primitive && type.user_type == t.type.user_type);
     }
 
-    bool operator==(const Type &other) {
+    bool operator==(const Type &other) const {
         return is_primitive == other.is_primitive && pointer_level == other.pointer_level
             && (is_primitive ? type.size == other.type.size : type.user_type == other.type.user_type);
     }
+
+    explicit operator std::string() const;
 };
 
 #endif //TARIK_TYPES_H_

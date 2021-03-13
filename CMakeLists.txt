@@ -20,6 +20,7 @@ add_executable(tarik
         src/expressions/Expression.h
         src/expressions/Parslets.h
         src/expressions/Statements.h
-        src/expressions/Types.h)
+        src/expressions/Types.h
+        src/expressions/Types.cpp)
 
 target_link_libraries(tarik comperr)
