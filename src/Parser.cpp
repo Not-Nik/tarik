@@ -50,7 +50,7 @@ Type Parser::type() {
         for (auto c : lexer.peek().raw)
             type_name.push_back(toupper(c));
         TypeSize size = to_typesize(type_name);
-        iassert(size != (TypeSize) -1, "FATAL INTERNAL ERROR: Couldn't find enum member for built-in type");
+        iassert(size != (TypeSize) -1, "Internal: Couldn't find enum member for built-in type");
         t.type.size = size;
     } else {
         StructStatement *structure;

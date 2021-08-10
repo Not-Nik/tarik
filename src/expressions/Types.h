@@ -17,9 +17,9 @@ inline TypeSize to_typesize(const std::string &s) {
     if (s == "I32") return I32;
     if (s == "I64") return I64;
     if (s == "U8") return U8;
-    if (s == "I16") return U16;
-    if (s == "I32") return U32;
-    if (s == "I64") return U64;
+    if (s == "U16") return U16;
+    if (s == "U32") return U32;
+    if (s == "U64") return U64;
     if (s == "F32") return F32;
     if (s == "F64") return F64;
     return (TypeSize) -1;

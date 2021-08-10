@@ -126,7 +126,7 @@ bool test() {
         delete func;
 
         // Variables and assignments
-        Parser p("u8 test_var = 4; test_var = 5;");
+        Parser p("u8 test_var = 4; test_var = 5; u32 *test_ptr;");
         auto *var = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(var->statement_type, VARIABLE_STMT)
         ASSERT_STR_EQ(var->name, "test_var")
@@ -140,6 +140,14 @@ bool test() {
         delete var;
         delete first;
         delete second;
+
+        auto *ptr = (VariableStatement *) p.parse_statement();
+        ASSERT_EQ(ptr->statement_type, VARIABLE_STMT)
+        ASSERT_STR_EQ(var->name, "test_ptr")
+        ASSERT_TRUE(var->type.is_primitive)
+        ASSERT_EQ(var->type.pointer_level, 1)
+        ASSERT_EQ(var->type.type.size, U32)
+        delete ptr;
 
     MID_TEST(full)
 
