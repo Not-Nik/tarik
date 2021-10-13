@@ -37,7 +37,7 @@ class Parser {
     Type type();
 
 public:
-    explicit Parser(std::string code, std::string fn = "<undefined>");
+    explicit Parser(std::istream *code, std::string fn = "<undefined>");
 
     ~Parser();
 

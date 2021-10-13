@@ -3,6 +3,8 @@
 #include "Parser.h"
 #include "cli/arguments.h"
 
+#include <sstream>
+
 #define TEST_OPTION 1
 
 bool test();
@@ -29,13 +31,14 @@ int main(int argc, const char *argv[]) {
 #include "testing.h"
 
 bool test() {
+    using ss = std::stringstream;
     int overhead = allocs;
     Type integer = Type(TypeUnion{.size = I64}, true, 0);
     BEGIN_TEST
 
     FIRST_TEST(lexer)
-        Lexer lexer(
-            "hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
+        ss c("hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
+        Lexer lexer(&c);
 
         ASSERT_TOK(NAME, "hello")
         ASSERT_STR_EQ(lexer.peek(1).raw, "test4")
@@ -56,21 +59,35 @@ bool test() {
         ASSERT_TOK(INTEGER, "42")
         ASSERT_TOK(REAL, "12.34")
         ASSERT_TOK(STRING, "\"a string\"")
-        ASSERT_TOK(NAME, "back")
+        {
+            _st = lexer.peek().id == NAME;
+            _st = _st && lexer.peek().raw == "back";
+            count_tested++;
+            if (!_st){
+                printf("\nFailed for token '%s': expected '%s'",
+                       lexer.peek().raw.c_str(),
+                       "back");
+                break;
+            }
+            count_suc++;
+            lexer.consume();
+        }
+        printf("");
 
     MID_TEST(expression parsing)
+        ss c;
         {
-            Expression *e = Parser("3 + 4 * 5").parse_expression();
+            Expression *e = Parser(&(c = ss("3 + 4 * 5"))).parse_expression();
             ASSERT_STR_EQ(e->print(), "(3+(4*5))")
             delete e;
         }
         {
-            Expression *e = Parser("-3 + -4 * 5").parse_expression();
+            Expression *e = Parser(&(c = ss("-3 + -4 * 5"))).parse_expression();
             ASSERT_STR_EQ(e->print(), "(-3+(-4*5))")
             delete e;
         }
         {
-            Parser p("-name + 4 * -5");
+            Parser p(&(c = ss("-name + 4 * -5")));
             auto *v = p.register_var(new VariableStatement({}, integer, "name"));
             Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
@@ -78,12 +95,12 @@ bool test() {
             delete e;
         }
         {
-            Expression *e = Parser("(3 + 4) * 5").parse_expression();
+            Expression *e = Parser(&(c = ss("(3 + 4) * 5"))).parse_expression();
             ASSERT_STR_EQ(e->print(), "((3+4)*5)")
             delete e;
         }
         {
-            Parser tmp = Parser("3 + 4 * 5; 6 + 7 * 8");
+            Parser tmp = Parser(&(c = ss("3 + 4 * 5; 6 + 7 * 8")));
             Expression *e = tmp.parse_expression();
             ASSERT_STR_EQ(e->print(), "(3+(4*5))")
             delete e;
@@ -94,7 +111,7 @@ bool test() {
         }
 
         {
-            Parser p = Parser("func(1, 2, 3, 4)");
+            Parser p = Parser(&(c = ss("func(1, 2, 3, 4)")));
             FuncStatement *f = p.register_func(new FuncStatement({}, "func", {}, {
                 new VariableStatement({}, integer, ""), new VariableStatement({}, integer, ""),
                 new VariableStatement({}, integer, ""), new VariableStatement({}, integer, "")
@@ -106,15 +123,16 @@ bool test() {
         }
 
     MID_TEST(statement parsing)
+        ss c;
 
         // If/while (they're syntactically the same)
-        IfStatement *ifStatement = (IfStatement *) Parser("if 4 + 4 {}").parse_statement(false);
+        IfStatement *ifStatement = (IfStatement *) Parser(&(c = ss("if 4 + 4 {}"))).parse_statement(false);
         ASSERT_EQ(ifStatement->statement_type, IF_STMT)
         ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
         delete ifStatement;
 
         // Functions
-        FuncStatement *func = (FuncStatement *) Parser("fn test_func(i32 arg1, f64 arg2) i8 {}").parse_statement();
+        FuncStatement *func = (FuncStatement *) Parser(&(c = ss("fn test_func(i32 arg1, f64 arg2) i8 {}"))).parse_statement();
         ASSERT_EQ(func->statement_type, FUNC_STMT)
         ASSERT_STR_EQ(func->name, "test_func")
         ASSERT_TRUE(func->return_type == Type(I8))
@@ -126,7 +144,7 @@ bool test() {
         delete func;
 
         // Variables and assignments
-        Parser p("u8 test_var = 4; test_var = 5; u32 *test_ptr;");
+        Parser p(&(c = ss("u8 test_var = 4; test_var = 5; u32 *test_ptr;")));
         auto *var = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(var->statement_type, VARIABLE_STMT)
         ASSERT_STR_EQ(var->name, "test_var")
@@ -150,15 +168,16 @@ bool test() {
         delete ptr;
 
     MID_TEST(full)
+        ss c = ss("fn main() u8 {\n"
+                  "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
+                  "  some_int = some_int + 7;\n"
+                  "  if some_int {\n"
+                  "      some_int = 0;\n"
+                  "  }\n"
+                  "  return some_int;\n"
+                  "}");
 
-        Parser p("fn main() u8 {\n"
-                 "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
-                 "  some_int = some_int + 7;\n"
-                 "  if some_int {\n"
-                 "      some_int = 0;\n"
-                 "  }\n"
-                 "  return some_int;\n"
-                 "}");
+        Parser p(&c);
         Statement *s = p.parse_statement();
 
         ASSERT_EQ(s->statement_type, FUNC_STMT)

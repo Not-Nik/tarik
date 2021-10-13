@@ -72,8 +72,8 @@ Type Parser::type() {
     return t;
 }
 
-Parser::Parser(std::string code, std::string fn)
-    : lexer(std::move(code)), filename(std::move(fn)) {
+Parser::Parser(std::istream *code, std::string fn)
+    : lexer(code), filename(std::move(fn)) {
     // Trivial expressions
     prefix_parslets.emplace(NAME, new NameParselet());
     prefix_parslets.emplace(INTEGER, new IntParselet());

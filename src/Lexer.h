@@ -5,14 +5,14 @@
 
 #include "Token.h"
 
-#include <sstream>
+#include <istream>
 
 struct LexerPos {
     int l, p;
 };
 
 class Lexer {
-    std::string code;
+    std::istream *stream;
 
     LexerPos pos{0, 0};
 
@@ -20,8 +20,11 @@ class Lexer {
 
     static bool operator_startswith(std::string c);
 
+    char read_stream();
+    char peek_stream();
+
 public:
-    explicit Lexer(std::string c);
+    explicit Lexer(std::istream *s);
 
     Token peek(int dist = 0);
 

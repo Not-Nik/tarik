@@ -20,7 +20,7 @@ void operator delete(void *p) noexcept {
 #define FIRST_TEST(name) for (int i = 0; i < 1; i++) { printf("testing %s...", #name);
 #define MID_TEST(name) } printf(" done (%i/%i succeeded)\n", count_suc, count_tested); \
 count_suc = 0; count_tested = 0;\
-for (int i = 0; i < 1; i++) { printf("testing %s...", #name);
+for (int i = 0; i < 1 && _st; i++) { printf("testing %s...", #name);
 #define END_TEST } printf(" done (%i/%i succeeded)\n", count_suc, count_tested); return _st;
 
 #define ASSERT_TOK(type, tok) {_st = lexer.peek().id == type;\
