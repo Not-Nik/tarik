@@ -187,7 +187,7 @@ bool test() {
         ASSERT_STR_EQ(f->name, "main")
         ASSERT_TRUE(f->return_type == Type(U8))
 
-        ASSERT_EQ(f->arguments.size(), 0)
+        ASSERT_TRUE(f->arguments.empty())
 
         ASSERT_EQ(f->block.size(), 5)
         ASSERT_EQ(f->block[0]->statement_type, VARIABLE_STMT)
