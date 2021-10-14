@@ -16,6 +16,12 @@ void operator delete(void *p) noexcept {
     allocs--;
 }
 
+namespace std {
+std::string to_string(FuncStatement *f) {
+    return f->head();
+}
+}
+
 bool test() {
     using ss = std::stringstream;
     int overhead = allocs;
@@ -46,9 +52,7 @@ bool test() {
         ASSERT_TOK(INTEGER, "42")
         ASSERT_TOK(REAL, "12.34")
         ASSERT_TOK(STRING, "\"a string\"")
-        ASSERT_TOK(NAME, "back")
-
-    MID_TEST(expression parsing)
+        ASSERT_TOK(NAME, "back")MID_TEST(expression parsing)
 
         ss c;
         {
@@ -95,9 +99,7 @@ bool test() {
             ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
             delete f;
             delete e;
-        }
-
-    MID_TEST(statement parsing)
+        }MID_TEST(statement parsing)
 
         ss c;
 
@@ -108,16 +110,24 @@ bool test() {
         delete ifStatement;
 
         // Functions
-        FuncStatement *func = (FuncStatement *) Parser(&(c = ss("fn test_func(i32 arg1, f64 arg2) i8 {}"))).parse_statement();
-        ASSERT_EQ(func->statement_type, FUNC_STMT)
-        ASSERT_STR_EQ(func->name, "test_func")
-        ASSERT_TRUE(func->return_type == Type(I8))
-        ASSERT_STR_EQ(func->arguments[0]->name, "arg1")
-        ASSERT_EQ(func->arguments[0]->type.type.size, I32)
-        ASSERT_STR_EQ(func->arguments[1]->name, "arg2")
-        ASSERT_EQ(func->arguments[1]->type.type.size, F64)
-        ASSERT_EQ(func->return_type.type.size, I8)
-        delete func;
+        {
+            Parser p(&(c = ss("fn test_func(i32 arg1, f64 arg2) i8 {} test_func(1, 2.3);")));
+            auto func = (FuncStatement *) p.parse_statement();
+            ASSERT_EQ(func->statement_type, FUNC_STMT)
+            ASSERT_STR_EQ(func->name, "test_func")
+            ASSERT_TRUE(func->return_type == Type(I8))
+            ASSERT_STR_EQ(func->arguments[0]->name, "arg1")
+            ASSERT_EQ(func->arguments[0]->type.type.size, I32)
+            ASSERT_STR_EQ(func->arguments[1]->name, "arg2")
+            ASSERT_EQ(func->arguments[1]->type.type.size, F64)
+            ASSERT_EQ(func->return_type.type.size, I8)
+
+            auto call = (CallExpression *) p.parse_statement(false);
+            ASSERT_EQ(call->function, func);
+
+            delete call;
+            delete func;
+        }
 
         // Variables and assignments
         Parser p(&(c = ss("u8 test_var = 4; test_var = 5; u32 *test_ptr;")));
@@ -141,9 +151,7 @@ bool test() {
         ASSERT_TRUE(ptr->type.is_primitive)
         ASSERT_EQ(ptr->type.pointer_level, 1)
         ASSERT_EQ(ptr->type.type.size, U32)
-        delete ptr;
-
-    MID_TEST(full)
+        delete ptr; MID_TEST(full)
 
         ss c = ss("fn main() u8 {\n"
                   "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
@@ -194,8 +202,6 @@ bool test() {
 
         delete s; MID_TEST(memory management)
 
-        ASSERT_EQ(allocs - overhead, 0)
-
-    END_TEST
+        ASSERT_EQ(allocs - overhead, 0)END_TEST
 }
 

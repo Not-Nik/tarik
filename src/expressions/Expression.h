@@ -8,13 +8,13 @@
 #include "Statements.h"
 
 enum Precedence {
-    ASSIGNMENT = 1, SUM, PRODUCT, PREFIX, CALL
+    ASSIGNMENT = 1, EQUALITY, COMPARE, SUM, PRODUCT, PREFIX, CALL
 };
 
 enum ExprType {
     CALL_EXPR, DASH_EXPR, // add subtract
     DOT_EXPR, // multiply divide
-    PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, VARREF_EXPR, INT_EXPR, REAL_EXPR
+    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, VARREF_EXPR, INT_EXPR, REAL_EXPR
 };
 
 class Expression : public Statement {
@@ -112,7 +112,7 @@ using PosExpression = PrefixOperatorExpression<'+'>;
 using NegExpression = PrefixOperatorExpression<'-'>;
 using DerefExpression = PrefixOperatorExpression<'*'>;
 
-template <ExprType t, char pref>
+template <ExprType t, char const *pref>
 class BinaryOperatorExpression : public Expression {
 public:
     const Expression *left, *right;
@@ -127,7 +127,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        return "(" + left->print() + std::string({pref}) + right->print() + ")";
+        return "(" + left->print() + std::string(pref) + right->print() + ")";
     }
 
     [[nodiscard]] Type get_type() const override {
@@ -135,10 +135,28 @@ public:
     }
 };
 
-using AddExpression = BinaryOperatorExpression<DASH_EXPR, '+'>;
-using SubExpression = BinaryOperatorExpression<DASH_EXPR, '-'>;
-using MulExpression = BinaryOperatorExpression<DOT_EXPR, '*'>;
-using DivExpression = BinaryOperatorExpression<DOT_EXPR, '/'>;
+#define GL_STRING(n, t) constexpr char _##n[] = t
+GL_STRING(plus, "+");
+GL_STRING(minus, "-");
+GL_STRING(mul, "*");
+GL_STRING(div, "/");
+GL_STRING(eq, "==");
+GL_STRING(neq, "!=");
+GL_STRING(sm, "<");
+GL_STRING(gr, ">");
+GL_STRING(se, "<=");
+GL_STRING(ge, ">=");
+
+using AddExpression = BinaryOperatorExpression<DASH_EXPR, _plus>;
+using SubExpression = BinaryOperatorExpression<DASH_EXPR, _minus>;
+using MulExpression = BinaryOperatorExpression<DOT_EXPR, _mul>;
+using DivExpression = BinaryOperatorExpression<DOT_EXPR, _div>;
+using EqExpression = BinaryOperatorExpression<EQ_EXPR, _eq>;
+using NeqExpression = BinaryOperatorExpression<EQ_EXPR, _neq>;
+using SmExpression = BinaryOperatorExpression<COMP_EXPR, _sm>;
+using GrExpression = BinaryOperatorExpression<COMP_EXPR, _gr>;
+using SeExpression = BinaryOperatorExpression<COMP_EXPR, _se>;
+using GeExpression = BinaryOperatorExpression<COMP_EXPR, _ge>;
 
 class AssignExpression : public Expression {
 public:
@@ -172,14 +190,14 @@ public:
     }
 
     ~CallExpression() override {
-        for (auto *arg : arguments) {
+        for (auto *arg: arguments) {
             delete arg;
         }
     }
 
     [[nodiscard]] std::string print() const override {
         std::string arg_string;
-        for (auto arg : arguments) {
+        for (auto arg: arguments) {
             arg_string += arg->print() + ", ";
         }
         if (!arg_string.empty()) {

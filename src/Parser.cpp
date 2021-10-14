@@ -90,6 +90,12 @@ Parser::Parser(std::istream *code, std::string fn)
     infix_parslets.emplace(MINUS, new SubParselet());
     infix_parslets.emplace(ASTERISK, new MulParselet());
     infix_parslets.emplace(SLASH, new DivParselet());
+    infix_parslets.emplace(DOUBLE_EQUAL, new EqParselet());
+    infix_parslets.emplace(NOT_EQUAL, new NeqParselet());
+    infix_parslets.emplace(SMALLER, new SmParselet());
+    infix_parslets.emplace(GREATER, new GrParselet());
+    infix_parslets.emplace(SMALLER_EQUAL, new SeParselet());
+    infix_parslets.emplace(GREATER_EQUAL, new GeParselet());
 
     // Call
     infix_parslets.emplace(PAREN_OPEN, new CallParselet());
@@ -219,7 +225,9 @@ Statement *Parser::parse_statement(bool top_level) {
                     expect(COMMA);
             }
         expect(PAREN_CLOSE);
-        return register_func(new FuncStatement(--lexer.where(), name, type(), args, block()));
+        FuncStatement *fs = register_func(new FuncStatement(--lexer.where(), name, type(), args, {}));
+        fs->block = block();
+        return fs;
     } else if (token == RETURN) {
         lexer.consume();
         auto *s = new ReturnStatement(lexer.where(), parse_expression());

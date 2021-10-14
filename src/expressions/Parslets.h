@@ -85,6 +85,12 @@ using AddParselet = BinaryOperatorParselet<AddExpression, SUM>;
 using SubParselet = BinaryOperatorParselet<SubExpression, SUM>;
 using MulParselet = BinaryOperatorParselet<MulExpression, PRODUCT>;
 using DivParselet = BinaryOperatorParselet<DivExpression, PRODUCT>;
+using EqParselet = BinaryOperatorParselet<EqExpression, EQUALITY>;
+using NeqParselet = BinaryOperatorParselet<NeqExpression, EQUALITY>;
+using SmParselet = BinaryOperatorParselet<SmExpression, COMPARE>;
+using GrParselet = BinaryOperatorParselet<GrExpression, COMPARE>;
+using SeParselet = BinaryOperatorParselet<SeExpression, COMPARE>;
+using GeParselet = BinaryOperatorParselet<GeExpression, COMPARE>;
 
 class GroupParselet : public PrefixParselet {
     Expression *parse(Parser *parser, const Token &token) override {
@@ -131,6 +137,7 @@ class CallParselet : public InfixParselet {
             if (parser->lexer.peek().id != PAREN_CLOSE)
                 parser->expect(COMMA);
         }
+        parser->lexer.consume();
 
         parser->iassert(args.size() >= func->arguments.size(),
                         "Too few arguments, expected %i found %i.",

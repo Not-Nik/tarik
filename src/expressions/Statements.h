@@ -197,14 +197,18 @@ public:
         }
     }
 
-    [[nodiscard]] std::string print() const override {
+    [[nodiscard]] std::string head() const {
         std::string res = "fn " + name + "(";
         for (auto arg: arguments) {
             res += arg->name + " " + (std::string) arg->type + ", ";
         }
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
-        return res + ") " + (std::string) return_type + " {\n" + ScopeStatement::print() + "\n}";
+        return res + ") " + (std::string) return_type;
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return head() + " {\n" + ScopeStatement::print() + "\n}";
     }
 
     [[nodiscard]] std::string signature() const {
