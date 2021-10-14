@@ -42,6 +42,7 @@ public:
     ~Parser();
 
     bool iassert(bool cond, std::string what, ...);
+    bool iassert(bool cond, LexerPos pos, std::string what, ...);
 
     Token expect(TokenType raw);
 
@@ -60,6 +61,8 @@ public:
     Expression *parse_expression(int precedence = 0);
 
     Statement *parse_statement(bool top_level = true);
+
+    static int error_count();
 };
 
 #endif //TARIK_PARSER_H_

@@ -76,9 +76,9 @@ public:
 
     [[nodiscard]] Type get_type() const override {
         if (expr_type == REAL_EXPR) {
-            return Type(TypeUnion{.size = F64}, true, 0);
+            return Type(TypeUnion{F64}, true, 0);
         } else if (expr_type == INT_EXPR) {
-            return Type(TypeUnion{.size = I64}, true, 0);
+            return Type(TypeUnion{I64}, true, 0);
         }
     }
 };

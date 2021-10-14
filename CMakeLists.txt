@@ -7,9 +7,12 @@ add_compile_definitions(MANU_EXIT)
 
 add_subdirectory(src/libcomperr)
 
+add_compile_options(-pedantic -Wall -Wextra -Wpedantic)
+
 add_executable(tarik
         src/main.cpp
-        src/testing.h
+        src/Testing.h
+        src/Testing.cpp
         src/Lexer.cpp
         src/Lexer.h
         src/Token.h

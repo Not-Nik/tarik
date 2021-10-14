@@ -47,14 +47,14 @@ public:
         : Statement(t, o), block(std::move(b)) {}
 
     ~ScopeStatement() override {
-        for (auto *st : block) {
+        for (auto *st: block) {
             delete st;
         }
     }
 
     [[nodiscard]] std::string print() const override {
         std::string res;
-        for (auto *st : block) {
+        for (auto *st: block) {
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
                 t.push_back(';');
@@ -192,19 +192,28 @@ public:
         : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
 
     ~FuncStatement() override {
-        for (auto *arg : arguments) {
+        for (auto *arg: arguments) {
             delete arg;
         }
     }
 
     [[nodiscard]] std::string print() const override {
         std::string res = "fn " + name + "(";
-        for (auto arg : arguments) {
-            res += (std::string) arg->type + ", ";
+        for (auto arg: arguments) {
+            res += arg->name + " " + (std::string) arg->type + ", ";
         }
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
         return res + ") " + (std::string) return_type + " {\n" + ScopeStatement::print() + "\n}";
+    }
+
+    [[nodiscard]] std::string signature() const {
+        std::string res = "(";
+        for (auto arg: arguments) {
+            res += (std::string) arg->type + ", ";
+        }
+        if (res.back() != '(') res = res.substr(0, res.size() - 2);
+        return res + ") " + (std::string) return_type;
     }
 };
 
@@ -214,7 +223,7 @@ public:
     std::vector<VariableStatement *> members;
 
     ~StructStatement() override {
-        for (auto *m : members) {
+        for (auto *m: members) {
             delete m;
         }
     }
@@ -226,7 +235,7 @@ public:
     }
 
     Type get_member_type(const std::string &n) {
-        for (auto *mem : members) {
+        for (auto *mem: members) {
             if (mem->name == n)
                 return mem->type;
         }
@@ -235,7 +244,7 @@ public:
 
     [[nodiscard]] std::string print() const override {
         std::string res = "struct " + name + " {\n";
-        for (auto *mem : members) {
+        for (auto *mem: members) {
             res += mem->print() + "\n";
         }
         return res + "\n}";

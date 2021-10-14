@@ -20,6 +20,9 @@ bool vcomperr(bool condition, const char *message, bool warning, const char *fil
 
 bool endfile();
 
+int errorcount();
+int warncount();
+
 #ifdef __cplusplus
 }
 #endif

@@ -9,12 +9,23 @@
 
 struct LexerPos {
     int l, p;
+
+    LexerPos &operator--() {
+        if (p > 0) p--;
+        else {
+            // ugh, ill accept the inaccuracy for now
+            // todo: make this accurate
+            p = 0;
+            l--;
+        }
+        return *this;
+    }
 };
 
 class Lexer {
     std::istream *stream;
 
-    LexerPos pos{0, 0};
+    LexerPos pos{1, 0};
 
     static bool operator_startswith(char c);
 
@@ -22,6 +33,7 @@ class Lexer {
 
     char read_stream();
     char peek_stream();
+    void unget_stream();
 
 public:
     explicit Lexer(std::istream *s);

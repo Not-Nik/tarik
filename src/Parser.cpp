@@ -47,14 +47,14 @@ Type Parser::type() {
 
     if (lexer.peek().id == TYPE) {
         std::string type_name;
-        for (auto c : lexer.peek().raw)
-            type_name.push_back(toupper(c));
+        for (auto c: lexer.peek().raw)
+            type_name.push_back((char) toupper(c));
         TypeSize size = to_typesize(type_name);
         iassert(size != (TypeSize) -1, "Internal: Couldn't find enum member for built-in type");
         t.type.size = size;
     } else {
         StructStatement *structure;
-        for (StructStatement *st : structures) {
+        for (StructStatement *st: structures) {
             if (st->name == lexer.peek().raw) {
                 structure = st;
                 break;
@@ -101,9 +101,9 @@ Parser::Parser(std::istream *code, std::string fn)
 }
 
 Parser::~Parser() {
-    for (auto pre : prefix_parslets)
+    for (auto pre: prefix_parslets)
         delete pre.second;
-    for (auto in : infix_parslets)
+    for (auto in: infix_parslets)
         delete in.second;
     endfile();
 }
@@ -112,6 +112,14 @@ bool Parser::iassert(bool cond, std::string what, ...) {
     va_list args;
     va_start(args, what);
     vcomperr(cond, what.c_str(), false, filename.c_str(), lexer.where().l, lexer.where().p, args);
+    va_end(args);
+    return cond;
+}
+
+bool Parser::iassert(bool cond, LexerPos pos, std::string what, ...) {
+    va_list args;
+    va_start(args, what);
+    vcomperr(cond, what.c_str(), false, filename.c_str(), pos.l, pos.p, args);
     va_end(args);
     return cond;
 }
@@ -134,7 +142,7 @@ bool Parser::check_expect(TokenType raw) {
 }
 
 VariableStatement *Parser::require_var(const std::string &name) {
-    for (auto *var : variables) {
+    for (auto *var: variables) {
         if (var->name == name)
             return var;
     }
@@ -149,7 +157,7 @@ VariableStatement *Parser::register_var(VariableStatement *var) {
 }
 
 FuncStatement *Parser::require_func(const std::string &name) {
-    for (auto *func : functions) {
+    for (auto *func: functions) {
         if (func->name == name)
             return func;
     }
@@ -158,6 +166,11 @@ FuncStatement *Parser::require_func(const std::string &name) {
 }
 
 FuncStatement *Parser::register_func(FuncStatement *func) {
+    for (auto f: functions) {
+        if (!iassert(f->name != func->name, func->origin, "Redefinition of '%s'; as '%s'", f->name.c_str(), func->signature().c_str())) {
+            return nullptr;
+        }
+    }
     functions.push_back(func);
     return func;
 }
@@ -185,6 +198,8 @@ Expression *Parser::parse_expression(int precedence) {
 
 Statement *Parser::parse_statement(bool top_level) {
     TokenType token = lexer.peek().id;
+    if (token == END) return nullptr;
+
     if (token != FUNC && token != TYPE && token != USER_TYPE)
         iassert(!top_level, "Expected function or variable definition");
 
@@ -204,8 +219,7 @@ Statement *Parser::parse_statement(bool top_level) {
                     expect(COMMA);
             }
         expect(PAREN_CLOSE);
-        functions.push_back(new FuncStatement(lexer.where(), name, type(), args, block()));
-        return functions.back();
+        return register_func(new FuncStatement(--lexer.where(), name, type(), args, block()));
     } else if (token == RETURN) {
         lexer.consume();
         auto *s = new ReturnStatement(lexer.where(), parse_expression());
@@ -244,4 +258,8 @@ Statement *Parser::parse_statement(bool top_level) {
         expect(SEMICOLON);
         return e;
     }
+}
+
+int Parser::error_count() {
+    return errorcount();
 }

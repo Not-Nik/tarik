@@ -30,14 +30,21 @@ char Lexer::peek_stream() {
     return (char) stream->peek();
 }
 
+void Lexer::unget_stream() {
+    --pos;
+    stream->unget();
+}
+
 Token Lexer::peek(int dist) {
     auto old_pos = stream->tellg();
+    auto old_int_pos = pos;
     Token t = consume();
     for (int i = 0; i < dist; i++) {
         t = consume();
     }
     stream->clear();
     stream->seekg(old_pos);
+    pos = old_int_pos;
     return t;
 }
 
@@ -70,7 +77,7 @@ Token Lexer::consume() {
         if (!tok.empty() && // If we are in a token
             operator_startswith(c) && // And the current char does start an operator
             !operator_startswith(tok + (char) c)) { // But the token and that char do not start an operator
-            stream->unget();
+            unget_stream();
             break; // Break
         }
 
@@ -81,14 +88,14 @@ Token Lexer::consume() {
             } else if (op) {
                 tok.push_back(c);
             } else {
-                stream->unget();
+                unget_stream();
                 break;
             }
             continue;
         }
 
         if (op || isspace(c)) {
-            stream->unget();
+            unget_stream();
             break;
         }
 
@@ -115,7 +122,7 @@ Token Lexer::consume() {
                     real = true;
                     read_stream();
                 } else {
-                    stream->unget();
+                    unget_stream();
                     break;
                 }
             }
@@ -124,7 +131,7 @@ Token Lexer::consume() {
                 tok.push_back(c);
             } else {
                 // No scientific notation for now
-                stream->unget();
+                unget_stream();
                 break;
             }
         }
@@ -132,6 +139,10 @@ Token Lexer::consume() {
 
     while (isspace(peek_stream())) {
         read_stream();
+    }
+
+    if (stream->eof() && tok.empty()) {
+        return Token(END, "");
     }
 
     TokenType type;

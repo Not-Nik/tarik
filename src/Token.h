@@ -8,6 +8,7 @@
 #include <utility>
 
 enum TokenType {
+    END,
     INTEGER,
     REAL,
     STRING,
@@ -101,7 +102,7 @@ inline std::string to_string(const TokenType &tt) {
 class Token {
 public:
     explicit Token(TokenType id, std::string s)
-        : raw(std::move(s)), id(id) {
+        : id(id), raw(std::move(s)) {
     }
 
     TokenType id;

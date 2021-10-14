@@ -26,16 +26,16 @@ inline TypeSize to_typesize(const std::string &s) {
 }
 
 inline std::string to_string(const TypeSize &ts) {
-    if (ts == I8) return "I8";
-    if (ts == I16) return "I16";
-    if (ts == I32) return "I32";
-    if (ts == I64) return "I64";
-    if (ts == U8) return "U8";
-    if (ts == U16) return "I16";
-    if (ts == U32) return "I32";
-    if (ts == U64) return "I64";
-    if (ts == F32) return "F32";
-    if (ts == F64) return "F64";
+    if (ts == I8) return "i8";
+    if (ts == I16) return "i16";
+    if (ts == I32) return "i32";
+    if (ts == I64) return "i64";
+    if (ts == U8) return "u8";
+    if (ts == U16) return "u16";
+    if (ts == U32) return "u32";
+    if (ts == U64) return "u64";
+    if (ts == F32) return "f32";
+    if (ts == F64) return "f64";
     return "";
 }
 
@@ -51,13 +51,13 @@ public:
     TypeUnion type;
 
     Type()
-        : type({.size = U8}) {
+        : type(TypeUnion{U8}) {
         is_primitive = true;
         pointer_level = 0;
     };
 
     explicit Type(TypeSize ts, int pl = 0)
-        : type({.size = ts}), is_primitive(true), pointer_level(pl) {}
+        : is_primitive(true), pointer_level(pl), type(TypeUnion{ts}) {}
 
     Type(TypeUnion t, bool prim, int p)
         : is_primitive(prim), pointer_level(p), type(t) {

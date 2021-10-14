@@ -10,6 +10,8 @@
 class PrefixParselet {
 public:
     virtual Expression *parse(Parser *parser, const Token &token) { return {}; }
+
+    virtual ~PrefixParselet() {}
 };
 
 class InfixParselet {
@@ -17,6 +19,7 @@ public:
     virtual Expression *parse(Parser *parser, const Expression *left, const Token &token) { return {}; }
 
     virtual Precedence get_type() { return static_cast<Precedence>(0); }
+    virtual ~InfixParselet() {}
 };
 
 template <class SimpleExpression>
@@ -116,7 +119,7 @@ class CallParselet : public InfixParselet {
         FuncStatement *func = parser->require_func(left->print());
         std::vector<Expression *> args;
 
-        int i = 0;
+        size_t i = 0;
 
         while (!parser->lexer.peek().raw.empty() && parser->lexer.peek().id != PAREN_CLOSE) {
             args.push_back(parser->parse_expression());
