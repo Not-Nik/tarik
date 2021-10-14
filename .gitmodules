@@ -1,0 +1,3 @@
+[submodule "src/libcomperr"]
+	path = src/libcomperr
+	url = https://github.com/Not-Nik/libcomperr.git
