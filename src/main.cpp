@@ -50,6 +50,8 @@ int main(int argc, const char *argv[]) {
                 out.put('\n');
             }
         }
+
+        std::for_each(statements.begin(), statements.end(), [](auto &p) {delete p;});
     }
 
     return 0;

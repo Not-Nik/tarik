@@ -137,10 +137,10 @@ bool test() {
 
         auto *ptr = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(ptr->statement_type, VARIABLE_STMT)
-        ASSERT_STR_EQ(var->name, "test_ptr")
-        ASSERT_TRUE(var->type.is_primitive)
-        ASSERT_EQ(var->type.pointer_level, 1)
-        ASSERT_EQ(var->type.type.size, U32)
+        ASSERT_STR_EQ(ptr->name, "test_ptr")
+        ASSERT_TRUE(ptr->type.is_primitive)
+        ASSERT_EQ(ptr->type.pointer_level, 1)
+        ASSERT_EQ(ptr->type.type.size, U32)
         delete ptr;
 
     MID_TEST(full)
