@@ -64,6 +64,7 @@ class PrefixOperatorParselet : public PrefixParselet {
 using PosParselet = PrefixOperatorParselet<PosExpression>;
 using NegParselet = PrefixOperatorParselet<NegExpression>;
 using DerefParselet = PrefixOperatorParselet<DerefExpression>;
+using NotParselet = PrefixOperatorParselet<NotExpression>;
 
 template <class OperatorExpression, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {

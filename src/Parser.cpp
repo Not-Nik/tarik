@@ -83,6 +83,7 @@ Parser::Parser(std::istream *code, std::string fn)
     prefix_parslets.emplace(PLUS, new PosParselet());
     prefix_parslets.emplace(MINUS, new NegParselet());
     prefix_parslets.emplace(ASTERISK, new DerefParselet());
+    prefix_parslets.emplace(NOT, new NotParselet());
     prefix_parslets.emplace(PAREN_OPEN, new GroupParselet());
 
     // Binary expressions
@@ -206,8 +207,8 @@ Statement *Parser::parse_statement(bool top_level) {
     TokenType token = lexer.peek().id;
     if (token == END) return nullptr;
 
-    if (token != FUNC && token != TYPE && token != USER_TYPE)
-        iassert(!top_level, "Expected function or variable definition");
+    if (token != FUNC && token != TYPE && token != USER_TYPE && token != STRUCT)
+        iassert(!top_level, "Expected function, struct or variable definition");
 
     if (token == FUNC) {
         iassert(top_level, "Function definition is not allowed here");

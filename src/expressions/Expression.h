@@ -111,6 +111,7 @@ public:
 using PosExpression = PrefixOperatorExpression<'+'>;
 using NegExpression = PrefixOperatorExpression<'-'>;
 using DerefExpression = PrefixOperatorExpression<'*'>;
+using NotExpression = PrefixOperatorExpression<'!'>;
 
 template <ExprType t, char const *pref>
 class BinaryOperatorExpression : public Expression {
