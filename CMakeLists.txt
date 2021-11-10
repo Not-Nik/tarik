@@ -13,17 +13,22 @@ add_executable(tarik
         src/main.cpp
         src/Testing.h
         src/Testing.cpp
-        src/Lexer.cpp
-        src/Lexer.h
-        src/Token.h
+        src/lexical/Lexer.cpp
+        src/lexical/Lexer.h
+        src/lexical/Token.h
         src/cli/arguments.cpp
         src/cli/arguments.h
-        src/Parser.cpp
-        src/Parser.h
-        src/expressions/Expression.h
-        src/expressions/Parslets.h
-        src/expressions/Statements.h
-        src/expressions/Types.h
-        src/expressions/Types.cpp)
+        src/syntactic/Parser.cpp
+        src/syntactic/Parser.h
+        src/syntactic/expressions/Expression.h
+        src/syntactic/expressions/Parslets.h
+        src/syntactic/expressions/Statements.h
+        src/syntactic/expressions/Types.h
+        src/syntactic/expressions/Types.cpp
+        src/util/Util.cpp src/util/Util.h
+        src/semantic/Analyser.cpp
+        src/semantic/Analyser.h)
+
+target_include_directories(tarik PRIVATE src)
 
 target_link_libraries(tarik comperr)

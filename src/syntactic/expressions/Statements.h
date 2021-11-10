@@ -4,13 +4,15 @@
 #define TARIK_STATEMENTS_H_
 
 #include <map>
+#include <utility>
 #include <vector>
 #include <utility>
 #include <algorithm>
 
 #include "Types.h"
-#include "../Lexer.h"
+#include "lexical/Lexer.h"
 
+// Todo before commit: make member pointers static
 class Expression;
 
 enum StmtType {
@@ -28,7 +30,7 @@ public:
 
     Statement(const Statement &&) = delete;
 
-    explicit Statement(StmtType t, LexerPos o)
+    explicit Statement(StmtType t, const LexerPos &o)
         : origin(o) {
         statement_type = t;
         origin = o;
@@ -43,7 +45,7 @@ class ScopeStatement : public Statement {
 public:
     std::vector<Statement *> block;
 
-    ScopeStatement(StmtType t, LexerPos o, std::vector<Statement *> b)
+    ScopeStatement(StmtType t, const LexerPos &o, std::vector<Statement *> b)
         : Statement(t, o), block(std::move(b)) {}
 
     ~ScopeStatement() override {
@@ -53,7 +55,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string res;
+        std::string res = "{\n";
         for (auto *st: block) {
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
@@ -61,49 +63,40 @@ public:
             res += t + "\n";
         }
         res.pop_back();
+        res += "\n}";
         return res;
     }
 };
 
-class IfStatement : public Statement {
+class IfStatement : public ScopeStatement {
 public:
     // Statement, instead of expression, so we can print it
     Statement *condition;
-    Statement *then;
 
-    IfStatement(LexerPos o, Expression *cond, Statement *t)
-        : Statement(IF_STMT, o), condition(reinterpret_cast<Statement *>(cond)), then(t) {
+    IfStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
+        : ScopeStatement(IF_STMT, o, block), condition(reinterpret_cast<Statement *>(cond)) {
     }
 
     ~IfStatement() override {
         delete condition;
-        delete then;
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string then_string = then->print();
-        if (then->statement_type == EXPR_STMT)
-            then_string += ";";
-        return "if " + condition->print() + " {\n" + then_string + "\n}";
+        std::string then_string = ScopeStatement::print();
+        return "if " + condition->print() + " " + then_string;
     }
 };
 
-class ElseStatement : public Statement {
+class ElseStatement : public ScopeStatement {
 public:
-    Statement *then;
+    IfStatement *inverse;
 
-    explicit ElseStatement(LexerPos o, IfStatement *inv, Statement *t)
-        : Statement(ELSE_STMT, o), then(t) {
-    }
-
-    ~ElseStatement() override {
-        delete then;
+    explicit ElseStatement(const LexerPos &o, IfStatement *inv, std::vector<Statement *> block)
+        : ScopeStatement(ELSE_STMT, o, block), inverse(inv) {
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string then_string = then->print();
-        if (then->statement_type == EXPR_STMT)
-            then_string += ";";
+        std::string then_string = ScopeStatement::print();
         return "else " + then_string;
     }
 };
@@ -113,7 +106,7 @@ public:
     // Statement, instead of expression, so we can print it
     Statement *value;
 
-    explicit ReturnStatement(LexerPos o, Expression *val)
+    explicit ReturnStatement(const LexerPos &o, Expression *val)
         : Statement(RETURN_STMT, o), value(reinterpret_cast<Statement *>(val)) {
     }
 
@@ -126,32 +119,28 @@ public:
     }
 };
 
-class WhileStatement : public Statement {
+class WhileStatement : public ScopeStatement {
 public:
     // Statement, instead of expression, so we can print it
     Statement *condition;
-    Statement *then;
 
-    explicit WhileStatement(LexerPos o, Expression *cond, Statement *t)
-        : Statement(WHILE_STMT, o), condition(reinterpret_cast<Statement *>(cond)), then(t) {
+    explicit WhileStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
+        : ScopeStatement(WHILE_STMT, o, block), condition(reinterpret_cast<Statement *>(cond)) {
     }
 
     ~WhileStatement() override {
         delete condition;
-        delete then;
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string then_string = then->print();
-        if (then->statement_type == EXPR_STMT)
-            then_string += ";";
-        return "while " + condition->print() + " {\n" + then_string + "\n}";
+        std::string then_string = ScopeStatement::print();
+        return "while " + condition->print() + " " + then_string;
     }
 };
 
 class BreakStatement : public Statement {
 public:
-    explicit BreakStatement(LexerPos o)
+    explicit BreakStatement(const LexerPos &o)
         : Statement(BREAK_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
@@ -161,7 +150,7 @@ public:
 
 class ContinueStatement : public Statement {
 public:
-    explicit ContinueStatement(LexerPos o)
+    explicit ContinueStatement(const LexerPos &o)
         : Statement(CONTINUE_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
@@ -174,7 +163,7 @@ public:
     Type type;
     std::string name;
 
-    VariableStatement(LexerPos o, Type t, std::string n)
+    VariableStatement(const LexerPos &o, Type t, std::string n)
         : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
@@ -188,7 +177,7 @@ public:
     Type return_type;
     std::vector<VariableStatement *> arguments;
 
-    FuncStatement(LexerPos o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
+    FuncStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
         : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
 
     ~FuncStatement() override {
@@ -200,7 +189,7 @@ public:
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + name + "(";
         for (auto arg: arguments) {
-            res += arg->name + " " + (std::string) arg->type + ", ";
+            res += (std::string) arg->type + " " + arg->name + ", ";
         }
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
@@ -208,7 +197,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        return head() + " {\n" + ScopeStatement::print() + "\n}";
+        return head() + " " + ScopeStatement::print();
     }
 
     [[nodiscard]] std::string signature() const {

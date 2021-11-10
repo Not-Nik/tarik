@@ -6,9 +6,11 @@
 #include "Token.h"
 
 #include <istream>
+#include <filesystem>
 
 struct LexerPos {
     int l, p;
+    std::string filename;
 
     LexerPos &operator--() {
         if (p > 0) p--;
@@ -24,8 +26,9 @@ struct LexerPos {
 
 class Lexer {
     std::istream *stream;
+    bool allocated = false;
 
-    LexerPos pos{1, 0};
+    LexerPos pos{1, 0, ""};
 
     static bool operator_startswith(char c);
 
@@ -37,6 +40,8 @@ class Lexer {
 
 public:
     explicit Lexer(std::istream *s);
+    explicit Lexer(const std::filesystem::path& f);
+    ~Lexer();
 
     Token peek(int dist = 0);
 

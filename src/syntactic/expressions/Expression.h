@@ -14,7 +14,7 @@ enum Precedence {
 enum ExprType {
     CALL_EXPR, DASH_EXPR, // add subtract
     DOT_EXPR, // multiply divide
-    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, VARREF_EXPR, INT_EXPR, REAL_EXPR
+    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, REAL_EXPR
 };
 
 class Expression : public Statement {
@@ -43,22 +43,6 @@ public:
 
     [[nodiscard]] Type get_type() const override {
         return {};
-    }
-};
-
-class VariableReferenceExpression : public Expression {
-public:
-    VariableStatement *variable;
-
-    explicit VariableReferenceExpression(VariableStatement *var)
-        : Expression(VARREF_EXPR), variable(var) {}
-
-    [[nodiscard]] std::string print() const override {
-        return variable->name;
-    }
-
-    [[nodiscard]] Type get_type() const override {
-        return variable->type;
     }
 };
 
@@ -116,9 +100,9 @@ using NotExpression = PrefixOperatorExpression<'!'>;
 template <ExprType t, char const *pref>
 class BinaryOperatorExpression : public Expression {
 public:
-    const Expression *left, *right;
+    Expression *left, *right;
 
-    BinaryOperatorExpression(const Expression *l, const Expression *r)
+    BinaryOperatorExpression(Expression *l, Expression *r)
         : Expression(t), left(l), right(r) {
     }
 
@@ -161,39 +145,40 @@ using GeExpression = BinaryOperatorExpression<COMP_EXPR, _ge>;
 
 class AssignExpression : public Expression {
 public:
-    VariableStatement *variable;
-    Expression *value;
+    Expression *variable, *value;
 
-    AssignExpression(VariableStatement *var, Expression *val)
+    AssignExpression(Expression *var, Expression *val)
         : Expression(ASSIGN_EXPR), variable(var), value(val) {
     }
 
     ~AssignExpression() override {
         delete value;
+        delete variable;
     }
 
     [[nodiscard]] std::string print() const override {
-        return "(" + variable->name + " = " + value->print() + ")";
+        return "(" + variable->print() + " = " + value->print() + ")";
     }
 
     [[nodiscard]] Type get_type() const override {
-        return variable->type;
+        return variable->get_type();
     }
 };
 
 class CallExpression : public Expression {
 public:
-    FuncStatement *function;
+    Expression *callee;
     std::vector<Expression *> arguments;
 
-    CallExpression(FuncStatement *func, std::vector<Expression *> args)
-        : Expression(CALL_EXPR), function(func), arguments(std::move(args)) {
+    CallExpression(Expression *c, std::vector<Expression *> args)
+        : Expression(CALL_EXPR), callee(c), arguments(std::move(args)) {
     }
 
     ~CallExpression() override {
         for (auto *arg: arguments) {
             delete arg;
         }
+        delete callee;
     }
 
     [[nodiscard]] std::string print() const override {
@@ -205,11 +190,12 @@ public:
             arg_string.pop_back();
             arg_string.pop_back();
         }
-        return function->name + "(" + arg_string + ")";
+        return callee->print() + "(" + arg_string + ")";
     }
 
     [[nodiscard]] Type get_type() const override {
-        return function->return_type;
+        // Todo: this is utterly wrong, but i don't think it'll ever get called anyways
+        return callee->get_type();
     }
 };
 

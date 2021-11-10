@@ -6,9 +6,9 @@
 #include <map>
 #include <vector>
 
-#include "Lexer.h"
-#include "expressions/Expression.h"
-#include "expressions/Statements.h"
+#include "lexical/Lexer.h"
+#include "syntactic/expressions/Expression.h"
+#include "syntactic/expressions/Statements.h"
 
 class PrefixParselet;
 
@@ -18,7 +18,6 @@ class Parser {
     friend class CallParselet;
 
     Lexer lexer;
-    std::string filename;
 
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
@@ -32,17 +31,18 @@ class Parser {
     Precedence get_precedence();
 
     std::vector<Statement *> block();
-    Statement *scope();
 
     Type type();
 
+    void init_parslets();
+
 public:
-    explicit Parser(std::istream *code, std::string fn = "<undefined>");
+    explicit Parser(std::istream *code);
+    explicit Parser(const std::filesystem::path& f);
 
     ~Parser();
 
     bool iassert(bool cond, std::string what, ...);
-    bool iassert(bool cond, LexerPos pos, std::string what, ...);
 
     Token expect(TokenType raw);
 
@@ -50,11 +50,7 @@ public:
 
     bool is_peek(TokenType raw);
 
-    VariableStatement *require_var(const std::string &name);
-
     VariableStatement *register_var(VariableStatement *var);
-
-    FuncStatement *require_func(const std::string &name);
 
     FuncStatement *register_func(FuncStatement *func);
 

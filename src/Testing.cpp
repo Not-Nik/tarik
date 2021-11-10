@@ -2,7 +2,7 @@
 
 #include "Testing.h"
 
-#include "Parser.h"
+#include "syntactic/Parser.h"
 #include <sstream>
 
 void *operator new(size_t size) {
@@ -17,7 +17,7 @@ void operator delete(void *p) noexcept {
 }
 
 namespace std {
-std::string to_string(FuncStatement *f) {
+std::string to_string(const FuncStatement *f) {
     return f->head();
 }
 }
@@ -123,7 +123,7 @@ bool test() {
             ASSERT_EQ(func->return_type.type.size, I8)
 
             auto call = (CallExpression *) p.parse_statement(false);
-            ASSERT_EQ(call->function, func);
+            ASSERT_STR_EQ(call->callee->print(), "test_func")
 
             delete call;
             delete func;
@@ -183,22 +183,19 @@ bool test() {
 
         auto *if_stmt = (IfStatement *) f->block[3];
 
-        ASSERT_EQ(if_stmt->then->statement_type, SCOPE_STMT)
         ASSERT_EQ(if_stmt->condition->statement_type, EXPR_STMT)
 
         auto if_cond = (Expression *) if_stmt->condition;
 
-        ASSERT_EQ(if_cond->expression_type, VARREF_EXPR)
+        ASSERT_EQ(if_cond->expression_type, NAME_EXPR)
 
-        auto if_scope = (ScopeStatement *) if_stmt->then;
-
-        ASSERT_EQ(if_scope->block.size(), 1)
-        ASSERT_EQ(if_scope->block[0]->statement_type, EXPR_STMT)
+        ASSERT_EQ(if_stmt->block.size(), 1)
+        ASSERT_EQ(if_stmt->block[0]->statement_type, EXPR_STMT)
 
         auto *ret_stmt = (ReturnStatement *) f->block[4];
 
         ASSERT_EQ(ret_stmt->value->statement_type, EXPR_STMT)
-        ASSERT_EQ(((Expression *) ret_stmt->value)->expression_type, VARREF_EXPR)
+        ASSERT_EQ(((Expression *) ret_stmt->value)->expression_type, NAME_EXPR)
 
         delete s; MID_TEST(memory management)
 

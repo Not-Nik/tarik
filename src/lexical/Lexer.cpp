@@ -3,10 +3,21 @@
 #include "Lexer.h"
 
 #include <utility>
+#include <fstream>
 #include <algorithm>
 
 Lexer::Lexer(std::istream *s)
     : stream(s) {
+}
+
+Lexer::Lexer(const std::filesystem::path &f)
+    : Lexer(new std::ifstream(f)) {
+    allocated = true;
+    pos.filename = f.filename();
+}
+
+Lexer::~Lexer() {
+    if (allocated) delete stream;
 }
 
 bool Lexer::operator_startswith(char c) {

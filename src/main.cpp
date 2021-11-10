@@ -1,8 +1,10 @@
 // tarik (c) Nikolas Wipper 2020
 
-#include "Parser.h"
+#include "comperr.h"
 #include "Testing.h"
 #include "cli/arguments.h"
+#include "syntactic/Parser.h"
+#include "semantic/Analyser.h"
 
 #include <fstream>
 
@@ -32,14 +34,18 @@ int main(int argc, const char *argv[]) {
     }
 
     for (const auto &input: parser.get_inputs()) {
-        std::ifstream file(input);
-        Parser p(&file, input);
+        Parser p(input);
 
         std::vector<Statement *> statements;
         do {
             statements.push_back(p.parse_statement());
         } while (statements.back());
         statements.pop_back();
+
+        Analyser analyser;
+        if (!analyser.verify_statements(statements)) break;
+
+        endfile();
 
         if (Parser::error_count() == 0) {
             if (re_emit) {

@@ -8,7 +8,7 @@
 class StructStatement;
 
 enum TypeSize : std::uint8_t {
-    I8, I16, I32, I64, U8, U16, U32, U64, F32, F64
+    I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, VOID
 };
 
 inline TypeSize to_typesize(const std::string &s) {
@@ -36,6 +36,7 @@ inline std::string to_string(const TypeSize &ts) {
     if (ts == U64) return "u64";
     if (ts == F32) return "f32";
     if (ts == F64) return "f64";
+    if (ts == VOID) return "";
     return "";
 }
 
@@ -70,6 +71,11 @@ public:
     bool operator==(const Type &other) const {
         return is_primitive == other.is_primitive && pointer_level == other.pointer_level
             && (is_primitive ? type.size == other.type.size : type.user_type == other.type.user_type);
+    }
+
+    bool operator!=(const Type &other) const {
+        return is_primitive != other.is_primitive || pointer_level != other.pointer_level
+            || (is_primitive ? type.size != other.type.size : type.user_type != other.type.user_type);
     }
 
     explicit operator std::string() const;
