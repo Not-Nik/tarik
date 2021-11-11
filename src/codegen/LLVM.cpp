@@ -121,6 +121,7 @@ void LLVM::generate_function(FuncStatement *func) {
     generate_scope(func);
 
     // TODO: check if function has a return statement
+    // Note: we already check for that, but don't generate returns yet, so this is in the commit to generate valid LLVM ir
     llvm::Value *zero_ret = llvm::ConstantInt::get(func_type->getReturnType(), 0);
     builder.CreateRet(zero_ret);
 }
