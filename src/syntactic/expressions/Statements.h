@@ -12,7 +12,6 @@
 #include "Types.h"
 #include "lexical/Lexer.h"
 
-// Todo before commit: make member pointers static
 class Expression;
 
 enum StmtType {
