@@ -91,10 +91,10 @@ public:
 class WhileStatement : public ScopeStatement {
 public:
     // Statement, instead of expression, so we can print it
-    Statement *condition;
+    Expression *condition;
 
     explicit WhileStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(WHILE_STMT, o, block), condition(reinterpret_cast<Statement *>(cond)) {
+        : ScopeStatement(WHILE_STMT, o, block), condition(cond) {
     }
 
     ~WhileStatement() override {

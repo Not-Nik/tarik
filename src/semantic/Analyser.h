@@ -9,6 +9,7 @@
 
 class Analyser {
     std::vector<FuncStatement *> functions;
+    std::vector<VariableStatement *> variables;
 public:
     bool verify_statement(Statement *statement);
     bool verify_statements(std::vector<Statement *> statements);

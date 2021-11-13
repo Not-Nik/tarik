@@ -57,19 +57,20 @@ bool Analyser::verify_function(FuncStatement *func) {
 }
 
 bool Analyser::verify_if(IfStatement *if_) {
-    return true;
+    return verify_expression(if_->condition) && verify_scope(if_) && (!if_->else_statement || verify_scope(if_->else_statement));
 }
 
 bool Analyser::verify_else(ElseStatement *else_) {
-    return true;
+    error(else_->origin, "Else, but no preceding if");
+    return false;
 }
 
 bool Analyser::verify_return(ReturnStatement *return_) {
-    return true;
+    return verify_expression(return_->value);
 }
 
 bool Analyser::verify_while(WhileStatement *while_) {
-    return true;
+    return verify_expression(while_->condition) && verify_scope(while_);
 }
 
 bool Analyser::verify_break(BreakStatement *break_) {
@@ -81,7 +82,10 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
-    return true;
+    auto i = std::find_if(variables.begin(), variables.end(), [var](VariableStatement *v) { return var->name == v->name; });
+    bool res = iassert(i == variables.end(), var->origin, "Redefinition of '%s'", var->name.c_str());
+    if (res) variables.push_back(var);
+    return res;
 }
 
 bool Analyser::verify_struct(StructStatement *struct_) {
@@ -94,12 +98,11 @@ bool Analyser::verify_expression(Expression *expression) {
 
 bool Analyser::does_always_return(ScopeStatement *scope) {
     for (auto it = scope->block.begin(); it != scope->block.end(); it++) {
-        if ((*it)->statement_type == RETURN_STMT) return true;
-        else if ((*it)->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) (*it))) return true;
-        else if ((*it)->statement_type == IF_STMT && does_always_return((ScopeStatement *) (*it))
-            && (it + 1 == scope->block.end() || ((*(it + 1))->statement_type == ELSE_STMT && does_always_return((ScopeStatement *) (*++it)))))
+        if (((*it)->statement_type == RETURN_STMT) || ((*it)->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) (*it)))
+            || ((*it)->statement_type == IF_STMT && does_always_return((ScopeStatement *) (*it))
+                && (it + 1 == scope->block.end() || ((*(it + 1))->statement_type == ELSE_STMT && does_always_return((ScopeStatement *) (*++it)))))
+            || ((*it)->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) (*it))))
             return true;
-        else if ((*it)->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) (*it))) return true;
     }
     return false;
 }
