@@ -56,7 +56,7 @@ public:
 
     Expression *parse_expression(int precedence = 0);
 
-    Statement *parse_statement(bool top_level = true);
+    Statement *parse_statement();
 
     static int error_count();
 };

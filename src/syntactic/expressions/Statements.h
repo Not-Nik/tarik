@@ -39,12 +39,25 @@ public:
     }
 };
 
+class ElseStatement : public ScopeStatement {
+public:
+    explicit ElseStatement(const LexerPos &o, std::vector<Statement *> block)
+        : ScopeStatement(ELSE_STMT, o, std::move(block)) {
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string then_string = ScopeStatement::print();
+        return "else " + then_string;
+    }
+};
+
 class IfStatement : public ScopeStatement {
 public:
     Expression *condition;
+    ElseStatement *else_statement = nullptr;
 
     IfStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(IF_STMT, o, block), condition(cond) {
+        : ScopeStatement(IF_STMT, o, std::move(block)), condition(cond) {
     }
 
     ~IfStatement() override {
@@ -54,20 +67,6 @@ public:
     [[nodiscard]] std::string print() const override {
         std::string then_string = ScopeStatement::print();
         return "if " + condition->print() + " " + then_string;
-    }
-};
-
-class ElseStatement : public ScopeStatement {
-public:
-    IfStatement *inverse;
-
-    explicit ElseStatement(const LexerPos &o, IfStatement *inv, std::vector<Statement *> block)
-        : ScopeStatement(ELSE_STMT, o, block), inverse(inv) {
-    }
-
-    [[nodiscard]] std::string print() const override {
-        std::string then_string = ScopeStatement::print();
-        return "else " + then_string;
     }
 };
 

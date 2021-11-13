@@ -25,7 +25,7 @@ std::vector<Statement *> Parser::block() {
     std::vector<Statement *> res;
     variable_pop_stack.push_back(0);
     while (!lexer.peek().raw.empty() && lexer.peek().id != CURLY_CLOSE) {
-        Statement *statement = parse_statement(false);
+        Statement *statement = parse_statement();
         if (!res.empty() && res.back()->statement_type != IF_STMT) {
             iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
         } else if (statement->statement_type == ELSE_STMT) {
@@ -176,7 +176,7 @@ Expression *Parser::parse_expression(int precedence) {
     return left;
 }
 
-Statement *Parser::parse_statement(bool top_level) {
+Statement *Parser::parse_statement() {
     TokenType token = lexer.peek().id;
     if (token == END) return nullptr;
 
@@ -208,10 +208,16 @@ Statement *Parser::parse_statement(bool top_level) {
         return s;
     } else if (token == IF) {
         lexer.consume();
-        return new IfStatement(lexer.where(), parse_expression(), block());
+        auto is = new IfStatement(lexer.where(), parse_expression(), block());
+        if (lexer.peek().id == ELSE) {
+            auto es = parse_statement();
+            iassert(es->statement_type == ELSE_STMT, "Internal: Next token is 'else', but parsed statement isn't. Report this as a bug");
+            is->else_statement = (ElseStatement *) es;
+        }
+        return is;
     } else if (token == ELSE) {
         lexer.consume();
-        return new ElseStatement(lexer.where(), nullptr, block());
+        return new ElseStatement(lexer.where(), block());
     } else if (token == WHILE) {
         lexer.consume();
         return new WhileStatement(lexer.where(), parse_expression(), block());
@@ -234,7 +240,7 @@ Statement *Parser::parse_statement(bool top_level) {
     if (e == reinterpret_cast<Expression *>(-1)) {
         return nullptr;
     } else if (e == nullptr) {
-        return parse_statement(top_level);
+        return parse_statement();
     } else {
         expect(SEMICOLON);
         return e;

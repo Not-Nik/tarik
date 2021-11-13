@@ -140,15 +140,30 @@ void LLVM::generate_function(FuncStatement *func) {
 }
 
 void LLVM::generate_if(IfStatement *if_) {
-    llvm::BasicBlock *if_block = llvm::BasicBlock::Create(context, "__if_block", current_function);
-    llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "__endif_block", current_function);
+    llvm::BasicBlock *if_block = llvm::BasicBlock::Create(context, "if_block", current_function);
+    llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
+    llvm::BasicBlock *else_block = nullptr;
+    // Todo: this should probably compare to zero instead of casting
+    llvm::Value *condition = generate_cast(generate_expression(if_->condition), llvm::Type::getIntNTy(context, 1), false);
 
-    builder.CreateCondBr(generate_cast(generate_expression(if_->condition), llvm::Type::getIntNTy(context, 1), false), if_block, endif_block);
+    if (if_->else_statement) {
+        else_block = llvm::BasicBlock::Create(context, "else_block", current_function);
+        builder.CreateCondBr(condition, if_block, else_block);
+    } else {
+        builder.CreateCondBr(condition, if_block, endif_block);
+    }
     builder.SetInsertPoint(if_block);
 
     generate_scope(if_);
     builder.CreateBr(endif_block);
 
+    if (else_block) {
+        builder.SetInsertPoint(else_block);
+        generate_scope(if_->else_statement);
+        builder.CreateBr(endif_block);
+    }
+
+    current_function->getBasicBlockList().push_back(endif_block);
     builder.SetInsertPoint(endif_block);
 }
 
@@ -206,7 +221,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             for (auto arg: ce->arguments) {
                 arg_values.push_back(generate_cast(generate_expression(arg), function.getFunctionType()->getParamType(arg_i++), arg->get_type().is_signed_int()));
             }
-            return builder.CreateCall(function, arg_values, "__call_temp");
+            return builder.CreateCall(function, arg_values, "call_temp");
         }
         case DASH_EXPR:
         case DOT_EXPR:
@@ -233,40 +248,40 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             using llvm::CmpInst;
             switch (ce->bin_op_type) {
                 case ADD:
-                    if (fp) return builder.CreateFAdd(left, right, "__add_temp");
-                    else return builder.CreateAdd(left, right, "__add_temp");
+                    if (fp) return builder.CreateFAdd(left, right, "add_temp");
+                    else return builder.CreateAdd(left, right, "add_temp");
                 case SUB:
-                    if (fp) return builder.CreateFSub(left, right, "__sub_temp");
-                    else return builder.CreateSub(left, right, "__sub_temp");
+                    if (fp) return builder.CreateFSub(left, right, "sub_temp");
+                    else return builder.CreateSub(left, right, "sub_temp");
                 case MUL:
-                    if (fp) return builder.CreateFMul(left, right, "__mul_temp");
-                    else return builder.CreateMul(left, right, "__mul_temp");
+                    if (fp) return builder.CreateFMul(left, right, "mul_temp");
+                    else return builder.CreateMul(left, right, "mul_temp");
                 case DIV:
-                    if (fp) return builder.CreateFDiv(left, right, "__div_temp");
-                    else if (unsigned_int) return builder.CreateUDiv(left, right, "__div_temp");
+                    if (fp) return builder.CreateFDiv(left, right, "div_temp");
+                    else if (unsigned_int) return builder.CreateUDiv(left, right, "div_temp");
                     else return builder.CreateSDiv(left, right);
                 case EQ:
-                    if (fp) return builder.CreateFCmpOEQ(left, right, "__eq_temp");
-                    else return builder.CreateICmpEQ(left, right, "__eq_temp");
+                    if (fp) return builder.CreateFCmpOEQ(left, right, "eq_temp");
+                    else return builder.CreateICmpEQ(left, right, "eq_temp");
                 case NEQ:
-                    if (fp) return builder.CreateFCmpONE(left, right, "__neq_temp");
-                    else return builder.CreateICmpNE(left, right, "__neq_temp");
+                    if (fp) return builder.CreateFCmpONE(left, right, "neq_temp");
+                    else return builder.CreateICmpNE(left, right, "neq_temp");
                 case SM:
-                    if (fp) return builder.CreateFCmpOLE(left, right, "__sm_temp");
-                    else if (unsigned_int) return builder.CreateICmpULT(left, right, "__sm_temp");
-                    else return builder.CreateICmpSLT(left, right,  "__sm_temp");
+                    if (fp) return builder.CreateFCmpOLE(left, right, "sm_temp");
+                    else if (unsigned_int) return builder.CreateICmpULT(left, right, "sm_temp");
+                    else return builder.CreateICmpSLT(left, right,  "sm_temp");
                 case GR:
-                    if (fp) return builder.CreateFCmpOGT(left, right, "__gr_temp");
-                    else if (unsigned_int) return builder.CreateICmpUGT(left, right, "__gr_temp");
-                    else return builder.CreateICmpSGT(left, right, "__gr_temp");
+                    if (fp) return builder.CreateFCmpOGT(left, right, "gr_temp");
+                    else if (unsigned_int) return builder.CreateICmpUGT(left, right, "gr_temp");
+                    else return builder.CreateICmpSGT(left, right, "gr_temp");
                 case SME:
-                    if (fp) return builder.CreateFCmpOLE(left, right, "__sme_temp");
-                    else if (unsigned_int) return builder.CreateICmpULE(left, right, "__sme_temp");
-                    else return builder.CreateICmpSLE(left, right, "__sme_temp");
+                    if (fp) return builder.CreateFCmpOLE(left, right, "sme_temp");
+                    else if (unsigned_int) return builder.CreateICmpULE(left, right, "sme_temp");
+                    else return builder.CreateICmpSLE(left, right, "sme_temp");
                 case GRE:
-                    if (fp) return builder.CreateFCmpOGE(left, right, "__gre_temp");
-                    else if (unsigned_int) return builder.CreateICmpUGE(left, right, "__gre_temp");
-                    else return builder.CreateICmpSGE(left, right, "__gre_temp");
+                    if (fp) return builder.CreateFCmpOGE(left, right, "gre_temp");
+                    else if (unsigned_int) return builder.CreateICmpUGE(left, right, "gre_temp");
+                    else return builder.CreateICmpSGE(left, right, "gre_temp");
             }
             break;
         }
@@ -284,12 +299,12 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                 dest = generate_expression(ae->variable);
                 dest_type = dest->getType();
             }
-            return builder.CreateStore(generate_cast(generate_expression(ae->value), dest_type), dest, "__assign_temp");
+            return builder.CreateStore(generate_cast(generate_expression(ae->value), dest_type), dest, "assign_temp");
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
             auto var_on_stack = variables.at(ne->name);
-            return builder.CreateLoad(var_on_stack.second, var_on_stack.first, "__load_temp");
+            return builder.CreateLoad(var_on_stack.second, var_on_stack.first, "load_temp");
         }
         case INT_EXPR: {
             auto ie = (IntExpression *) expression;

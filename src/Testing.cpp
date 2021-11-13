@@ -52,7 +52,9 @@ bool test() {
         ASSERT_TOK(INTEGER, "42")
         ASSERT_TOK(REAL, "12.34")
         ASSERT_TOK(STRING, "\"a string\"")
-        ASSERT_TOK(NAME, "back")MID_TEST(expression parsing)
+        ASSERT_TOK(NAME, "back")//
+
+    MID_TEST(expression parsing)
 
         ss c;
         {
@@ -99,12 +101,14 @@ bool test() {
             ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
             delete f;
             delete e;
-        }MID_TEST(statement parsing)
+        }//
+
+    MID_TEST(statement parsing)
 
         ss c;
 
         // If/while (they're syntactically the same)
-        IfStatement *ifStatement = (IfStatement *) Parser(&(c = ss("if 4 + 4 {}"))).parse_statement(false);
+        IfStatement *ifStatement = (IfStatement *) Parser(&(c = ss("if 4 + 4 {}"))).parse_statement();
         ASSERT_EQ(ifStatement->statement_type, IF_STMT)
         ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
         delete ifStatement;
@@ -122,7 +126,7 @@ bool test() {
             ASSERT_EQ(func->arguments[1]->type.type.size, F64)
             ASSERT_EQ(func->return_type.type.size, I8)
 
-            auto call = (CallExpression *) p.parse_statement(false);
+            auto call = (CallExpression *) p.parse_statement();
             ASSERT_STR_EQ(call->callee->print(), "test_func")
 
             delete call;
@@ -138,7 +142,7 @@ bool test() {
         ASSERT_EQ(var->type.pointer_level, 0)
         ASSERT_EQ(var->type.type.size, U8)
 
-        auto *first = (Expression *) p.parse_statement(false), *second = (Expression *) p.parse_statement(false);
+        auto *first = (Expression *) p.parse_statement(), *second = (Expression *) p.parse_statement();
         ASSERT_EQ(first->expression_type, ASSIGN_EXPR)
         ASSERT_EQ(second->expression_type, ASSIGN_EXPR)
         delete var;
@@ -151,7 +155,9 @@ bool test() {
         ASSERT_TRUE(ptr->type.is_primitive)
         ASSERT_EQ(ptr->type.pointer_level, 1)
         ASSERT_EQ(ptr->type.type.size, U32)
-        delete ptr; MID_TEST(full)
+        delete ptr;//
+
+    MID_TEST(full)
 
         ss c = ss("fn main() u8 {\n"
                   "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
@@ -197,8 +203,12 @@ bool test() {
         ASSERT_EQ(ret_stmt->value->statement_type, EXPR_STMT)
         ASSERT_EQ(((Expression *) ret_stmt->value)->expression_type, NAME_EXPR)
 
-        delete s; MID_TEST(memory management)
+        delete s; //
 
-        ASSERT_EQ(allocs - overhead, 0)END_TEST
+    MID_TEST(memory management)
+
+        ASSERT_EQ(allocs - overhead, 0)//
+
+    END_TEST
 }
 
