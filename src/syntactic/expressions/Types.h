@@ -101,7 +101,7 @@ public:
             || (is_primitive ? type.size != other.type.size : type.user_type != other.type.user_type);
     }
 
-    explicit operator std::string() const;
+    std::string str() const;
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_

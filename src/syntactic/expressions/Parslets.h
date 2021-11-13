@@ -38,19 +38,19 @@ class NameParselet : public PrefixParselet {
     }
 };
 
-template <class OperatorExpression>
+template <PrefixType prefix_type>
 class PrefixOperatorParselet : public PrefixParselet {
     Expression *parse(Parser *parser, const Token &) override {
         Expression *right = parser->parse_expression(PREFIX);
 
-        return new OperatorExpression(right);
+        return new PrefixOperatorExpression(prefix_type, right);
     }
 };
 
-using PosParselet = PrefixOperatorParselet<PosExpression>;
-using NegParselet = PrefixOperatorParselet<NegExpression>;
-using DerefParselet = PrefixOperatorParselet<DerefExpression>;
-using NotParselet = PrefixOperatorParselet<NotExpression>;
+using PosParselet = PrefixOperatorParselet<POS>;
+using NegParselet = PrefixOperatorParselet<NEG>;
+using DerefParselet = PrefixOperatorParselet<DEREF>;
+using NotParselet = PrefixOperatorParselet<LOG_NOT>;
 
 template <BinOpType bot, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
@@ -88,7 +88,7 @@ class AssignParselet : public InfixParselet {
     Expression *parse(Parser *parser, Expression *left) override {
         Expression *right = parser->parse_expression(ASSIGNMENT - 1);
 
-        return new AssignExpression(left, right);
+        return new BinaryOperatorExpression(ASSIGN, left, right);
     }
 
     Precedence get_type() override {

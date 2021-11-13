@@ -4,7 +4,7 @@
 
 #include "Statements.h"
 
-Type::operator std::string() const {
+std::string Type::str() const {
     std::string res;
     if (is_primitive) {
         res = to_string(type.size);

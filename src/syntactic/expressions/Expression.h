@@ -47,13 +47,30 @@ public:
 using IntExpression = NumberExpression<long long int, INT_EXPR>;
 using RealExpression = NumberExpression<double, REAL_EXPR>;
 
-template <char pref>
+enum PrefixType {
+    POS, NEG, DEREF, LOG_NOT
+};
+
+inline std::string to_string(PrefixType pt) {
+    switch (pt) {
+        case POS:
+            return "+";
+        case NEG:
+            return "-";
+        case DEREF:
+            return "*";
+        case LOG_NOT:
+            return "!";
+    }
+}
+
 class PrefixOperatorExpression : public Expression {
 public:
+    PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixOperatorExpression(Expression *op)
-        : Expression(PREFIX_EXPR), operand(op) {
+    explicit PrefixOperatorExpression(PrefixType pt, Expression *op)
+        : Expression(PREFIX_EXPR), prefix_type(pt), operand(op) {
     }
 
     ~PrefixOperatorExpression() override {
@@ -61,7 +78,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        return std::string({pref}) + operand->print();
+        return to_string(prefix_type) + operand->print();
     }
 
     [[nodiscard]] Type get_type() const override {
@@ -69,13 +86,8 @@ public:
     }
 };
 
-using PosExpression = PrefixOperatorExpression<'+'>;
-using NegExpression = PrefixOperatorExpression<'-'>;
-using DerefExpression = PrefixOperatorExpression<'*'>;
-using NotExpression = PrefixOperatorExpression<'!'>;
-
 enum BinOpType {
-    ADD, SUB, MUL, DIV, EQ, NEQ, SM, GR, SME, GRE,
+    ADD, SUB, MUL, DIV, EQ, NEQ, SM, GR, SME, GRE, ASSIGN
 };
 
 constexpr ExprType to_expr_type(BinOpType bot) {
@@ -94,6 +106,8 @@ constexpr ExprType to_expr_type(BinOpType bot) {
         case SME:
         case GRE:
             return COMP_EXPR;
+        case ASSIGN:
+            return ASSIGN_EXPR;
     }
 }
 
@@ -119,6 +133,8 @@ inline std::string to_string(BinOpType bot) {
             return "<=";
         case GRE:
             return ">=";
+        case ASSIGN:
+            return "=";
     }
 }
 
@@ -142,28 +158,6 @@ public:
 
     [[nodiscard]] Type get_type() const override {
         return left->get_type();
-    }
-};
-
-class AssignExpression : public Expression {
-public:
-    Expression *variable, *value;
-
-    AssignExpression(Expression *var, Expression *val)
-        : Expression(ASSIGN_EXPR), variable(var), value(val) {
-    }
-
-    ~AssignExpression() override {
-        delete value;
-        delete variable;
-    }
-
-    [[nodiscard]] std::string print() const override {
-        return "(" + variable->print() + " = " + value->print() + ")";
-    }
-
-    [[nodiscard]] Type get_type() const override {
-        return variable->get_type();
     }
 };
 

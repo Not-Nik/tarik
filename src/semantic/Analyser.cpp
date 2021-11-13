@@ -3,6 +3,7 @@
 #include "Analyser.h"
 
 #include "util/Util.h"
+#include "syntactic/expressions/Expression.h"
 
 bool Analyser::verify_statement(Statement *statement) {
     switch (statement->statement_type) {
@@ -82,8 +83,7 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
-    auto i = std::find_if(variables.begin(), variables.end(), [var](VariableStatement *v) { return var->name == v->name; });
-    bool res = iassert(i == variables.end(), var->origin, "Redefinition of '%s'", var->name.c_str());
+    bool res = iassert(!is_var_declared(var->name), var->origin, "Redefinition of '%s'", var->name.c_str());
     if (res) variables.push_back(var);
     return res;
 }
@@ -93,6 +93,62 @@ bool Analyser::verify_struct(StructStatement *struct_) {
 }
 
 bool Analyser::verify_expression(Expression *expression) {
+    switch (expression->expression_type) {
+        case CALL_EXPR: {
+            auto ce = (CallExpression *) expression;
+            if (ce->callee->expression_type == NAME_EXPR) {
+                std::string func_name = ((NameExpression *) ce->callee)->name;
+                iassert(is_func_declared(func_name), ce->origin, "Undefined function '%s'", func_name.c_str());
+                FuncStatement
+                    *func = *std::find_if(functions.begin(), functions.end(), [func_name](FuncStatement *v) { return func_name == v->name; });
+                if (!iassert(ce->arguments.size() >= func->arguments.size(),
+                             ce->callee->origin,
+                             "Too few arguments, expected %i found %i.",
+                             func->arguments.size(),
+                             ce->arguments.size()) ||
+
+                    !iassert(ce->arguments.size() <= func->arguments.size(),
+                             ce->callee->origin,
+                             "Too many arguments, expected %i found %i.",
+                             func->arguments.size(),
+                             ce->arguments.size()))
+                    return false;
+
+                for (size_t i = 0; i < func->arguments.size(); i++) {
+                    VariableStatement *arg_var = func->arguments[i];
+                    Expression *arg = ce->arguments[i];
+                    if (!iassert(arg_var->type.is_compatible(arg->get_type()),
+                                 arg->origin,
+                                 "Passing value of type '%s' to argument of type '%s'",
+                                 arg->get_type().str().c_str(),
+                                 arg_var->type.str().c_str()))
+                        return false;
+                }
+            } else {
+                throw "calling of expressions is unimplemented";
+            }
+            break;
+        }
+        case DASH_EXPR:
+        case DOT_EXPR:
+        case EQ_EXPR:
+        case COMP_EXPR:
+        case ASSIGN_EXPR: {
+            auto ae = (BinaryOperatorExpression *) expression;
+            return iassert(ae->left->get_type().is_compatible(ae->right->get_type()), ae->origin, "Invalid operands to binary expression");
+        }
+        case PREFIX_EXPR: {
+            auto pe = (PrefixOperatorExpression *) expression;
+            return iassert(pe->get_type().is_primitive || pe->get_type().pointer_level > 0, pe->origin, "Invalid operand to unary expression");
+        }
+        case NAME_EXPR: {
+            auto ne = (NameExpression *) expression;
+            return iassert(is_var_declared(ne->name), expression->origin, "Undefined variable '%s'", ne->name.c_str());
+        }
+        case INT_EXPR:
+        case REAL_EXPR:
+            break;
+    }
     return true;
 }
 
@@ -105,4 +161,12 @@ bool Analyser::does_always_return(ScopeStatement *scope) {
             return true;
     }
     return false;
+}
+
+bool Analyser::is_var_declared(const std::string &name) {
+    return std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; }) != variables.end();
+}
+
+bool Analyser::is_func_declared(const std::string &name) {
+    return std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; }) != functions.end();
 }

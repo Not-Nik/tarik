@@ -28,6 +28,8 @@ protected:
     bool verify_expression(Expression *expression);
 
     bool does_always_return(ScopeStatement *scope);
+    bool is_var_declared(const std::string& name);
+    bool is_func_declared(const std::string& name);
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_

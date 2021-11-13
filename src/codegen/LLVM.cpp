@@ -171,8 +171,7 @@ void LLVM::generate_if(IfStatement *if_) {
     builder.SetInsertPoint(endif_block);
 }
 
-void LLVM::generate_else(ElseStatement *else_) {
-}
+void LLVM::generate_else(ElseStatement *) {} // this will never happen
 
 void LLVM::generate_return(ReturnStatement *return_) {
     if (!return_type) return;
@@ -292,18 +291,18 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
         case PREFIX_EXPR:
             break;
         case ASSIGN_EXPR: {
-            auto ae = (AssignExpression *) expression;
+            auto ae = (BinaryOperatorExpression *) expression;
             llvm::Value *dest;
             llvm::Type *dest_type;
-            if (ae->variable->expression_type == NAME_EXPR) {
-                auto var_on_stack = variables.at(((NameExpression *) ae->variable)->name);
+            if (ae->left->expression_type == NAME_EXPR) {
+                auto var_on_stack = variables.at(((NameExpression *) ae->left)->name);
                 dest = var_on_stack.first;
                 dest_type = var_on_stack.second;
             } else {
-                dest = generate_expression(ae->variable);
+                dest = generate_expression(ae->left);
                 dest_type = dest->getType();
             }
-            return builder.CreateStore(generate_cast(generate_expression(ae->value), dest_type), dest, "assign_temp");
+            return builder.CreateStore(generate_cast(generate_expression(ae->right), dest_type), dest, "assign_temp");
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
@@ -319,6 +318,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             auto re = (RealExpression *) expression;
             return llvm::ConstantFP::get(llvm::Type::getDoubleTy(context), re->n);
     }
+    return nullptr;
 }
 
 llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int) {

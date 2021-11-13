@@ -136,7 +136,7 @@ public:
         : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
-        return (std::string) type + " " + name + ";";
+        return type.str() + " " + name + ";";
     }
 };
 
@@ -158,11 +158,11 @@ public:
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + name + "(";
         for (auto arg: arguments) {
-            res += (std::string) arg->type + " " + arg->name + ", ";
+            res += arg->type.str() + " " + arg->name + ", ";
         }
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
-        return res + ") " + (std::string) return_type;
+        return res + ") " + return_type.str();
     }
 
     [[nodiscard]] std::string print() const override {
@@ -172,10 +172,10 @@ public:
     [[nodiscard]] std::string signature() const {
         std::string res = "(";
         for (auto arg: arguments) {
-            res += (std::string) arg->type + ", ";
+            res += arg->type.str() + ", ";
         }
         if (res.back() != '(') res = res.substr(0, res.size() - 2);
-        return res + ") " + (std::string) return_type;
+        return res + ") " + return_type.str();
     }
 };
 
