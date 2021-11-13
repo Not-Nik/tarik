@@ -11,8 +11,8 @@ class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(std::string n)
-        : Expression(NAME_EXPR), name(std::move(n)) {}
+    explicit NameExpression(LexerPos lp, std::string n)
+        : Expression(NAME_EXPR, std::move(lp)), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return name;
@@ -28,8 +28,8 @@ class NumberExpression : public Expression {
 public:
     NumberType n;
 
-    explicit NumberExpression(const std::string &n)
-        : Expression(expr_type), n(std::stoi(n)) {}
+    explicit NumberExpression(LexerPos lp, const std::string &n)
+        : Expression(expr_type, lp), n(std::stoi(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return std::to_string(n);
@@ -69,8 +69,8 @@ public:
     PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixOperatorExpression(PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR), prefix_type(pt), operand(op) {
+    explicit PrefixOperatorExpression(LexerPos lp, PrefixType pt, Expression *op)
+        : Expression(PREFIX_EXPR, lp), prefix_type(pt), operand(op) {
     }
 
     ~PrefixOperatorExpression() override {
@@ -143,8 +143,8 @@ public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryOperatorExpression(BinOpType bot, Expression *l, Expression *r)
-        : Expression(to_expr_type(bot)), bin_op_type(bot), left(l), right(r) {
+    BinaryOperatorExpression(LexerPos lp, BinOpType bot, Expression *l, Expression *r)
+        : Expression(to_expr_type(bot), lp), bin_op_type(bot), left(l), right(r) {
     }
 
     ~BinaryOperatorExpression() override {
@@ -166,8 +166,8 @@ public:
     Expression *callee;
     std::vector<Expression *> arguments;
 
-    CallExpression(Expression *c, std::vector<Expression *> args)
-        : Expression(CALL_EXPR), callee(c), arguments(std::move(args)) {
+    CallExpression(LexerPos lp, Expression *c, std::vector<Expression *> args)
+        : Expression(CALL_EXPR, lp), callee(c), arguments(std::move(args)) {
     }
 
     ~CallExpression() override {

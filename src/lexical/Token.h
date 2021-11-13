@@ -94,19 +94,36 @@ static std::map<std::string, TokenType> keywords = {
 };
 
 inline std::string to_string(const TokenType &tt) {
-    for (auto op : operators) if (op.second == tt) return op.first;
-    for (auto key : keywords) if (key.second == tt) return key.first;
+    for (auto op: operators) if (op.second == tt) return op.first;
+    for (auto key: keywords) if (key.second == tt) return key.first;
     return "";
 }
 
+struct LexerPos {
+    int l, p;
+    std::string filename;
+
+    LexerPos &operator--() {
+        if (p > 0) p--;
+        else {
+            // ugh, ill accept the inaccuracy for now
+            // todo: make this accurate
+            p = 0;
+            l--;
+        }
+        return *this;
+    }
+};
+
 class Token {
 public:
-    explicit Token(TokenType id, std::string s)
-        : id(id), raw(std::move(s)) {
+    explicit Token(TokenType id, std::string s, LexerPos lp)
+        : id(id), raw(std::move(s)), where(std::move(lp)) {
     }
 
     TokenType id;
     std::string raw;
+    LexerPos where;
 };
 
 #endif //TARIK_SRC_LEXICAL_TOKEN_H_

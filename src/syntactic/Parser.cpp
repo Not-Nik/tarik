@@ -124,9 +124,13 @@ Parser::~Parser() {
 bool Parser::iassert(bool cond, std::string what, ...) {
     va_list args;
     va_start(args, what);
-    ::iassert(cond, lexer.where(), what, args);
+    ::iassert(cond, where(), what, args);
     va_end(args);
     return cond;
+}
+
+LexerPos Parser::where() {
+    return lexer.where();
 }
 
 Token Parser::expect(TokenType raw) {
@@ -189,7 +193,7 @@ Statement *Parser::parse_statement() {
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
         else
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) {
-                args.push_back(register_var(new VariableStatement(lexer.where(), type(), expect(NAME).raw)));
+                args.push_back(register_var(new VariableStatement(where(), type(), expect(NAME).raw)));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -198,17 +202,17 @@ Statement *Parser::parse_statement() {
         Type t;
         if (lexer.peek().id == CURLY_OPEN) t = Type(VOID);
         else t = type();
-        FuncStatement *fs = register_func(new FuncStatement(--lexer.where(), name, t, args, {}));
+        FuncStatement *fs = register_func(new FuncStatement(--where(), name, t, args, {}));
         fs->block = block();
         return fs;
     } else if (token == RETURN) {
         lexer.consume();
-        auto *s = new ReturnStatement(lexer.where(), parse_expression());
+        auto *s = new ReturnStatement(where(), parse_expression());
         expect(SEMICOLON);
         return s;
     } else if (token == IF) {
         lexer.consume();
-        auto is = new IfStatement(lexer.where(), parse_expression(), block());
+        auto is = new IfStatement(where(), parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             auto es = parse_statement();
             iassert(es->statement_type == ELSE_STMT, "Internal: Next token is 'else', but parsed statement isn't. Report this as a bug");
@@ -217,12 +221,12 @@ Statement *Parser::parse_statement() {
         return is;
     } else if (token == ELSE) {
         lexer.consume();
-        return new ElseStatement(lexer.where(), block());
+        return new ElseStatement(where(), block());
     } else if (token == WHILE) {
         lexer.consume();
-        return new WhileStatement(lexer.where(), parse_expression(), block());
+        return new WhileStatement(where(), parse_expression(), block());
     } else if (token == CURLY_OPEN) {
-        return new ScopeStatement(SCOPE_STMT, lexer.where(), block());
+        return new ScopeStatement(SCOPE_STMT, where(), block());
     } else if (token == TYPE or token == USER_TYPE) {
         Type t = type();
 
@@ -234,7 +238,7 @@ Statement *Parser::parse_statement() {
             expect(SEMICOLON);
         }
 
-        return register_var(new VariableStatement(lexer.where(), t, name));
+        return register_var(new VariableStatement(where(), t, name));
     }
     Expression *e = parse_expression();
     if (e == reinterpret_cast<Expression *>(-1)) {

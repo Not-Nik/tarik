@@ -54,6 +54,10 @@ bool Analyser::verify_function(FuncStatement *func) {
 
     iassert(func->return_type.operator==(Type(VOID)) || does_always_return(func), func->origin, "function with return type doesn't return");
     functions.push_back(func);
+    for (auto arg: func->arguments) {
+        variables.push_back(arg);
+    }
+
     return verify_scope(func);
 }
 

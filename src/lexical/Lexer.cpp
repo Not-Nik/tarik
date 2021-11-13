@@ -13,7 +13,7 @@ Lexer::Lexer(std::istream *s)
 Lexer::Lexer(const std::filesystem::path &f)
     : Lexer(new std::ifstream(f)) {
     allocated = true;
-    pos.filename = f.filename();
+    pos.filename = f.string();
 }
 
 Lexer::~Lexer() {
@@ -153,7 +153,7 @@ Token Lexer::consume() {
     }
 
     if (stream->eof() && tok.empty()) {
-        return Token(END, "");
+        return Token(END, "", pos);
     }
 
     TokenType type;
@@ -170,7 +170,7 @@ Token Lexer::consume() {
     } else {
         type = NAME;
     }
-    return Token(type, tok);
+    return Token(type, tok, pos);
 }
 
 LexerPos Lexer::where() {

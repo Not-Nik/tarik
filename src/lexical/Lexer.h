@@ -8,22 +8,6 @@
 #include <istream>
 #include <filesystem>
 
-struct LexerPos {
-    int l, p;
-    std::string filename;
-
-    LexerPos &operator--() {
-        if (p > 0) p--;
-        else {
-            // ugh, ill accept the inaccuracy for now
-            // todo: make this accurate
-            p = 0;
-            l--;
-        }
-        return *this;
-    }
-};
-
 class Lexer {
     std::istream *stream;
     bool allocated = false;

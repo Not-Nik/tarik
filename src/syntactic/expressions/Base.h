@@ -50,8 +50,8 @@ public:
     Expression()
         : Statement(), expression_type(NAME_EXPR) {}
 
-    explicit Expression(ExprType t)
-        : Statement(EXPR_STMT, {}) { expression_type = t; }
+    explicit Expression(ExprType t, LexerPos lp)
+        : Statement(EXPR_STMT, lp) { expression_type = t; }
 
     [[nodiscard]] virtual Type get_type() const = 0;
 };

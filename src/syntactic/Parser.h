@@ -44,6 +44,8 @@ public:
 
     bool iassert(bool cond, std::string what, ...);
 
+    LexerPos where();
+
     Token expect(TokenType raw);
 
     bool check_expect(TokenType raw);
