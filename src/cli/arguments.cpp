@@ -36,6 +36,11 @@ void ArgumentParser::help() {
         std::cout << "    --" << option->name;
         if (option->has_arg)
             std::cout << "=<" << option->argument_name << ">";
+        if (option->short_name) {
+            std::cout << ", -" << option->short_name;
+            if (option->has_arg)
+                std::cout << " <" << option->argument_name << ">";
+        }
         std::cout << " - " << option->description << "\n";
     }
 }
@@ -74,33 +79,21 @@ ParsedOption ArgumentParser::parse_next_arg() {
         }
         std::cerr << "Option ignored: " << raw << "\n";
     } else if (raw.find('-') == 0) {
-        --it;
+        char short_n = raw.substr(1,1)[0];
 
-        std::string shorts = raw.substr(1);
-        while (!shorts.empty()) {
-            char s = shorts[0];
-            shorts = shorts.substr(1);
-            *it = "-" + shorts;
-
-            for (auto &i: options) {
-                if (i->short_name == s) {
-                    ParsedOption res;
-                    if (i->has_arg) {
-                        auto arg = it + 1;
-                        if (arg == passed.end()) {
-                            exit(1);
-                        }
-                        res = {i, *arg};
-                        passed.erase(arg);
-                    } else {
-                        res = {i, ""};
+        for (auto &i :options) {
+            if (i->short_name == short_n) {
+                if (i->has_arg) {
+                    if (it == passed.end()) {
+                        std::cerr << i->name << " requires an argument" << std::endl;
+                        exit(1);
                     }
-                    return res;
+                    std::string arg = *it;
+                    it++;
+                    return {i, arg};
                 }
+                return {i, {}};
             }
-        }
-        if (shorts.empty()) {
-            it++;
         }
     } else
         inputs.push_back(raw);

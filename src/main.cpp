@@ -17,14 +17,15 @@ namespace fs = std::filesystem;
 int main(int argc, const char *argv[]) {
     ArgumentParser parser(argc, argv, "tarik");
 
-    Option *test_option = parser.add_option("test", "Run internal tarik tests", false, "");
+    Option *test_option = parser.add_option("test", "Run internal tarik tests", false);
     Option *output_option = parser.add_option("output", "Output to file", true, "file", 'o');
 
-    Option *re_emit_option = parser.add_option("re-emit", "Parse code, and re-emit it based on the internal AST", false, "");
-    Option *emit_llvm_option = parser.add_option("emit-llvm", "Emit generated LLVM IR", false, "");
+    Option *re_emit_option = parser.add_option("re-emit", "Parse code, and re-emit it based on the internal AST", false);
+    Option *emit_llvm_option = parser.add_option("emit-llvm", "Emit generated LLVM IR", false);
+    Option *override_triple = parser.add_option("target", "Set the target triple (defaults to '" + LLVM::default_triple + "')", true, "triple", 't');
 
     bool re_emit = false, emit_llvm = false;
-    std::string output_filename;
+    std::string output_filename, triple = LLVM::default_triple;
 
     for (auto option: parser) {
         if (option == test_option) {
@@ -40,6 +41,8 @@ int main(int argc, const char *argv[]) {
             emit_llvm = true;
         } else if (option == output_option) {
             output_filename = option.argument;
+        } else if (option == override_triple) {
+            triple = option.argument;
         }
     }
 
@@ -48,7 +51,8 @@ int main(int argc, const char *argv[]) {
     }
 
     if (!output_filename.empty() && parser.get_inputs().size() > 1) {
-        std::cout << "An explicit output file with multiple input files will overwrite compilation results. (Where'd you want me to write the rest?)";
+        std::cerr << "An explicit output file with multiple input files will overwrite compilation results. (Where'd you want me to write the rest?)";
+        return 1;
     }
 
     for (const auto &input: parser.get_inputs()) {
@@ -79,11 +83,15 @@ int main(int argc, const char *argv[]) {
             }
             if (!re_emit || !emit_llvm) {
                 LLVM generator(input);
+                if (!triple.empty() && !LLVM::is_valid_triple(triple)) {
+                    std::cerr << "Invalid triple '" << triple << "'";
+                    return 1;
+                }
                 generator.generate_statements(statements);
                 if (emit_llvm)
                     generator.dump_ir(output_path);
                 else
-                    generator.write_object_file(output_path);
+                    generator.write_object_file(output_path, triple);
             }
         }
 

@@ -39,11 +39,16 @@ public:
     explicit LLVM(const std::string &name);
 
     void dump_ir(const std::string &to);
-    void write_object_file(const std::string &to, const std::string &triple = llvm::sys::getDefaultTargetTriple());
+    void write_object_file(const std::string &to, const std::string &triple = default_triple);
 
     void generate_statement(Statement *s);
     void generate_statements(const std::vector<Statement *> &s);
 
+    static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();
+    static bool is_valid_triple(std::string triple) {
+        std::string err;
+        return llvm::TargetRegistry::lookupTarget(triple, err) != nullptr;
+    }
 protected:
     void generate_scope(ScopeStatement *scope);
     void generate_function(FuncStatement *func);
