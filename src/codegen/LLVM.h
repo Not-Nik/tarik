@@ -37,6 +37,7 @@ class LLVM {
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
 public:
     explicit LLVM(const std::string &name);
+    static void force_init();
 
     void dump_ir(const std::string &to);
     void write_object_file(const std::string &to, const std::string &triple = default_triple);
@@ -45,9 +46,15 @@ public:
     void generate_statements(const std::vector<Statement *> &s);
 
     static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();
-    static bool is_valid_triple(std::string triple) {
+    static bool is_valid_triple(const std::string &triple) {
         std::string err;
         return llvm::TargetRegistry::lookupTarget(triple, err) != nullptr;
+    }
+    static std::vector<std::string> get_available_triples() {
+        std::vector<std::string> res;
+        for (auto t: llvm::TargetRegistry::targets()) res.emplace_back(t.getName());
+        std::reverse(res.begin(), res.end());
+        return res;
     }
 protected:
     void generate_scope(ScopeStatement *scope);

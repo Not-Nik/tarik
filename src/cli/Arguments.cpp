@@ -1,9 +1,10 @@
 // tarik (c) Nikolas Wipper 2020
 
-#include "arguments.h"
+#include "Arguments.h"
 
-#include <iostream>
 #include <utility>
+#include <sstream>
+#include <iostream>
 
 unsigned int Option::option_count = 0;
 
@@ -13,7 +14,7 @@ ArgumentParser::ArgumentParser(int argc, const char *argv[], std::string toolNam
     it = passed.begin();
     it++;
 
-    options.push_back(new Option("help", "Show this message and exits", false, ""));
+    options.push_back(new Option("help", "Show this message and exit", false, ""));
 }
 
 Option *ArgumentParser::add_option(Option option) {
@@ -32,20 +33,34 @@ Option *ArgumentParser::add_option(std::string name_, std::string description_, 
 void ArgumentParser::help() {
     std::cout << "Usage: " << passed[0] << " [options] inputs\n\n";
     std::cout << "Options:\n";
-    for (const auto &option: options) {
-        std::cout << "    --" << option->name;
+    auto generate_help_string = [](Option *option) {
+        std::stringstream r;
+        r << "    --" << option->name;
         if (option->has_arg)
-            std::cout << "=<" << option->argument_name << ">";
+            r << "=<" << option->argument_name << ">";
         if (option->short_name) {
-            std::cout << ", -" << option->short_name;
+            r << ", -" << option->short_name;
             if (option->has_arg)
-                std::cout << " <" << option->argument_name << ">";
+                r << " <" << option->argument_name << ">";
         }
-        std::cout << " - " << option->description << "\n";
+        return r.str();
+    };
+    std::vector<std::pair<std::string, std::string>> help_strings;
+    size_t longest = 0;
+    for (const auto &option: options) {
+        help_strings.emplace_back(generate_help_string(option), option->description);
+        if (help_strings.back().first.size() > longest) longest = help_strings.back().first.size();
+    }
+
+    for (const auto &hs: help_strings) {
+        std::cout << hs.first << std::string(longest - hs.first.size() + 3, ' ') << hs.second << "\n";
     }
 }
 
 ParsedOption ArgumentParser::parse_next_arg() {
+    std::sort(options.begin(), options.end(), [](Option *first, Option *second) {
+        return first->name < second->name;
+    });
     if (passed.size() == 1) {
         help();
         return {};

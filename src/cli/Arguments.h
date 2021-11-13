@@ -91,7 +91,7 @@ public:
     ArgumentParser(int argc, const char *argv[], std::string toolName);
 
     Option *add_option(Option option);
-    Option *add_option(std::string name_, std::string description_, bool has_arg_, std::string argument_name_ = "", char short_name = 0);
+    Option *add_option(std::string name_, std::string description_, bool has_arg_ = false, std::string argument_name_ = "", char short_name = 0);
 
     ParsedOption parse_next_arg();
 

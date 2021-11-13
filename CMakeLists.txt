@@ -7,7 +7,6 @@ find_package(llvm REQUIRED)
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
-add_compile_definitions(MANU_EXIT)
 
 add_subdirectory(src/libcomperr)
 
@@ -17,8 +16,8 @@ add_executable(tarik
         src/main.cpp
         src/Testing.cpp
         src/Testing.h
-        src/cli/arguments.cpp
-        src/cli/arguments.h
+        src/cli/Arguments.cpp
+        src/cli/Arguments.h
         src/codegen/LLVM.cpp
         src/codegen/LLVM.h
         src/lexical/Lexer.cpp

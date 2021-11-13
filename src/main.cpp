@@ -2,7 +2,7 @@
 
 #include "comperr.h"
 #include "Testing.h"
-#include "cli/arguments.h"
+#include "cli/Arguments.h"
 
 #include "codegen/LLVM.h"
 #include "syntactic/Parser.h"
@@ -14,15 +14,19 @@
 
 namespace fs = std::filesystem;
 
+constinit const char *version_id = "Generic";
+constinit const char *version_string = "0.0.1a";
+
 int main(int argc, const char *argv[]) {
     ArgumentParser parser(argc, argv, "tarik");
 
-    Option *test_option = parser.add_option("test", "Run internal tarik tests", false);
+    Option *test_option = parser.add_option("test", "Run internal tarik tests");
     Option *output_option = parser.add_option("output", "Output to file", true, "file", 'o');
 
-    Option *re_emit_option = parser.add_option("re-emit", "Parse code, and re-emit it based on the internal AST", false);
-    Option *emit_llvm_option = parser.add_option("emit-llvm", "Emit generated LLVM IR", false);
-    Option *override_triple = parser.add_option("target", "Set the target triple (defaults to '" + LLVM::default_triple + "')", true, "triple", 't');
+    Option *re_emit_option = parser.add_option("re-emit", "Parse code, and re-emit it based on the internal AST");
+    Option *emit_llvm_option = parser.add_option("emit-llvm", "Emit generated LLVM IR");
+    Option *override_triple = parser.add_option("target", "Set the target-triple (defaults to '" + LLVM::default_triple + "')", true, "triple", 't');
+    Option *version = parser.add_option("version", "Display the compiler version");
 
     bool re_emit = false, emit_llvm = false;
     std::string output_filename, triple = LLVM::default_triple;
@@ -43,6 +47,15 @@ int main(int argc, const char *argv[]) {
             output_filename = option.argument;
         } else if (option == override_triple) {
             triple = option.argument;
+        } else if (option == version) {
+            LLVM::force_init();
+            std::cout << version_id << " tarik compiler version " << version_string << "\n";
+            std::cout << "    Default target: " << LLVM::default_triple << "\n";
+            std::cout << "    Available LLVM targets:\n";
+            for (const auto& t :LLVM::get_available_triples()) {
+                std::cout << "        " << t << "\n";
+            }
+            return 0;
         }
     }
 

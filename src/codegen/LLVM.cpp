@@ -13,6 +13,10 @@ static llvm::IRBuilder<> builder(context);
 
 LLVM::LLVM(const std::string &name)
     : module(std::make_unique<llvm::Module>(name, context)) {
+    force_init();
+}
+
+void LLVM::force_init() {
     static bool initialised = false;
     if (!initialised) {
         llvm::InitializeAllTargetInfos();
