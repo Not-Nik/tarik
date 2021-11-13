@@ -10,35 +10,7 @@
 #include <algorithm>
 
 #include "Types.h"
-#include "lexical/Lexer.h"
-
-class Expression;
-
-enum StmtType {
-    SCOPE_STMT, FUNC_STMT, IF_STMT, ELSE_STMT, RETURN_STMT, WHILE_STMT, BREAK_STMT, CONTINUE_STMT, VARIABLE_STMT, STRUCT_STMT, EXPR_STMT
-};
-
-class Statement {
-public:
-    StmtType statement_type{};
-    [[maybe_unused]] LexerPos origin{};
-
-    Statement() = default;
-
-    Statement(const Statement &) = delete;
-
-    Statement(const Statement &&) = delete;
-
-    explicit Statement(StmtType t, const LexerPos &o)
-        : origin(o) {
-        statement_type = t;
-        origin = o;
-    }
-
-    virtual ~Statement() = default;;
-
-    [[nodiscard]] virtual std::string print() const = 0;
-};
+#include "Base.h"
 
 class ScopeStatement : public Statement {
 public:
@@ -69,11 +41,10 @@ public:
 
 class IfStatement : public ScopeStatement {
 public:
-    // Statement, instead of expression, so we can print it
-    Statement *condition;
+    Expression *condition;
 
     IfStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(IF_STMT, o, block), condition(reinterpret_cast<Statement *>(cond)) {
+        : ScopeStatement(IF_STMT, o, block), condition(cond) {
     }
 
     ~IfStatement() override {
@@ -103,10 +74,10 @@ public:
 class ReturnStatement : public Statement {
 public:
     // Statement, instead of expression, so we can print it
-    Statement *value;
+    Expression *value;
 
     explicit ReturnStatement(const LexerPos &o, Expression *val)
-        : Statement(RETURN_STMT, o), value(reinterpret_cast<Statement *>(val)) {
+        : Statement(RETURN_STMT, o), value(val) {
     }
 
     ~ReturnStatement() override {

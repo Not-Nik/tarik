@@ -26,10 +26,15 @@
 #include "llvm/Support/TargetRegistry.h"
 
 #include "syntactic/expressions/Statements.h"
+#include "syntactic/expressions/Expression.h"
 
 class LLVM {
     std::unique_ptr<llvm::Module> module;
-    std::map<std::string, llvm::Value *> variables;
+    llvm::Type *return_type;
+    bool return_type_signed_int;
+    llvm::Function *current_function;
+    std::map<std::string, llvm::FunctionType *> functions;
+    std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
 public:
     explicit LLVM(const std::string &name);
 
@@ -42,6 +47,16 @@ public:
 protected:
     void generate_scope(ScopeStatement *scope);
     void generate_function(FuncStatement *func);
+    void generate_if(IfStatement *if_);
+    void generate_else(ElseStatement *else_);
+    void generate_return(ReturnStatement *return_);
+    void generate_while(WhileStatement *while_);
+    void generate_break(BreakStatement *break_);
+    void generate_continue(ContinueStatement *continue_);
+    void generate_variable(VariableStatement *var);
+    void generate_struct(StructStatement *struct_);
+    llvm::Value *generate_expression(Expression *expression);
+    static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 
     static llvm::Type *make_llvm_type(const Type &t);
     static llvm::FunctionType *make_llvm_function_type(FuncStatement *func);

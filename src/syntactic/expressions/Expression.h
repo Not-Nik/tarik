@@ -7,29 +7,6 @@
 
 #include "Statements.h"
 
-enum Precedence {
-    ASSIGNMENT = 1, EQUALITY, COMPARE, SUM, PRODUCT, PREFIX, CALL
-};
-
-enum ExprType {
-    CALL_EXPR, DASH_EXPR, // add subtract
-    DOT_EXPR, // multiply divide
-    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, REAL_EXPR
-};
-
-class Expression : public Statement {
-public:
-    ExprType expression_type;
-
-    Expression()
-        : Statement(), expression_type(NAME_EXPR) {}
-
-    explicit Expression(ExprType t)
-        : Statement(EXPR_STMT, {}) { expression_type = t; }
-
-    [[nodiscard]] virtual Type get_type() const = 0;
-};
-
 class NameExpression : public Expression {
 public:
     std::string name;
@@ -49,13 +26,13 @@ public:
 template <class NumberType, ExprType expr_type>
 class NumberExpression : public Expression {
 public:
-    NumberType i;
+    NumberType n;
 
     explicit NumberExpression(const std::string &n)
-        : Expression(expr_type), i(std::stoi(n)) {}
+        : Expression(expr_type), n(std::stoi(n)) {}
 
     [[nodiscard]] std::string print() const override {
-        return std::to_string(i);
+        return std::to_string(n);
     }
 
     [[nodiscard]] Type get_type() const override {
@@ -97,13 +74,61 @@ using NegExpression = PrefixOperatorExpression<'-'>;
 using DerefExpression = PrefixOperatorExpression<'*'>;
 using NotExpression = PrefixOperatorExpression<'!'>;
 
-template <ExprType t, char const *pref>
+enum BinOpType {
+    ADD, SUB, MUL, DIV, EQ, NEQ, SM, GR, SME, GRE,
+};
+
+constexpr ExprType to_expr_type(BinOpType bot) {
+    switch (bot) {
+        case ADD:
+        case SUB:
+            return DASH_EXPR;
+        case MUL:
+        case DIV:
+            return DOT_EXPR;
+        case EQ:
+        case NEQ:
+            return EQ_EXPR;
+        case SM:
+        case GR:
+        case SME:
+        case GRE:
+            return COMP_EXPR;
+    }
+}
+
+inline std::string to_string(BinOpType bot) {
+    switch (bot) {
+        case ADD:
+            return "+";
+        case SUB:
+            return "-";
+        case MUL:
+            return "*";
+        case DIV:
+            return "/";
+        case EQ:
+            return "==";
+        case NEQ:
+            return "!=";
+        case SM:
+            return "<";
+        case GR:
+            return ">";
+        case SME:
+            return "<=";
+        case GRE:
+            return ">=";
+    }
+}
+
 class BinaryOperatorExpression : public Expression {
 public:
+    BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryOperatorExpression(Expression *l, Expression *r)
-        : Expression(t), left(l), right(r) {
+    BinaryOperatorExpression(BinOpType bot, Expression *l, Expression *r)
+        : Expression(to_expr_type(bot)), bin_op_type(bot), left(l), right(r) {
     }
 
     ~BinaryOperatorExpression() override {
@@ -112,36 +137,13 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        return "(" + left->print() + std::string(pref) + right->print() + ")";
+        return "(" + left->print() + to_string(bin_op_type) + right->print() + ")";
     }
 
     [[nodiscard]] Type get_type() const override {
         return left->get_type();
     }
 };
-
-#define GL_STRING(n, t) constexpr char _##n[] = t
-GL_STRING(plus, "+");
-GL_STRING(minus, "-");
-GL_STRING(mul, "*");
-GL_STRING(div, "/");
-GL_STRING(eq, "==");
-GL_STRING(neq, "!=");
-GL_STRING(sm, "<");
-GL_STRING(gr, ">");
-GL_STRING(se, "<=");
-GL_STRING(ge, ">=");
-
-using AddExpression = BinaryOperatorExpression<DASH_EXPR, _plus>;
-using SubExpression = BinaryOperatorExpression<DASH_EXPR, _minus>;
-using MulExpression = BinaryOperatorExpression<DOT_EXPR, _mul>;
-using DivExpression = BinaryOperatorExpression<DOT_EXPR, _div>;
-using EqExpression = BinaryOperatorExpression<EQ_EXPR, _eq>;
-using NeqExpression = BinaryOperatorExpression<EQ_EXPR, _neq>;
-using SmExpression = BinaryOperatorExpression<COMP_EXPR, _sm>;
-using GrExpression = BinaryOperatorExpression<COMP_EXPR, _gr>;
-using SeExpression = BinaryOperatorExpression<COMP_EXPR, _se>;
-using GeExpression = BinaryOperatorExpression<COMP_EXPR, _ge>;
 
 class AssignExpression : public Expression {
 public:

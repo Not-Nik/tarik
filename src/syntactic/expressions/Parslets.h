@@ -52,12 +52,12 @@ using NegParselet = PrefixOperatorParselet<NegExpression>;
 using DerefParselet = PrefixOperatorParselet<DerefExpression>;
 using NotParselet = PrefixOperatorParselet<NotExpression>;
 
-template <class OperatorExpression, Precedence prec>
+template <BinOpType bot, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
     Expression *parse(Parser *parser, Expression *left) override {
         Expression *right = parser->parse_expression(prec);
 
-        return new OperatorExpression(left, right);
+        return new BinaryOperatorExpression(bot, left, right);
     }
 
     Precedence get_type() override {
@@ -65,16 +65,16 @@ class BinaryOperatorParselet : public InfixParselet {
     }
 };
 
-using AddParselet = BinaryOperatorParselet<AddExpression, SUM>;
-using SubParselet = BinaryOperatorParselet<SubExpression, SUM>;
-using MulParselet = BinaryOperatorParselet<MulExpression, PRODUCT>;
-using DivParselet = BinaryOperatorParselet<DivExpression, PRODUCT>;
-using EqParselet = BinaryOperatorParselet<EqExpression, EQUALITY>;
-using NeqParselet = BinaryOperatorParselet<NeqExpression, EQUALITY>;
-using SmParselet = BinaryOperatorParselet<SmExpression, COMPARE>;
-using GrParselet = BinaryOperatorParselet<GrExpression, COMPARE>;
-using SeParselet = BinaryOperatorParselet<SeExpression, COMPARE>;
-using GeParselet = BinaryOperatorParselet<GeExpression, COMPARE>;
+using AddParselet = BinaryOperatorParselet<ADD, SUM>;
+using SubParselet = BinaryOperatorParselet<SUB, SUM>;
+using MulParselet = BinaryOperatorParselet<MUL, PRODUCT>;
+using DivParselet = BinaryOperatorParselet<DIV, PRODUCT>;
+using EqParselet = BinaryOperatorParselet<EQ, EQUALITY>;
+using NeqParselet = BinaryOperatorParselet<NEQ, EQUALITY>;
+using SmParselet = BinaryOperatorParselet<SM, COMPARE>;
+using GrParselet = BinaryOperatorParselet<GR, COMPARE>;
+using SeParselet = BinaryOperatorParselet<SME, COMPARE>;
+using GeParselet = BinaryOperatorParselet<GRE, COMPARE>;
 
 class GroupParselet : public PrefixParselet {
     Expression *parse(Parser *parser, const Token &) override {

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 project(tarik)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 find_package(llvm REQUIRED)
 
@@ -28,6 +28,7 @@ add_executable(tarik
         src/semantic/Analyser.h
         src/syntactic/Parser.cpp
         src/syntactic/Parser.h
+        src/syntactic/expressions/Base.h
         src/syntactic/expressions/Expression.h
         src/syntactic/expressions/Parslets.h
         src/syntactic/expressions/Statements.h

@@ -11,6 +11,21 @@ enum TypeSize : std::uint8_t {
     I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, VOID
 };
 
+inline bool is_signed_int(TypeSize ts) {
+    if (ts >= I8 && ts <= I64) return true;
+    return false;
+}
+
+inline bool is_unsigned_int(TypeSize ts) {
+    if (ts >= U8 && ts <= U64) return true;
+    return false;
+}
+
+inline bool is_int(TypeSize ts) {
+    if (ts >= I8 && ts <= U64) return true;
+    return false;
+}
+
 inline TypeSize to_typesize(const std::string &s) {
     if (s == "I8") return I8;
     if (s == "I16") return I16;
@@ -66,6 +81,14 @@ public:
 
     [[nodiscard]] bool is_compatible(const Type &t) const {
         return (is_primitive && t.is_primitive) || (!is_primitive && !t.is_primitive && type.user_type == t.type.user_type);
+    }
+
+    [[nodiscard]] bool is_signed_int() const {
+        return is_primitive && ::is_signed_int(type.size);
+    }
+
+    [[nodiscard]] bool is_unsigned_int() const {
+        return is_primitive && ::is_unsigned_int(type.size);
     }
 
     bool operator==(const Type &other) const {
