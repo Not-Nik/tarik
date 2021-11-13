@@ -61,6 +61,8 @@ public:
 
         ParsedOption last;
         bool made_last = false;
+
+        friend bool operator==(iterator &me, iterator &other);
     public:
         explicit iterator(ArgumentParser *parser_)
             : parser(parser_), overriden(false) {}
@@ -74,16 +76,6 @@ public:
                 parser->parse_next_arg();
             }
             return last = parser->parse_next_arg();
-        }
-
-        bool operator==(iterator &other) const {
-            if (overriden != other.overriden) return const_cast<iterator *>(this)->operator*() == *other;
-            if (overriden) return override == other.override;
-            return parser == other.parser;
-        }
-
-        bool operator!=(iterator &other) const {
-            return !(*this == other);
         }
 
         ParsedOption operator*() {
@@ -113,5 +105,11 @@ public:
         return iterator(ParsedOption());
     }
 };
+
+inline bool operator==(ArgumentParser::iterator &me, ArgumentParser::iterator &other) {
+    if (me.overriden != other.overriden) return *me == *other;
+    if (me.overriden) return me.override == other.override;
+    return me.parser == other.parser;
+}
 
 #endif //TARIK_SRC_CLI_ARGUMENTS_H_

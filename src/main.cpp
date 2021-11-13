@@ -27,7 +27,7 @@ int main(int argc, const char *argv[]) {
     bool re_emit = false, emit_llvm = false;
     std::string output_filename, triple = LLVM::default_triple;
 
-    for (auto option: parser) {
+    for (const auto &option: parser) {
         if (option == test_option) {
             int r = test();
             if (r)
