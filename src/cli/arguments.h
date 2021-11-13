@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_ARGUMENTS_H_
-#define TARIK_ARGUMENTS_H_
+#ifndef TARIK_SRC_CLI_ARGUMENTS_H_
+#define TARIK_SRC_CLI_ARGUMENTS_H_
 
 #include <map>
 #include <utility>
@@ -114,4 +114,4 @@ public:
     }
 };
 
-#endif //TARIK_ARGUMENTS_H_
+#endif //TARIK_SRC_CLI_ARGUMENTS_H_

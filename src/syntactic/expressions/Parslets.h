@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_PARSLETS_H_
-#define TARIK_PARSLETS_H_
+#ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_PARSLETS_H_
+#define TARIK_SRC_SYNTACTIC_EXPRESSIONS_PARSLETS_H_
 
 #include "Expression.h"
 #include "lexical/Token.h"
@@ -116,4 +116,4 @@ class CallParselet : public InfixParselet {
     }
 };
 
-#endif //TARIK_PARSLETS_H_
+#endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_PARSLETS_H_

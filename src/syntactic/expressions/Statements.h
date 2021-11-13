@@ -1,7 +1,7 @@
 // tarik (c) Nikolas Wipper 2020
 
-#ifndef TARIK_STATEMENTS_H_
-#define TARIK_STATEMENTS_H_
+#ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
+#define TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
 
 #include <map>
 #include <utility>
@@ -214,4 +214,4 @@ public:
     }
 };
 
-#endif //TARIK_STATEMENTS_H_
+#endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_

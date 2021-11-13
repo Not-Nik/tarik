@@ -1,7 +1,7 @@
 // Seno (c) Nikolas Wipper 2020
 
-#ifndef TARIK_TYPES_H_
-#define TARIK_TYPES_H_
+#ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
+#define TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
 
 #include <string>
 
@@ -104,4 +104,4 @@ public:
     explicit operator std::string() const;
 };
 
-#endif //TARIK_TYPES_H_
+#endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
