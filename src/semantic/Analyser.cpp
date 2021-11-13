@@ -121,7 +121,7 @@ bool Analyser::verify_expression(Expression *expression) {
                                  arg->origin,
                                  "Passing value of type '%s' to argument of type '%s'",
                                  arg->get_type().str().c_str(),
-                                 arg_var->type.str().c_str()))
+                                 arg_var->type.str().c_str()) || !verify_expression(arg))
                         return false;
                 }
             } else {
@@ -135,11 +135,13 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            return iassert(ae->left->get_type().is_compatible(ae->right->get_type()), ae->origin, "Invalid operands to binary expression");
+            return verify_expression(ae->left) && verify_expression(ae->right)
+                && iassert(ae->left->get_type().is_compatible(ae->right->get_type()), ae->origin, "Invalid operands to binary expression");
         }
         case PREFIX_EXPR: {
             auto pe = (PrefixOperatorExpression *) expression;
-            return iassert(pe->get_type().is_primitive || pe->get_type().pointer_level > 0, pe->origin, "Invalid operand to unary expression");
+            return verify_expression(pe->operand)
+                && iassert(pe->get_type().is_primitive || pe->get_type().pointer_level > 0, pe->origin, "Invalid operand to unary expression");
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
