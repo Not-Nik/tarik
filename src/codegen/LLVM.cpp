@@ -195,17 +195,26 @@ void LLVM::generate_while(WhileStatement *while_) {
     current_function->getBasicBlockList().push_back(while_block);
     builder.SetInsertPoint(while_block);
 
+    llvm::BasicBlock *old_llen = last_loop_entry, *old_llex = last_loop_exit;
+    last_loop_entry = while_comp_block;
+    last_loop_exit = endwhile_block;
+
     generate_scope(while_);
     builder.CreateBr(while_comp_block);
+
+    last_loop_entry = old_llen;
+    last_loop_exit = old_llex;
 
     current_function->getBasicBlockList().push_back(endwhile_block);
     builder.SetInsertPoint(endwhile_block);
 }
 
 void LLVM::generate_break(BreakStatement *break_) {
+    builder.CreateBr(last_loop_exit);
 }
 
 void LLVM::generate_continue(ContinueStatement *continue_) {
+    builder.CreateBr(last_loop_entry);
 }
 
 void LLVM::generate_variable(VariableStatement *var) {

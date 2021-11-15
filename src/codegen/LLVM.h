@@ -33,6 +33,7 @@ class LLVM {
     llvm::Type *return_type;
     bool return_type_signed_int;
     llvm::Function *current_function;
+    llvm::BasicBlock *last_loop_entry = nullptr, *last_loop_exit = nullptr;
     std::map<std::string, llvm::FunctionType *> functions;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
 public:
