@@ -179,6 +179,28 @@ void LLVM::generate_return(ReturnStatement *return_) {
 }
 
 void LLVM::generate_while(WhileStatement *while_) {
+    llvm::BasicBlock *while_comp_block = llvm::BasicBlock::Create(context, "while_comp_block");
+    llvm::BasicBlock *while_block = llvm::BasicBlock::Create(context, "while_block");
+    llvm::BasicBlock *endwhile_block = llvm::BasicBlock::Create(context, "endwhile_block");
+
+    // Todo: this should probably compare to zero instead of casting
+    llvm::Value *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
+
+    builder.CreateBr(while_comp_block);
+
+    current_function->getBasicBlockList().push_back(while_comp_block);
+    builder.SetInsertPoint(while_comp_block);
+
+    builder.CreateCondBr(condition, while_block, endwhile_block);
+
+    current_function->getBasicBlockList().push_back(while_block);
+    builder.SetInsertPoint(while_block);
+
+    generate_scope(while_);
+    builder.CreateBr(endwhile_block);
+
+    current_function->getBasicBlockList().push_back(endwhile_block);
+    builder.SetInsertPoint(endwhile_block);
 }
 
 void LLVM::generate_break(BreakStatement *break_) {
@@ -189,7 +211,7 @@ void LLVM::generate_continue(ContinueStatement *continue_) {
 
 void LLVM::generate_variable(VariableStatement *var) {
     llvm::Type *type = make_llvm_type(var->type);
-    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(make_llvm_type(var->type), unsigned(0)), type));
+    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(make_llvm_type(var->type), unsigned(0), nullptr, var->name), type));
 }
 
 void LLVM::generate_struct(StructStatement *struct_) {

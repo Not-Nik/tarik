@@ -12,7 +12,7 @@ class Analyser {
     std::vector<VariableStatement *> variables;
 public:
     bool verify_statement(Statement *statement);
-    bool verify_statements(std::vector<Statement *> statements);
+    bool verify_statements(const std::vector<Statement *>& statements);
 
 protected:
     bool verify_scope(ScopeStatement *scope);

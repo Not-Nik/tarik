@@ -33,7 +33,7 @@ bool Analyser::verify_statement(Statement *statement) {
     return true;
 }
 
-bool Analyser::verify_statements(std::vector<Statement *> statements) {
+bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     for (auto statement: statements) {
         if (!verify_statement(statement)) return false;
     }
@@ -52,7 +52,7 @@ bool Analyser::verify_function(FuncStatement *func) {
         return false;
     }
 
-    iassert(func->return_type.operator==(Type(VOID)) || does_always_return(func), func->origin, "function with return type doesn't return");
+    iassert(func->return_type == Type(VOID) || does_always_return(func), func->origin, "function with return type doesn't return");
     functions.push_back(func);
     for (auto arg: func->arguments) {
         variables.push_back(arg);
