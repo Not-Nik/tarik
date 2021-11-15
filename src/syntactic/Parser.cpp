@@ -129,6 +129,13 @@ bool Parser::iassert(bool cond, std::string what, ...) {
     return cond;
 }
 
+void Parser::warn(std::string what, ...) {
+    va_list args;
+    va_start(args, what);
+    ::warning_v(where(), what, args);
+    va_end(args);
+}
+
 LexerPos Parser::where() {
     return lexer.where();
 }

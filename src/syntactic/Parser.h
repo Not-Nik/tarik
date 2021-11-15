@@ -43,6 +43,7 @@ public:
     ~Parser();
 
     bool iassert(bool cond, std::string what, ...);
+    void warn(std::string what, ...);
 
     LexerPos where();
 

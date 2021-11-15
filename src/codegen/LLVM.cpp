@@ -183,21 +183,20 @@ void LLVM::generate_while(WhileStatement *while_) {
     llvm::BasicBlock *while_block = llvm::BasicBlock::Create(context, "while_block");
     llvm::BasicBlock *endwhile_block = llvm::BasicBlock::Create(context, "endwhile_block");
 
-    // Todo: this should probably compare to zero instead of casting
-    llvm::Value *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
-
     builder.CreateBr(while_comp_block);
 
     current_function->getBasicBlockList().push_back(while_comp_block);
     builder.SetInsertPoint(while_comp_block);
 
+    // Todo: this should probably compare to zero instead of casting
+    llvm::Value *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
     builder.CreateCondBr(condition, while_block, endwhile_block);
 
     current_function->getBasicBlockList().push_back(while_block);
     builder.SetInsertPoint(while_block);
 
     generate_scope(while_);
-    builder.CreateBr(endwhile_block);
+    builder.CreateBr(while_comp_block);
 
     current_function->getBasicBlockList().push_back(endwhile_block);
     builder.SetInsertPoint(endwhile_block);
