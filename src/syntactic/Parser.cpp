@@ -188,10 +188,10 @@ Expression *Parser::parse_expression(int precedence) {
 }
 
 Statement *Parser::parse_statement() {
-    TokenType token = lexer.peek().id;
-    if (token == END) return nullptr;
+    Token token = lexer.peek();
+    if (token.id == END) return nullptr;
 
-    if (token == FUNC) {
+    if (token.id == FUNC) {
         lexer.consume();
         std::string name = expect(NAME).raw;
 
@@ -212,12 +212,12 @@ Statement *Parser::parse_statement() {
         FuncStatement *fs = register_func(new FuncStatement(--where(), name, t, args, {}));
         fs->block = block();
         return fs;
-    } else if (token == RETURN) {
+    } else if (token.id == RETURN) {
         lexer.consume();
         auto *s = new ReturnStatement(where(), parse_expression());
         expect(SEMICOLON);
         return s;
-    } else if (token == IF) {
+    } else if (token.id == IF) {
         lexer.consume();
         auto is = new IfStatement(where(), parse_expression(), block());
         if (lexer.peek().id == ELSE) {
@@ -226,15 +226,23 @@ Statement *Parser::parse_statement() {
             is->else_statement = (ElseStatement *) es;
         }
         return is;
-    } else if (token == ELSE) {
+    } else if (token.id == ELSE) {
         lexer.consume();
         return new ElseStatement(where(), block());
-    } else if (token == WHILE) {
+    } else if (token.id == WHILE) {
         lexer.consume();
         return new WhileStatement(where(), parse_expression(), block());
-    } else if (token == CURLY_OPEN) {
+    } else if (token.id == BREAK) {
+        lexer.consume();
+        expect(SEMICOLON);
+        return new BreakStatement(token.where);
+    } else if (token.id == CONTINUE) {
+        lexer.consume();
+        expect(SEMICOLON);
+        return new ContinueStatement(token.where);
+    } else if (token.id == CURLY_OPEN) {
         return new ScopeStatement(SCOPE_STMT, where(), block());
-    } else if (token == TYPE or token == USER_TYPE) {
+    } else if (token.id == TYPE or token.id == USER_TYPE) {
         Type t = type();
 
         iassert(is_peek(NAME), "Expected an identifier found '%s' instead", lexer.peek().raw.c_str());

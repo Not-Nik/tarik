@@ -34,10 +34,13 @@ bool Analyser::verify_statement(Statement *statement) {
 }
 
 bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
+    bool res = true;
     for (auto statement: statements) {
-        if (!verify_statement(statement)) return false;
+        // Combining these two lines will cause clang to not call `verify_statement` when res is false, effectively limiting us to a single error
+        bool t = verify_statement(statement);
+        res = res and t;
     }
-    return true;
+    return res;
 }
 
 bool Analyser::verify_scope(ScopeStatement *scope) {
@@ -75,15 +78,19 @@ bool Analyser::verify_return(ReturnStatement *return_) {
 }
 
 bool Analyser::verify_while(WhileStatement *while_) {
-    return verify_expression(while_->condition) && verify_scope(while_);
+    Statement *old_last_loop = last_loop;
+    last_loop = while_;
+    bool res = verify_expression(while_->condition) && verify_scope(while_);
+    last_loop = old_last_loop;
+    return res;
 }
 
 bool Analyser::verify_break(BreakStatement *break_) {
-    return true;
+    return iassert(last_loop, break_->origin, "break outside of loop");
 }
 
 bool Analyser::verify_continue(ContinueStatement *continue_) {
-    return true;
+    return iassert(last_loop, continue_->origin, "break outside of continue");
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {

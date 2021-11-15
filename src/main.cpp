@@ -82,9 +82,9 @@ int main(int argc, const char *argv[]) {
         statements.pop_back();
 
         Analyser analyser;
-        if (!analyser.verify_statements(statements)) break;
+        analyser.verify_statements(statements);
 
-        endfile();
+        if (!endfile()) return 1;
 
         if (Parser::error_count() == 0) {
             std::ofstream out(output_filename);

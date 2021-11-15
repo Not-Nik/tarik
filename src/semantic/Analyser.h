@@ -10,6 +10,7 @@
 class Analyser {
     std::vector<FuncStatement *> functions;
     std::vector<VariableStatement *> variables;
+    Statement *last_loop = nullptr;
 public:
     bool verify_statement(Statement *statement);
     bool verify_statements(const std::vector<Statement *>& statements);
