@@ -51,7 +51,7 @@ enum Precedence {
 enum ExprType {
     CALL_EXPR, DASH_EXPR, // add subtract
     DOT_EXPR, // multiply divide
-    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, REAL_EXPR
+    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, REAL_EXPR, STR_EXPR
 };
 
 class Expression : public Statement {

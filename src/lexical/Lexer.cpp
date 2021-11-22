@@ -68,13 +68,14 @@ Token Lexer::consume() {
         if (c < 0) break;
 
         if (c == '"') {
-            if (!tok.empty()) break;
-            tok.push_back(c);
+            if (!tok.empty()) {
+                unget_stream();
+                break;
+            }
             c = read_stream();
             for (; c != '\"'; c = read_stream()) {
                 tok.push_back(c);
             }
-            tok.push_back(c);
             string = true;
             break;
         }
@@ -88,7 +89,7 @@ Token Lexer::consume() {
 
         // Basically stop the token if we have an operator that is right after another token i.e. `peter*`
         if (!tok.empty() && // If we are in a token
-            operator_startswith(c) && // And the current char does start an operator
+            operator_startswith(c) && // And the current char starts an operator
             !operator_startswith(tok + (char) c)) { // But the token and that char do not start an operator
             unget_stream();
             break; // Break

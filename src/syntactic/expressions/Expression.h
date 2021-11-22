@@ -23,29 +23,51 @@ public:
     }
 };
 
-template <class NumberType, ExprType expr_type>
-class NumberExpression : public Expression {
-public:
-    NumberType n;
+template <class To, class = decltype(std::string(std::declval<To>()))>
+std::string smart_cast_from_string(const std::string &n) {
+    return n;
+}
 
-    explicit NumberExpression(LexerPos lp, const std::string &n)
-        : Expression(expr_type, lp), n(std::stoi(n)) {}
+template <class To, class = decltype(To(std::stoi(std::declval<std::string>())))>
+To smart_cast_from_string(const std::string &n) {
+    return std::stoi(n);
+}
+
+template <class To, class = decltype(std::to_string(std::declval<To>()))>
+std::string smart_cast_to_string(To t) {
+    return std::to_string(t);
+}
+
+inline std::string smart_cast_to_string(std::string s) {
+    return s;
+}
+
+template <class PrimitiveType, ExprType expr_type>
+class PrimitiveExpression : public Expression {
+public:
+    PrimitiveType n;
+
+    explicit PrimitiveExpression(LexerPos lp, const std::string &n)
+        : Expression(expr_type, lp), n(smart_cast_from_string<PrimitiveType>(n)) {}
 
     [[nodiscard]] std::string print() const override {
-        return std::to_string(n);
+        return smart_cast_to_string(n);
     }
 
     [[nodiscard]] Type get_type() const override {
         if (expr_type == REAL_EXPR) {
-            return Type(TypeUnion{F64}, true, 0);
+            return Type(F64, 0);
         } else if (expr_type == INT_EXPR) {
-            return Type(TypeUnion{I64}, true, 0);
+            return Type(I64, 0);
+        } else if (expr_type == STR_EXPR) {
+            return Type(U8, 1);
         }
     }
 };
 
-using IntExpression = NumberExpression<long long int, INT_EXPR>;
-using RealExpression = NumberExpression<double, REAL_EXPR>;
+using IntExpression = PrimitiveExpression<long long int, INT_EXPR>;
+using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
+using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 
 enum PrefixType {
     POS, NEG, DEREF, LOG_NOT

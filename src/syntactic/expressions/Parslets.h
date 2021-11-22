@@ -31,6 +31,7 @@ class SimpleParselet : public PrefixParselet {
 
 using IntParselet = SimpleParselet<IntExpression>;
 using RealParselet = SimpleParselet<RealExpression>;
+using StringParselet = SimpleParselet<StringExpression>;
 
 class NameParselet : public PrefixParselet {
     Expression *parse(Parser *, const Token &token) override {

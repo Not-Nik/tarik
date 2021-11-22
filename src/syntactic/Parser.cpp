@@ -71,6 +71,7 @@ void Parser::init_parslets() {
     prefix_parslets.emplace(NAME, new NameParselet());
     prefix_parslets.emplace(INTEGER, new IntParselet());
     prefix_parslets.emplace(REAL, new RealParselet());
+    prefix_parslets.emplace(STRING, new StringParselet());
 
     // Prefix expressions
     prefix_parslets.emplace(PLUS, new PosParselet());

@@ -199,6 +199,7 @@ bool Analyser::verify_expression(Expression *expression) {
         }
         case INT_EXPR:
         case REAL_EXPR:
+        case STR_EXPR:
             break;
     }
     return true;

@@ -359,9 +359,14 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             size_t width = roundUp(std::bit_width((size_t) ie->n), size_t(8));
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
         }
-        case REAL_EXPR:
+        case REAL_EXPR: {
             auto re = (RealExpression *) expression;
             return llvm::ConstantFP::get(llvm::Type::getDoubleTy(context), re->n);
+        }
+        case STR_EXPR: {
+            auto se = (StringExpression *) expression;
+            return builder.CreateGlobalStringPtr(se->n, "string_value");
+        }
     }
     return nullptr;
 }
