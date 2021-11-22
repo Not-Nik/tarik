@@ -26,10 +26,6 @@ std::vector<Statement *> Parser::block() {
     variable_pop_stack.push_back(0);
     while (!lexer.peek().raw.empty() && lexer.peek().id != CURLY_CLOSE) {
         Statement *statement = parse_statement();
-        if (!res.empty() && res.back()->statement_type != IF_STMT) {
-            iassert(statement->statement_type != ELSE_STMT, "Else without matching if");
-        } else if (statement->statement_type == ELSE_STMT) {
-        }
         res.push_back(statement);
     }
     for (int i = 0; i < variable_pop_stack.back(); i++)
@@ -207,8 +203,11 @@ Statement *Parser::parse_statement() {
             }
         expect(PAREN_CLOSE);
         Type t;
-        if (lexer.peek().id == CURLY_OPEN) t = Type(VOID);
+        if (lexer.peek().id == CURLY_OPEN || lexer.peek().id == SEMICOLON) t = Type(VOID);
         else t = type();
+
+        if (lexer.peek().id == SEMICOLON) {lexer.consume(); return new FuncDeclareStatement(--where(), name, t, args);}
+
         FuncStatement *fs = register_func(new FuncStatement(--where(), name, t, args, {}));
         fs->block = block();
         return fs;

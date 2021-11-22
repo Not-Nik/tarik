@@ -10,14 +10,16 @@
 class Analyser {
     std::vector<FuncStatement *> functions;
     std::vector<VariableStatement *> variables;
+    std::vector<FuncDeclareStatement *> declarations;
     Statement *last_loop = nullptr;
 public:
     bool verify_statement(Statement *statement);
-    bool verify_statements(const std::vector<Statement *>& statements);
+    bool verify_statements(const std::vector<Statement *> &statements);
 
 protected:
     bool verify_scope(ScopeStatement *scope);
     bool verify_function(FuncStatement *func);
+    bool verify_func_decl(FuncDeclareStatement *decl);
     bool verify_if(IfStatement *if_);
     bool verify_else(ElseStatement *else_);
     bool verify_return(ReturnStatement *return_);
@@ -29,8 +31,9 @@ protected:
     bool verify_expression(Expression *expression);
 
     bool does_always_return(ScopeStatement *scope);
-    bool is_var_declared(const std::string& name);
-    bool is_func_declared(const std::string& name);
+    bool is_var_declared(const std::string &name);
+    bool is_func_declared(const std::string &name);
+    FuncStCommon *get_func_decl(const std::string &name);
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_

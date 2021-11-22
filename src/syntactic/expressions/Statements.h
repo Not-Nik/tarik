@@ -140,16 +140,16 @@ public:
     }
 };
 
-class FuncStatement : public ScopeStatement {
+class FuncStCommon {
 public:
     std::string name;
     Type return_type;
     std::vector<VariableStatement *> arguments;
 
-    FuncStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
+    FuncStCommon(std::string n, Type ret, std::vector<VariableStatement *> args)
+        : name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
 
-    ~FuncStatement() override {
+    ~FuncStCommon() {
         for (auto *arg: arguments) {
             delete arg;
         }
@@ -165,10 +165,6 @@ public:
         return res + ") " + return_type.str();
     }
 
-    [[nodiscard]] std::string print() const override {
-        return head() + " " + ScopeStatement::print();
-    }
-
     [[nodiscard]] std::string signature() const {
         std::string res = "(";
         for (auto arg: arguments) {
@@ -176,6 +172,26 @@ public:
         }
         if (res.back() != '(') res = res.substr(0, res.size() - 2);
         return res + ") " + return_type.str();
+    }
+};
+
+class FuncDeclareStatement : public Statement, public FuncStCommon {
+public:
+    FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args)
+        :Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args) {}
+
+    [[nodiscard]] std::string print() const override {
+        return head();
+    }
+};
+
+class FuncStatement : public ScopeStatement, public FuncStCommon {
+public:
+    FuncStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args)) {}
+
+    [[nodiscard]] std::string print() const override {
+        return head() + " " + ScopeStatement::print();
     }
 };
 

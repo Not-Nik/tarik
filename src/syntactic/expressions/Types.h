@@ -11,21 +11,6 @@ enum TypeSize : std::uint8_t {
     I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, VOID
 };
 
-inline bool is_signed_int(TypeSize ts) {
-    if (ts >= I8 && ts <= I64) return true;
-    return false;
-}
-
-inline bool is_unsigned_int(TypeSize ts) {
-    if (ts >= U8 && ts <= U64) return true;
-    return false;
-}
-
-inline bool is_int(TypeSize ts) {
-    if (ts >= I8 && ts <= U64) return true;
-    return false;
-}
-
 inline TypeSize to_typesize(const std::string &s) {
     if (s == "I8") return I8;
     if (s == "I16") return I16;
@@ -84,11 +69,11 @@ public:
     }
 
     [[nodiscard]] bool is_signed_int() const {
-        return is_primitive && ::is_signed_int(type.size);
+        return is_primitive && (type.size >= I8 && type.size <= I64);
     }
 
     [[nodiscard]] bool is_unsigned_int() const {
-        return is_primitive && ::is_unsigned_int(type.size);
+        return is_primitive && (type.size >= U8 && type.size <= U64);
     }
 
     bool operator==(const Type &other) const {
@@ -101,7 +86,7 @@ public:
             || (is_primitive ? type.size != other.type.size : type.user_type != other.type.user_type);
     }
 
-    std::string str() const;
+    [[nodiscard]] std::string str() const;
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_

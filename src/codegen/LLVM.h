@@ -60,6 +60,7 @@ public:
 protected:
     void generate_scope(ScopeStatement *scope);
     void generate_function(FuncStatement *func);
+    bool generate_func_decl(FuncDeclareStatement *decl);
     void generate_if(IfStatement *if_);
     void generate_else(ElseStatement *else_);
     void generate_return(ReturnStatement *return_);
@@ -72,7 +73,7 @@ protected:
     static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 
     static llvm::Type *make_llvm_type(const Type &t);
-    static llvm::FunctionType *make_llvm_function_type(FuncStatement *func);
+    static llvm::FunctionType *make_llvm_function_type(FuncStCommon *func);
 };
 
 #endif //TARIK_SRC_CODEGEN_LLVM_H_

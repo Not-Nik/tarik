@@ -8,7 +8,18 @@
 #include "lexical/Lexer.h"
 
 enum StmtType {
-    SCOPE_STMT, FUNC_STMT, IF_STMT, ELSE_STMT, RETURN_STMT, WHILE_STMT, BREAK_STMT, CONTINUE_STMT, VARIABLE_STMT, STRUCT_STMT, EXPR_STMT
+    SCOPE_STMT,
+    FUNC_STMT,
+    FUNC_DECL_STMT,
+    IF_STMT,
+    ELSE_STMT,
+    RETURN_STMT,
+    WHILE_STMT,
+    BREAK_STMT,
+    CONTINUE_STMT,
+    VARIABLE_STMT,
+    STRUCT_STMT,
+    EXPR_STMT
 };
 
 class Statement {
@@ -28,7 +39,7 @@ public:
         origin = o;
     }
 
-    virtual ~Statement() = default;;
+    virtual ~Statement() = default;
 
     [[nodiscard]] virtual std::string print() const = 0;
 };

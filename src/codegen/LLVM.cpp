@@ -80,6 +80,9 @@ void LLVM::generate_statement(Statement *statement) {
         case FUNC_STMT:
             generate_function((FuncStatement *) statement);
             break;
+        case FUNC_DECL_STMT:
+            generate_func_decl((FuncDeclareStatement *) statement);
+            break;
         case IF_STMT:
             generate_if((IfStatement *) statement);
             break;
@@ -141,6 +144,16 @@ void LLVM::generate_function(FuncStatement *func) {
     functions.emplace(func->name, func_type);
 
     generate_scope(func);
+
+    if (func->return_type == Type(VOID)) {
+        builder.CreateRetVoid();
+    }
+}
+
+bool LLVM::generate_func_decl(FuncDeclareStatement *decl) {
+    llvm::FunctionType *func_type = make_llvm_function_type(decl);
+    functions.emplace(decl->name, func_type);
+    return false;
 }
 
 void LLVM::generate_if(IfStatement *if_) {
@@ -254,7 +267,9 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             for (auto arg: ce->arguments) {
                 arg_values.push_back(generate_cast(generate_expression(arg), function.getFunctionType()->getParamType(arg_i++), arg->get_type().is_signed_int()));
             }
-            return builder.CreateCall(function, arg_values, "call_temp");
+            const char *name = "";
+            if (!function.getFunctionType()->getReturnType()->isVoidTy()) name = "call_temp";
+            return builder.CreateCall(function, arg_values, name);
         }
         case DASH_EXPR:
         case DOT_EXPR:
@@ -410,7 +425,7 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
     return res;
 }
 
-llvm::FunctionType *LLVM::make_llvm_function_type(FuncStatement *func) {
+llvm::FunctionType *LLVM::make_llvm_function_type(FuncStCommon *func) {
     llvm::Type *return_type = make_llvm_type(func->return_type);
     std::vector<llvm::Type *> argument_types;
     for (auto arg: func->arguments) {

@@ -80,8 +80,10 @@ Token Lexer::consume() {
         }
 
         if (c == '#') {
-            for (; c != '\n'; c = read_stream()) {}
-            continue;
+            while (c != '\n') c = read_stream();
+            while (isspace(peek_stream())) read_stream();
+            if (tok.empty()) continue;
+            else break;
         }
 
         // Basically stop the token if we have an operator that is right after another token i.e. `peter*`
@@ -148,9 +150,7 @@ Token Lexer::consume() {
         }
     }
 
-    while (isspace(peek_stream())) {
-        read_stream();
-    }
+    while (isspace(peek_stream())) read_stream();
 
     if (stream->eof() && tok.empty()) {
         return Token(END, "", pos);
