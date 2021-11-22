@@ -92,7 +92,7 @@ public:
     Expression *operand;
 
     explicit PrefixOperatorExpression(LexerPos lp, PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR, lp), prefix_type(pt), operand(op) {
+        : Expression(PREFIX_EXPR, std::move(lp)), prefix_type(pt), operand(op) {
     }
 
     ~PrefixOperatorExpression() override {
@@ -166,7 +166,7 @@ public:
     Expression *left, *right;
 
     BinaryOperatorExpression(LexerPos lp, BinOpType bot, Expression *l, Expression *r)
-        : Expression(to_expr_type(bot), lp), bin_op_type(bot), left(l), right(r) {
+        : Expression(to_expr_type(bot), std::move(lp)), bin_op_type(bot), left(l), right(r) {
     }
 
     ~BinaryOperatorExpression() override {
@@ -189,7 +189,7 @@ public:
     std::vector<Expression *> arguments;
 
     CallExpression(LexerPos lp, Expression *c, std::vector<Expression *> args)
-        : Expression(CALL_EXPR, lp), callee(c), arguments(std::move(args)) {
+        : Expression(CALL_EXPR, std::move(lp)), callee(c), arguments(std::move(args)) {
     }
 
     ~CallExpression() override {

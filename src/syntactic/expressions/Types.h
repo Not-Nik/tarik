@@ -65,7 +65,8 @@ public:
     }
 
     [[nodiscard]] bool is_compatible(const Type &t) const {
-        return (is_primitive && t.is_primitive) || (!is_primitive && !t.is_primitive && type.user_type == t.type.user_type);
+        return pointer_level == t.pointer_level
+            && ((is_primitive && t.is_primitive) || (!is_primitive && !t.is_primitive && type.user_type == t.type.user_type));
     }
 
     [[nodiscard]] bool is_signed_int() const {
