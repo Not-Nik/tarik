@@ -67,7 +67,7 @@ bool Analyser::verify_function(FuncStatement *func) {
         return false;
     }
 
-    if (!iassert(func->return_type == Type(VOID) || does_always_return(func), func->origin, "function with return type doesn't return"))
+    if (!iassert(func->return_type == Type(VOID) || does_always_return(func), func->origin, "function with return type doesn't always return"))
         return false;
     functions.push_back(func);
     for (auto arg: func->arguments) {
@@ -200,6 +200,7 @@ bool Analyser::verify_expression(Expression *expression) {
         case INT_EXPR:
         case REAL_EXPR:
         case STR_EXPR:
+        case BOOL_EXPR:
             break;
     }
     return true;
@@ -208,8 +209,8 @@ bool Analyser::verify_expression(Expression *expression) {
 bool Analyser::does_always_return(ScopeStatement *scope) {
     for (auto it = scope->block.begin(); it != scope->block.end(); it++) {
         if (((*it)->statement_type == RETURN_STMT) || ((*it)->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) (*it)))
-            || ((*it)->statement_type == IF_STMT && does_always_return((ScopeStatement *) (*it))
-                && (it + 1 == scope->block.end() || ((*(it + 1))->statement_type == ELSE_STMT && does_always_return((ScopeStatement *) (*++it)))))
+            || ((*it)->statement_type == IF_STMT && ((IfStatement *) *it)->else_statement && does_always_return((ScopeStatement *) (*it))
+                && does_always_return(((IfStatement *) *it)->else_statement))
             || ((*it)->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) (*it))))
             return true;
     }

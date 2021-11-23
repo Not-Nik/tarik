@@ -8,7 +8,7 @@
 class StructStatement;
 
 enum TypeSize : std::uint8_t {
-    I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, VOID
+    I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, BOOL, VOID
 };
 
 inline TypeSize to_typesize(const std::string &s) {
@@ -22,6 +22,7 @@ inline TypeSize to_typesize(const std::string &s) {
     if (s == "U64") return U64;
     if (s == "F32") return F32;
     if (s == "F64") return F64;
+    if (s == "BOOL") return BOOL;
     return (TypeSize) -1;
 }
 
@@ -36,6 +37,7 @@ inline std::string to_string(const TypeSize &ts) {
     if (ts == U64) return "u64";
     if (ts == F32) return "f32";
     if (ts == F64) return "f64";
+    if (ts == BOOL) return "bool";
     if (ts == VOID) return "";
     return "";
 }

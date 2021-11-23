@@ -94,7 +94,7 @@ int main(int argc, const char *argv[]) {
                 }
                 out.put('\n');
             }
-            if (!re_emit || !emit_llvm) {
+            if (!re_emit) {
                 LLVM generator(input);
                 if (!triple.empty() && !LLVM::is_valid_triple(triple)) {
                     std::cerr << "Invalid triple '" << triple << "'";

@@ -33,6 +33,13 @@ To smart_cast_from_string(const std::string &n) {
     return std::stoi(n);
 }
 
+template <>
+inline bool smart_cast_from_string<bool>(const std::string &n) {
+    if (n == "true") return true;
+    if (n == "false") return false;
+    throw "__unexpected_bool";
+}
+
 template <class To, class = decltype(std::to_string(std::declval<To>()))>
 std::string smart_cast_to_string(To t) {
     return std::to_string(t);
@@ -40,6 +47,10 @@ std::string smart_cast_to_string(To t) {
 
 inline std::string smart_cast_to_string(std::string s) {
     return s;
+}
+
+inline std::string smart_cast_to_string(bool s) {
+    return s ? "true" : "false";
 }
 
 template <class PrimitiveType, ExprType expr_type>
@@ -66,6 +77,7 @@ public:
 };
 
 using IntExpression = PrimitiveExpression<long long int, INT_EXPR>;
+using BoolExpression = PrimitiveExpression<bool, BOOL_EXPR>;
 using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
 using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 
@@ -179,7 +191,24 @@ public:
     }
 
     [[nodiscard]] Type get_type() const override {
-        return left->get_type();
+        switch (bin_op_type) {
+            case ADD:
+            case SUB:
+            case MUL:
+            case DIV:
+                // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
+                //  to the highest bit width of the two operand
+                return left->get_type();
+            case EQ:
+            case NEQ:
+            case SM:
+            case GR:
+            case SME:
+            case GRE:
+                return Type(BOOL);
+            case ASSIGN:
+                return left->get_type(); // This is actually correct
+        }
     }
 };
 

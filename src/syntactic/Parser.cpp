@@ -72,6 +72,9 @@ void Parser::init_parslets() {
     prefix_parslets.emplace(INTEGER, new IntParselet());
     prefix_parslets.emplace(REAL, new RealParselet());
     prefix_parslets.emplace(STRING, new StringParselet());
+    // This uses a tiny bit more memory, but saves us from a double free mess
+    prefix_parslets.emplace(TRUE, new BoolParselet());
+    prefix_parslets.emplace(FALSE, new BoolParselet());
 
     // Prefix expressions
     prefix_parslets.emplace(PLUS, new PosParselet());

@@ -222,11 +222,11 @@ void LLVM::generate_while(WhileStatement *while_) {
     builder.SetInsertPoint(endwhile_block);
 }
 
-void LLVM::generate_break(BreakStatement *break_) {
+void LLVM::generate_break(BreakStatement *) {
     builder.CreateBr(last_loop_exit);
 }
 
-void LLVM::generate_continue(ContinueStatement *continue_) {
+void LLVM::generate_continue(ContinueStatement *) {
     builder.CreateBr(last_loop_entry);
 }
 
@@ -259,7 +259,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                 std::string name = ((NameExpression *) ce->callee)->name;
                 function = module->getOrInsertFunction(name, functions.at(name));
             } else {
-                throw "calling of expressions is unimplemented";
+                throw "__unimplemented(expression_calling)";
             }
 
             std::vector<llvm::Value *> arg_values;
@@ -367,6 +367,10 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             auto se = (StringExpression *) expression;
             return builder.CreateGlobalStringPtr(se->n, "string_value");
         }
+        case BOOL_EXPR: {
+            auto be = (BoolExpression *) expression;
+            return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
+        }
     }
     return nullptr;
 }
@@ -417,6 +421,9 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
                 break;
             case F64:
                 res = llvm::Type::getDoubleTy(context);
+                break;
+            case BOOL:
+                res = llvm::Type::getInt1Ty(context);
                 break;
             case VOID:
                 res = llvm::Type::getVoidTy(context);

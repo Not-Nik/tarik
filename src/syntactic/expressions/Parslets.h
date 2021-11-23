@@ -30,6 +30,7 @@ class SimpleParselet : public PrefixParselet {
 };
 
 using IntParselet = SimpleParselet<IntExpression>;
+using BoolParselet = SimpleParselet<BoolExpression>;
 using RealParselet = SimpleParselet<RealExpression>;
 using StringParselet = SimpleParselet<StringExpression>;
 

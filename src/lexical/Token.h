@@ -40,6 +40,8 @@ enum TokenType {
     RETURN,
     IF,
     ELSE,
+    TRUE,
+    FALSE,
     WHILE,
     BREAK,
     CONTINUE,
@@ -77,6 +79,8 @@ static std::map<std::string, TokenType> keywords = {
         {"return",   RETURN},
         {"if",       IF},
         {"else",     ELSE},
+        {"true",     TRUE},
+        {"false",    FALSE},
         {"while",    WHILE},
         {"break",    BREAK},
         {"continue", CONTINUE},
@@ -91,6 +95,7 @@ static std::map<std::string, TokenType> keywords = {
         {"u64",      TYPE},
         {"f32",      TYPE},
         {"f64",      TYPE},
+        {"bool",     TYPE}
 };
 
 inline std::string to_string(const TokenType &tt) {
