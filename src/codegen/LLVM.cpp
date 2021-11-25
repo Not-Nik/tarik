@@ -60,9 +60,9 @@ void LLVM::write_object_file(const std::string &to, const std::string &triple) {
     llvm::raw_fd_ostream stream(to, EC, llvm::sys::fs::CD_CreateAlways);
 
     llvm::legacy::PassManager pass;
-    auto FileType = llvm::CGFT_ObjectFile;
+    auto file_type = llvm::CGFT_ObjectFile;
 
-    if (target_machine->addPassesToEmitFile(pass, stream, nullptr, FileType)) {
+    if (target_machine->addPassesToEmitFile(pass, stream, nullptr, file_type)) {
         // damn
         std::cerr << "couldn't open '" << to << "'\n";
         return;
@@ -124,17 +124,19 @@ void LLVM::generate_scope(ScopeStatement *scope) {
 }
 
 void LLVM::generate_function(FuncStatement *func) {
+    variables.clear();
+
     llvm::FunctionType *func_type = make_llvm_function_type(func);
 
     llvm::Function *llvm_func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func->name, module.get());
-    llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "", llvm_func);
+    llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "func_entry", llvm_func);
     builder.SetInsertPoint(entry);
     current_function = llvm_func;
 
     auto it = func->arguments.begin();
     for (auto &arg: llvm_func->args()) {
-        auto arg_var = builder.CreateAlloca(arg.getType(), unsigned(0));
-        arg_var->setName((*it)->name);
+        arg.setName("arg_" + (*it)->name);
+        auto arg_var = builder.CreateAlloca(arg.getType(), unsigned(0), nullptr, "stack_" + (*it)->name);
         builder.CreateStore(&arg, arg_var);
         variables.emplace((*it)->name, std::make_pair(arg_var, arg.getType()));
     }
@@ -232,7 +234,7 @@ void LLVM::generate_continue(ContinueStatement *) {
 
 void LLVM::generate_variable(VariableStatement *var) {
     llvm::Type *type = make_llvm_type(var->type);
-    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(make_llvm_type(var->type), unsigned(0), nullptr, var->name), type));
+    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(type, unsigned(0), nullptr, var->name), type));
 }
 
 void LLVM::generate_struct(StructStatement *struct_) {
