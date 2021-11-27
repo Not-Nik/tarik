@@ -145,9 +145,10 @@ public:
     std::string name;
     Type return_type;
     std::vector<VariableStatement *> arguments;
+    bool var_arg;
 
-    FuncStCommon(std::string n, Type ret, std::vector<VariableStatement *> args)
-        : name(std::move(n)), return_type(ret), arguments(std::move(args)) {}
+    FuncStCommon(std::string n, Type ret, std::vector<VariableStatement *> args, bool va)
+        : name(std::move(n)), return_type(ret), arguments(std::move(args)), var_arg(va) {}
 
     ~FuncStCommon() {
         for (auto *arg: arguments) {
@@ -177,8 +178,8 @@ public:
 
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
-    FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args)
-        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args) {}
+    FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, bool var_arg)
+        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg) {}
 
     [[nodiscard]] std::string print() const override {
         return head();
@@ -187,8 +188,8 @@ public:
 
 class FuncStatement : public ScopeStatement, public FuncStCommon {
 public:
-    FuncStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args)) {}
+    FuncStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b, bool var_arg)
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args), var_arg) {}
 
     [[nodiscard]] std::string print() const override {
         return head() + " " + ScopeStatement::print();

@@ -139,7 +139,7 @@ LexerPos Parser::where() {
 
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
-    iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    iassert(lexer.peek().id == raw, "expected a '%s' found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     return lexer.consume();
 }
 
@@ -149,7 +149,7 @@ bool Parser::is_peek(TokenType raw) {
 
 bool Parser::check_expect(TokenType raw) {
     std::string s = to_string(raw);
-    bool r = iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    bool r = iassert(lexer.peek().id == raw, "expected a '%s' found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     lexer.consume();
     return r;
 }
@@ -198,10 +198,17 @@ Statement *Parser::parse_statement() {
         std::string name = expect(NAME).raw;
 
         std::vector<VariableStatement *> args;
+        bool var_arg = false;
+
         if (!check_expect(PAREN_OPEN))
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
         else
             while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) {
+                if (lexer.peek().id == TRIPLE_PERIOD) {
+                    var_arg = true;
+                    lexer.consume();
+                    break;
+                }
                 args.push_back(register_var(new VariableStatement(where(), type(), expect(NAME).raw)));
 
                 if (lexer.peek().id != PAREN_CLOSE)
@@ -212,9 +219,9 @@ Statement *Parser::parse_statement() {
         if (lexer.peek().id == CURLY_OPEN || lexer.peek().id == SEMICOLON) t = Type(VOID);
         else t = type();
 
-        if (lexer.peek().id == SEMICOLON) {lexer.consume(); return new FuncDeclareStatement(--where(), name, t, args);}
+        if (lexer.peek().id == SEMICOLON) {lexer.consume(); return new FuncDeclareStatement(--where(), name, t, args, var_arg);}
 
-        FuncStatement *fs = register_func(new FuncStatement(--where(), name, t, args, {}));
+        FuncStatement *fs = register_func(new FuncStatement(--where(), name, t, args, {}, var_arg));
         fs->block = block();
         return fs;
     } else if (token.id == RETURN) {

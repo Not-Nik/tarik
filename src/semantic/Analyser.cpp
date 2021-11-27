@@ -74,6 +74,8 @@ bool Analyser::verify_function(FuncStatement *func) {
         variables.push_back(arg);
     }
 
+    if (func->var_arg) warning(func->origin, "function uses var args, but they cannot be accessed");
+
     return verify_scope(func);
 }
 
@@ -182,7 +184,7 @@ bool Analyser::verify_expression(Expression *expression) {
                              func->arguments.size(),
                              ce->arguments.size()) ||
 
-                    !iassert(ce->arguments.size() <= func->arguments.size(),
+                    !iassert(func->var_arg || ce->arguments.size() <= func->arguments.size(),
                              ce->callee->origin,
                              "too many arguments, expected %i found %i.",
                              func->arguments.size(),

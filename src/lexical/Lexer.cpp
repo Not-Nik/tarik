@@ -90,12 +90,15 @@ Token Lexer::consume() {
         // Basically stop the token if we have an operator that is right after another token i.e. `peter*`
         if (!tok.empty() && // If we are in a token
             operator_startswith(c) && // And the current char starts an operator
-            !operator_startswith(tok + (char) c)) { // But the token and that char do not start an operator
+            !operator_startswith(tok + (char) c) && // But the token and that char do not start an operator
+            (c != '.')) { // And c isn't '.', because we need that for numbers
             unget_stream();
             break; // Break
         }
 
-        if (operator_startswith(c) && c != '.') {
+        // This is a bit hacky, but it works ig
+        // TODO: make this clean
+        if (operator_startswith(c) && (c != '.' || tok.empty() || tok == "." || tok == "..")) {
             if (tok.empty()) {
                 op = true;
                 tok.push_back(c);
@@ -157,8 +160,6 @@ Token Lexer::consume() {
     if (stream->eof() && tok.empty()) {
         return Token(END, "", actual_pos);
     }
-
-    if (tok == ".") op = true;
 
     TokenType type;
     if (op && operators.count(tok)) {

@@ -279,9 +279,15 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             std::vector<llvm::Value *> arg_values;
             size_t arg_i = 0;
             for (auto arg: ce->arguments) {
-                arg_values.push_back(generate_cast(generate_expression(arg),
-                                                   function.getFunctionType()->getParamType(arg_i++),
-                                                   arg->type.is_signed_int()));
+                // Check if we are past the regular, non-variable arguments,
+                // and don't try to cast if we are
+                if (arg_i >= function.getFunctionType()->getNumParams()) {
+                    arg_values.push_back(generate_expression(arg));
+                } else {
+                    arg_values.push_back(generate_cast(generate_expression(arg),
+                                                       function.getFunctionType()->getParamType(arg_i++),
+                                                       arg->type.is_signed_int()));
+                }
             }
             const char *name = "";
             if (!function.getFunctionType()->getReturnType()->isVoidTy()) name = "call_temp";
@@ -500,7 +506,7 @@ llvm::FunctionType *LLVM::make_llvm_function_type(FuncStCommon *func) {
     for (auto arg: func->arguments) {
         argument_types.push_back(make_llvm_type(arg->type));
     }
-    llvm::FunctionType *func_type = llvm::FunctionType::get(return_type, argument_types, false);
+    llvm::FunctionType *func_type = llvm::FunctionType::get(return_type, argument_types, func->var_arg);
     return func_type;
 }
 

@@ -30,7 +30,7 @@ bool test() {
 
     FIRST_TEST(lexer)
 
-        ss c("hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 \"a string\"# comment should be ignored\nback");
+        ss c("hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 . ... \"a string\"# comment should be ignored\nback");
         Lexer lexer(&c);
 
         ASSERT_TOK(NAME, "hello")
@@ -51,7 +51,9 @@ bool test() {
         ASSERT_TOK(TYPE, "i32")
         ASSERT_TOK(INTEGER, "42")
         ASSERT_TOK(REAL, "12.34")
-        ASSERT_TOK(STRING, "\"a string\"")
+        ASSERT_TOK(PERIOD, ".")
+        ASSERT_TOK(TRIPLE_PERIOD, "...")
+        ASSERT_TOK(STRING, "a string")
         ASSERT_TOK(NAME, "back")//
 
     MID_TEST(expression parsing)
@@ -96,7 +98,7 @@ bool test() {
             FuncStatement *f = p.register_func(new FuncStatement({}, "func", {}, {
                 new VariableStatement({}, integer, ""), new VariableStatement({}, integer, ""), new VariableStatement({}, integer, ""),
                 new VariableStatement({}, integer, "")
-            }, {}));
+            }, {}, false));
             Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
             delete f;
