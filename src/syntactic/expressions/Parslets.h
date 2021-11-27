@@ -52,6 +52,7 @@ class PrefixOperatorParselet : public PrefixParselet {
 
 using PosParselet = PrefixOperatorParselet<POS>;
 using NegParselet = PrefixOperatorParselet<NEG>;
+using RefParselet = PrefixOperatorParselet<REF>;
 using DerefParselet = PrefixOperatorParselet<DEREF>;
 using NotParselet = PrefixOperatorParselet<LOG_NOT>;
 

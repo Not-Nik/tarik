@@ -248,14 +248,19 @@ void LLVM::generate_struct(StructStatement *struct_) {
 }
 
 // https://stackoverflow.com/questions/3407012/rounding-up-to-the-nearest-multiple-of-a-number#3407254
-template <std::integral T>
-int roundUp(T numToRound, T multiple) {
-    if (multiple == 0) return numToRound;
+template <std::integral T> int roundUp(T
+numToRound,
+T multiple
+) {
+if (multiple == 0) return
+numToRound;
 
-    T remainder = numToRound % multiple;
-    if (remainder == 0) return numToRound;
+T remainder = numToRound % multiple;
+if (remainder == 0) return
+numToRound;
 
-    return numToRound + multiple - remainder;
+return numToRound + multiple -
+remainder;
 }
 
 llvm::Value *LLVM::generate_expression(Expression *expression) {
@@ -304,7 +309,6 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                 else
                     left = generate_cast(left, right->getType(), ce->right->type.is_signed_int());
             }
-            using llvm::CmpInst;
             switch (ce->bin_op_type) {
                 case ADD:
                     if (fp) return builder.CreateFAdd(left, right, "add_temp");
@@ -346,11 +350,39 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
         }
         case MEM_ACC_EXPR: {
             auto mae = (BinaryOperatorExpression *) expression;
-            auto gep = generate_member_access(mae);
+            llvm::Value *gep = generate_member_access(mae);
             return builder.CreateLoad(make_llvm_type(mae->type), gep, "deref_temp");
         }
-        case PREFIX_EXPR:
+        case PREFIX_EXPR: {
+            auto pe = (PrefixOperatorExpression *) expression;
+
+            if (pe->prefix_type == REF) {
+                if (pe->operand->expression_type == NAME_EXPR) {
+                    return variables.at(((NameExpression *) pe->operand)->name).first;
+                } else if (pe->operand->expression_type == MEM_ACC_EXPR) {
+                    return generate_member_access((BinaryOperatorExpression *) expression);
+                }
+            }
+
+            llvm::Value *val = generate_expression(pe->operand);
+
+            switch (pe->prefix_type) {
+                case POS:
+                    throw; // how would you do this in llvm?
+                    break;
+                case NEG:
+                    if (val->getType()->isFloatingPointTy()) return builder.CreateFNeg(val, "neg_temp");
+                    else return builder.CreateNeg(val, "neg_temp");
+                case DEREF:
+                    return builder.CreateLoad(make_llvm_type(pe->type), val, "deref_temp");
+                case LOG_NOT:
+                    return builder.CreateNot(val, "not_temp");
+                    break;
+                case REF:
+                    break;
+            }
             break;
+        }
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
             llvm::Value *dest;
@@ -362,6 +394,10 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             } else if (ae->left->expression_type == MEM_ACC_EXPR) {
                 dest = generate_member_access((BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
+            } else if (ae->left->expression_type == PREFIX_EXPR && ((PrefixOperatorExpression *) ae->left)->prefix_type == DEREF) {
+                auto deref = (PrefixOperatorExpression *) ae->left;
+                dest = generate_expression(deref->operand);
+                dest_type = make_llvm_type(deref->type);
             } else {
                 dest = generate_expression(ae->left);
                 dest_type = dest->getType();

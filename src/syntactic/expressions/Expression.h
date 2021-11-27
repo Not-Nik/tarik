@@ -68,7 +68,7 @@ using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
 using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 
 enum PrefixType {
-    POS, NEG, DEREF, LOG_NOT
+    POS, NEG, REF, DEREF, LOG_NOT
 };
 
 inline std::string to_string(PrefixType pt) {
@@ -77,6 +77,8 @@ inline std::string to_string(PrefixType pt) {
             return "+";
         case NEG:
             return "-";
+        case REF:
+            return "&";
         case DEREF:
             return "*";
         case LOG_NOT:

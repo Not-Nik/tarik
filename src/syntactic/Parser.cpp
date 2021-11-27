@@ -76,6 +76,7 @@ void Parser::init_parslets() {
     // Prefix expressions
     prefix_parslets.emplace(PLUS, new PosParselet());
     prefix_parslets.emplace(MINUS, new NegParselet());
+    prefix_parslets.emplace(AMPERSAND, new RefParselet());
     prefix_parslets.emplace(ASTERISK, new DerefParselet());
     prefix_parslets.emplace(NOT, new NotParselet());
     prefix_parslets.emplace(PAREN_OPEN, new GroupParselet());

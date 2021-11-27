@@ -67,8 +67,11 @@ public:
     }
 
     [[nodiscard]] bool is_compatible(const Type &t) const {
-        if (operator==(Type(VOID)) || t == Type(VOID) || pointer_level != t.pointer_level || is_primitive != t.is_primitive) return false;
+        if (operator==(Type(VOID)) || t == Type(VOID)) return false;
+        if ((pointer_level == 0 && t.pointer_level > 0) || (t.pointer_level == 0 && pointer_level > 0)) return false;
+        if (is_primitive != t.is_primitive) return false;
         if (is_primitive) return true;
+        if (pointer_level > 0 && t.pointer_level > 0) return true;
         return type.user_type == t.type.user_type;
     }
 
@@ -78,6 +81,16 @@ public:
 
     [[nodiscard]] bool is_unsigned_int() const {
         return is_primitive && (type.size >= U8 && type.size <= U64);
+    }
+
+    [[nodiscard]] size_t get_integer_bitwidth() const {
+        if (!is_primitive || type.size == F32 || type.size == F64 || type.size == VOID) return 0;
+        if (type.size == I8 || type.size == U8) return 8;
+        if (type.size == I16 || type.size == U16) return 16;
+        if (type.size == I32 || type.size == U32) return 32;
+        if (type.size == I64 || type.size == U64) return 64;
+        if (type.size == BOOL) return 1;
+        return 0;
     }
 
     bool operator==(const Type &other) const {

@@ -232,11 +232,7 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier")) return false;
             std::string member_name = ((NameExpression *) right)->name;
 
-            if (!iassert(s->has_member(member_name),
-                         right->origin,
-                         "no member named '%s' in '%s'",
-                         member_name.c_str(),
-                         left->type.str().c_str()))
+            if (!iassert(s->has_member(member_name), right->origin, "no member named '%s' in '%s'", member_name.c_str(), left->type.str().c_str()))
                 return false;
             mae->assign_type(s->get_member_type(member_name));
             break;
@@ -244,8 +240,30 @@ bool Analyser::verify_expression(Expression *expression) {
         case PREFIX_EXPR: {
             auto pe = (PrefixOperatorExpression *) expression;
             if (!verify_expression(pe->operand)) return false;
-            pe->assign_type(pe->operand->type);
-            return iassert(pe->type.is_primitive || pe->type.pointer_level > 0, pe->origin, "invalid operand to unary expression");
+
+            bool res = true;
+            Type pe_type = pe->operand->type;
+
+            switch (pe->prefix_type) {
+                case POS:
+                case NEG:
+                case LOG_NOT:
+                    res = iassert(pe_type.is_primitive || pe_type.pointer_level > 0, pe->origin, "invalid operand to unary expression");
+                    break;
+                case REF: {
+                    pe_type.pointer_level++;
+                    ExprType etype = pe->operand->expression_type;
+                    res = iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR, pe->origin, "cannot take reference of temporary value");
+                    if (!res) note(pe->operand->origin, "'%s' produces a temporary value", pe->operand->print().c_str());
+                    break;
+                }
+                case DEREF:
+                    res = iassert(pe_type.pointer_level > 0, pe->origin, "cannot dereference non-pointer type '%s'", pe->operand->type.str().c_str());
+                    pe_type.pointer_level--;
+            }
+
+            pe->assign_type(pe_type);
+            return res;
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
@@ -270,7 +288,7 @@ bool Analyser::verify_expression(Expression *expression) {
 }
 
 bool Analyser::does_always_return(ScopeStatement *scope) {
-    for (auto &it : scope->block) {
+    for (auto &it: scope->block) {
         if ((it->statement_type == RETURN_STMT) || (it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it))
             || (it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement && does_always_return((ScopeStatement *) it)
                 && does_always_return(((IfStatement *) it)->else_statement))
