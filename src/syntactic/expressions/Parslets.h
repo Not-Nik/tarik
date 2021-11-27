@@ -16,7 +16,7 @@ public:
 
 class InfixParselet {
 public:
-    virtual Expression *parse(Parser *parser, Expression *left) = 0;
+    virtual Expression *parse(Parser *parser, const Token &, Expression *left) = 0;
 
     virtual Precedence get_type() { return static_cast<Precedence>(0); }
     virtual ~InfixParselet() = default;
@@ -57,10 +57,10 @@ using NotParselet = PrefixOperatorParselet<LOG_NOT>;
 
 template <BinOpType bot, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
-    Expression *parse(Parser *parser, Expression *left) override {
+    Expression *parse(Parser *parser, const Token &token, Expression *left) override {
         Expression *right = parser->parse_expression(prec);
 
-        return new BinaryOperatorExpression(parser->where(), bot, left, right);
+        return new BinaryOperatorExpression(token.where, bot, left, right);
     }
 
     Precedence get_type() override {
@@ -78,6 +78,7 @@ using SmParselet = BinaryOperatorParselet<SM, COMPARE>;
 using GrParselet = BinaryOperatorParselet<GR, COMPARE>;
 using SeParselet = BinaryOperatorParselet<SME, COMPARE>;
 using GeParselet = BinaryOperatorParselet<GRE, COMPARE>;
+using MemberAccessParselet = BinaryOperatorParselet<MEM_ACC, CALL>;
 
 class GroupParselet : public PrefixParselet {
     Expression *parse(Parser *parser, const Token &) override {
@@ -88,10 +89,10 @@ class GroupParselet : public PrefixParselet {
 };
 
 class AssignParselet : public InfixParselet {
-    Expression *parse(Parser *parser, Expression *left) override {
+    Expression *parse(Parser *parser, const Token &token, Expression *left) override {
         Expression *right = parser->parse_expression(ASSIGNMENT - 1);
 
-        return new BinaryOperatorExpression(parser->where(), ASSIGN, left, right);
+        return new BinaryOperatorExpression(token.where, ASSIGN, left, right);
     }
 
     Precedence get_type() override {
@@ -100,9 +101,8 @@ class AssignParselet : public InfixParselet {
 };
 
 class CallParselet : public InfixParselet {
-    Expression *parse(Parser *parser, Expression *left) override {
+    Expression *parse(Parser *parser, const Token &token, Expression *left) override {
         std::vector<Expression *> args;
-        LexerPos where = parser->where();
 
         while (!parser->lexer.peek().raw.empty() && parser->lexer.peek().id != PAREN_CLOSE) {
             args.push_back(parser->parse_expression());
@@ -112,7 +112,7 @@ class CallParselet : public InfixParselet {
         }
         parser->lexer.consume();
 
-        return new CallExpression(where, left, args);
+        return new CallExpression(token.where, left, args);
     }
 
     Precedence get_type() override {

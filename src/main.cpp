@@ -81,8 +81,10 @@ int main(int argc, const char *argv[]) {
         } while (statements.back());
         statements.pop_back();
 
-        Analyser analyser;
-        analyser.verify_statements(statements);
+        if (errorcount() == 0) {
+            Analyser analyser;
+            analyser.verify_statements(statements);
+        }
 
         if (!endfile()) return 1;
 

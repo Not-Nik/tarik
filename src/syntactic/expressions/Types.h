@@ -8,7 +8,7 @@
 class StructStatement;
 
 enum TypeSize : std::uint8_t {
-    I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, BOOL, VOID
+    VOID, I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, BOOL
 };
 
 inline TypeSize to_typesize(const std::string &s) {
@@ -54,7 +54,7 @@ public:
     TypeUnion type;
 
     Type()
-        : type(TypeUnion{U8}) {
+        : type(TypeUnion{VOID}) {
         is_primitive = true;
         pointer_level = 0;
     };
@@ -67,8 +67,9 @@ public:
     }
 
     [[nodiscard]] bool is_compatible(const Type &t) const {
-        return pointer_level == t.pointer_level
-            && ((is_primitive && t.is_primitive) || (!is_primitive && !t.is_primitive && type.user_type == t.type.user_type));
+        if (operator==(Type(VOID)) || t == Type(VOID) || pointer_level != t.pointer_level || is_primitive != t.is_primitive) return false;
+        if (is_primitive) return true;
+        return type.user_type == t.type.user_type;
     }
 
     [[nodiscard]] bool is_signed_int() const {

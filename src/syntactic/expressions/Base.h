@@ -49,22 +49,21 @@ enum Precedence {
 };
 
 enum ExprType {
-    CALL_EXPR, DASH_EXPR, // add subtract
-    DOT_EXPR, // multiply divide
-    EQ_EXPR, COMP_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, BOOL_EXPR, REAL_EXPR, STR_EXPR
+    CALL_EXPR, DASH_EXPR, DOT_EXPR, EQ_EXPR, COMP_EXPR, MEM_ACC_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, BOOL_EXPR, REAL_EXPR, STR_EXPR
 };
 
 class Expression : public Statement {
 public:
     ExprType expression_type;
+    Type type = {};
 
     Expression()
         : Statement(), expression_type(NAME_EXPR) {}
 
-    explicit Expression(ExprType t, LexerPos lp)
+    explicit Expression(ExprType t, const LexerPos &lp)
         : Statement(EXPR_STMT, lp) { expression_type = t; }
 
-    [[nodiscard]] virtual Type get_type() const = 0;
+    void assign_type(Type t) { type = t; }
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_BASE_H_

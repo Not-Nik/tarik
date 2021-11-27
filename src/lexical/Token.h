@@ -23,6 +23,7 @@ enum TokenType {
     CURLY_CLOSE,
     BRACKET_OPEN,
     BRACKET_CLOSE,
+    PERIOD,
     COMMA,
     SEMICOLON,
     COLON,
@@ -50,7 +51,7 @@ enum TokenType {
     USER_TYPE
 };
 
-static std::map<std::string, TokenType> operators = {
+inline std::map<std::string, TokenType> operators = {
         {"+",  PLUS},
         {"-",  MINUS},
         {"*",  ASTERISK},
@@ -61,6 +62,7 @@ static std::map<std::string, TokenType> operators = {
         {"}",  CURLY_CLOSE},
         {"[",  BRACKET_OPEN},
         {"]",  BRACKET_CLOSE},
+        {".",  PERIOD},
         {",",  COMMA},
         {";",  SEMICOLON},
         {":",  COLON},
@@ -74,7 +76,7 @@ static std::map<std::string, TokenType> operators = {
         {">",  GREATER},
         {"!",  NOT}};
 
-static std::map<std::string, TokenType> keywords = {
+inline std::map<std::string, TokenType> keywords = {
         {"fn",       FUNC},
         {"return",   RETURN},
         {"if",       IF},

@@ -11,15 +11,11 @@ class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(LexerPos lp, std::string n)
-        : Expression(NAME_EXPR, std::move(lp)), name(std::move(n)) {}
+    explicit NameExpression(const LexerPos &lp, std::string n)
+        : Expression(NAME_EXPR, lp), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return name;
-    }
-
-    [[nodiscard]] Type get_type() const override {
-        return {};
     }
 };
 
@@ -64,16 +60,6 @@ public:
     [[nodiscard]] std::string print() const override {
         return smart_cast_to_string(n);
     }
-
-    [[nodiscard]] Type get_type() const override {
-        if (expr_type == REAL_EXPR) {
-            return Type(F64, 0);
-        } else if (expr_type == INT_EXPR) {
-            return Type(I64, 0);
-        } else if (expr_type == STR_EXPR) {
-            return Type(U8, 1);
-        }
-    }
 };
 
 using IntExpression = PrimitiveExpression<long long int, INT_EXPR>;
@@ -103,8 +89,8 @@ public:
     PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixOperatorExpression(LexerPos lp, PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR, std::move(lp)), prefix_type(pt), operand(op) {
+    explicit PrefixOperatorExpression(const LexerPos &lp, PrefixType pt, Expression *op)
+        : Expression(PREFIX_EXPR, lp), prefix_type(pt), operand(op) {
     }
 
     ~PrefixOperatorExpression() override {
@@ -114,14 +100,10 @@ public:
     [[nodiscard]] std::string print() const override {
         return to_string(prefix_type) + operand->print();
     }
-
-    [[nodiscard]] Type get_type() const override {
-        return operand->get_type();
-    }
 };
 
 enum BinOpType {
-    ADD, SUB, MUL, DIV, EQ, NEQ, SM, GR, SME, GRE, ASSIGN
+    ADD, SUB, MUL, DIV, EQ, NEQ, SM, GR, SME, GRE, MEM_ACC, ASSIGN
 };
 
 constexpr ExprType to_expr_type(BinOpType bot) {
@@ -140,6 +122,8 @@ constexpr ExprType to_expr_type(BinOpType bot) {
         case SME:
         case GRE:
             return COMP_EXPR;
+        case MEM_ACC:
+            return MEM_ACC_EXPR;
         case ASSIGN:
             return ASSIGN_EXPR;
     }
@@ -167,6 +151,8 @@ inline std::string to_string(BinOpType bot) {
             return "<=";
         case GRE:
             return ">=";
+        case MEM_ACC:
+            return ".";
         case ASSIGN:
             return "=";
     }
@@ -177,8 +163,8 @@ public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryOperatorExpression(LexerPos lp, BinOpType bot, Expression *l, Expression *r)
-        : Expression(to_expr_type(bot), std::move(lp)), bin_op_type(bot), left(l), right(r) {
+    BinaryOperatorExpression(const LexerPos &lp, BinOpType bot, Expression *l, Expression *r)
+        : Expression(to_expr_type(bot), lp), bin_op_type(bot), left(l), right(r) {
     }
 
     ~BinaryOperatorExpression() override {
@@ -189,27 +175,6 @@ public:
     [[nodiscard]] std::string print() const override {
         return "(" + left->print() + to_string(bin_op_type) + right->print() + ")";
     }
-
-    [[nodiscard]] Type get_type() const override {
-        switch (bin_op_type) {
-            case ADD:
-            case SUB:
-            case MUL:
-            case DIV:
-                // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
-                //  to the highest bit width of the two operand
-                return left->get_type();
-            case EQ:
-            case NEQ:
-            case SM:
-            case GR:
-            case SME:
-            case GRE:
-                return Type(BOOL);
-            case ASSIGN:
-                return left->get_type(); // This is actually correct
-        }
-    }
 };
 
 class CallExpression : public Expression {
@@ -217,8 +182,8 @@ public:
     Expression *callee;
     std::vector<Expression *> arguments;
 
-    CallExpression(LexerPos lp, Expression *c, std::vector<Expression *> args)
-        : Expression(CALL_EXPR, std::move(lp)), callee(c), arguments(std::move(args)) {
+    CallExpression(const LexerPos &lp, Expression *c, std::vector<Expression *> args)
+        : Expression(CALL_EXPR, lp), callee(c), arguments(std::move(args)) {
     }
 
     ~CallExpression() override {
@@ -238,11 +203,6 @@ public:
             arg_string.pop_back();
         }
         return callee->print() + "(" + arg_string + ")";
-    }
-
-    [[nodiscard]] Type get_type() const override {
-        // Todo: this is utterly wrong, but i don't think it'll ever get called anyways
-        return callee->get_type();
     }
 };
 

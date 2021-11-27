@@ -23,38 +23,35 @@ std::vector<Statement *> Parser::block() {
     if (!check_expect(CURLY_OPEN))
         return {};
     std::vector<Statement *> res;
-    variable_pop_stack.push_back(0);
     while (!lexer.peek().raw.empty() && lexer.peek().id != CURLY_CLOSE) {
         Statement *statement = parse_statement();
         res.push_back(statement);
     }
-    for (int i = 0; i < variable_pop_stack.back(); i++)
-        variables.pop_back();
-    variable_pop_stack.pop_back();
     expect(CURLY_CLOSE);
     return res;
 }
 
 Type Parser::type() {
-    iassert(lexer.peek().id == TYPE or lexer.peek().id == USER_TYPE, "Expected type name");
+    auto peek = lexer.peek();
+    iassert(peek.id == TYPE or peek.id == USER_TYPE, "expected type name");
     Type t;
 
-    if (lexer.peek().id == TYPE) {
+    if (peek.id == TYPE) {
         std::string type_name;
-        for (auto c: lexer.peek().raw)
+        for (auto c: peek.raw)
             type_name.push_back((char) toupper(c));
         TypeSize size = to_typesize(type_name);
-        iassert(size != (TypeSize) -1, "Internal: Couldn't find enum member for built-in type");
+        iassert(size != (TypeSize) -1, "internal: couldn't find enum member for built-in type");
         t.type.size = size;
     } else {
         StructStatement *structure;
         for (StructStatement *st: structures) {
-            if (st->name == lexer.peek().raw) {
+            if (st->name == peek.raw) {
                 structure = st;
                 break;
             }
         }
-        iassert(structure, "Undefined structure %s", lexer.peek().raw.c_str());
+        iassert(structure, "undefined structure %s", peek.raw.c_str());
         t.type.user_type = structure;
         t.is_primitive = false;
     }
@@ -94,14 +91,13 @@ void Parser::init_parslets() {
     infix_parslets.emplace(GREATER, new GrParselet());
     infix_parslets.emplace(SMALLER_EQUAL, new SeParselet());
     infix_parslets.emplace(GREATER_EQUAL, new GeParselet());
+    infix_parslets.emplace(PERIOD, new MemberAccessParselet());
 
     // Call
     infix_parslets.emplace(PAREN_OPEN, new CallParselet());
 
     // Assign expressions
     infix_parslets.emplace(EQUAL, new AssignParselet());
-
-    variable_pop_stack.push_back(0);
 }
 
 Parser::Parser(std::istream *code)
@@ -142,7 +138,7 @@ LexerPos Parser::where() {
 
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
-    iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     return lexer.consume();
 }
 
@@ -152,15 +148,14 @@ bool Parser::is_peek(TokenType raw) {
 
 bool Parser::check_expect(TokenType raw) {
     std::string s = to_string(raw);
-    bool r = iassert(lexer.peek().id == raw, "Expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    bool r = iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     lexer.consume();
     return r;
 }
 
 VariableStatement *Parser::register_var(VariableStatement *var) {
-    variable_pop_stack.back()++;
     variables.push_back(var);
-    return variables.back();
+    return var;
 }
 
 FuncStatement *Parser::register_func(FuncStatement *func) {
@@ -168,10 +163,16 @@ FuncStatement *Parser::register_func(FuncStatement *func) {
     return func;
 }
 
+StructStatement *Parser::register_struct(StructStatement *struct_) {
+    keywords.emplace(struct_->name, USER_TYPE);
+    structures.push_back(struct_);
+    return struct_;
+}
+
 Expression *Parser::parse_expression(int precedence) {
     Token token = lexer.consume();
     if (token.raw.empty()) return reinterpret_cast<Expression *>(-1);
-    if (!iassert(prefix_parslets.count(token.id) > 0, "Unexpected token '%s'", token.raw.c_str()))
+    if (!iassert(prefix_parslets.count(token.id) > 0, "unexpected token '%s'", token.raw.c_str()))
         return nullptr;
     PrefixParselet *prefix = prefix_parslets[token.id];
 
@@ -181,7 +182,7 @@ Expression *Parser::parse_expression(int precedence) {
         token = lexer.consume();
 
         InfixParselet *infix = infix_parslets[token.id];
-        left = infix->parse(this, left);
+        left = infix->parse(this, token, left);
     }
 
     return left;
@@ -225,7 +226,7 @@ Statement *Parser::parse_statement() {
         auto is = new IfStatement(where(), parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             auto es = parse_statement();
-            iassert(es->statement_type == ELSE_STMT, "Internal: Next token is 'else', but parsed statement isn't. Report this as a bug");
+            iassert(es->statement_type == ELSE_STMT, "internal: next token is 'else', but parsed statement isn't. report this as a bug");
             is->else_statement = (ElseStatement *) es;
         }
         return is;
@@ -245,10 +246,32 @@ Statement *Parser::parse_statement() {
         return new ContinueStatement(token.where);
     } else if (token.id == CURLY_OPEN) {
         return new ScopeStatement(SCOPE_STMT, where(), block());
+    } else if (token.id == STRUCT) {
+        lexer.consume();
+
+        iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
+        std::string name = lexer.consume().raw;
+
+        expect(CURLY_OPEN);
+
+        std::vector<VariableStatement *> members;
+
+        while (lexer.peek().id != CURLY_CLOSE) {
+            Type member_type = type();
+
+            iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
+            std::string member_name = lexer.consume().raw;
+
+            members.push_back(new VariableStatement(where(), member_type, member_name));
+            expect(SEMICOLON);
+        }
+        lexer.consume();
+
+        return register_struct(new StructStatement(token.where, name, members));
     } else if (token.id == TYPE or token.id == USER_TYPE) {
         Type t = type();
 
-        iassert(is_peek(NAME), "Expected an identifier found '%s' instead", lexer.peek().raw.c_str());
+        iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
         std::string name = lexer.peek().raw;
 
         if (lexer.peek(1).id != EQUAL) {

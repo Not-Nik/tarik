@@ -23,7 +23,6 @@ class Parser {
     std::map<TokenType, InfixParselet *> infix_parslets;
 
     std::vector<VariableStatement *> variables;
-    std::vector<int> variable_pop_stack;
 
     std::vector<StructStatement *> structures;
     std::vector<FuncStatement *> functions;
@@ -38,7 +37,7 @@ class Parser {
 
 public:
     explicit Parser(std::istream *code);
-    explicit Parser(const std::filesystem::path& f);
+    explicit Parser(const std::filesystem::path &f);
 
     ~Parser();
 
@@ -54,8 +53,8 @@ public:
     bool is_peek(TokenType raw);
 
     VariableStatement *register_var(VariableStatement *var);
-
     FuncStatement *register_func(FuncStatement *func);
+    StructStatement *register_struct(StructStatement *struct_);
 
     Expression *parse_expression(int precedence = 0);
 

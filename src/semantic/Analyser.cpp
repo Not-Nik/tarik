@@ -134,12 +134,37 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
-    bool res = iassert(!is_var_declared(var->name), var->origin, "redefinition of '%s'", var->name.c_str());
-    if (res) variables.push_back(var);
-    return res;
+    for (auto variable: variables) {
+        if (var->name == variable->name) {
+            error(var->origin, "redefinition of '%s'", var->name.c_str());
+            note(variable->origin, "previous definition here");
+            return false;
+        }
+    }
+    variables.push_back(var);
+    return true;
 }
 
 bool Analyser::verify_struct(StructStatement *struct_) {
+    std::vector<std::string> registered;
+
+    for (auto structure: structures) {
+        if (struct_->name == structure->name) {
+            error(struct_->origin, "redefinition of '%s'", struct_->name.c_str());
+            note(structure->origin, "previous definition here");
+            return false;
+        }
+    }
+
+    for (auto member: struct_->members) {
+        if (!iassert(std::find(registered.begin(), registered.end(), member->name) == registered.end(),
+                     member->origin,
+                     "duplicate member '%s'",
+                     member->name.c_str()))
+            return false;
+        registered.push_back(member->name);
+    }
+    structures.push_back(struct_);
     return true;
 }
 
@@ -167,13 +192,14 @@ bool Analyser::verify_expression(Expression *expression) {
                 for (size_t i = 0; i < func->arguments.size(); i++) {
                     VariableStatement *arg_var = func->arguments[i];
                     Expression *arg = ce->arguments[i];
-                    if (!iassert(arg_var->type.is_compatible(arg->get_type()),
-                                 arg->origin,
-                                 "passing value of type '%s' to argument of type '%s'",
-                                 arg->get_type().str().c_str(),
-                                 arg_var->type.str().c_str()) || !verify_expression(arg))
+                    if (!verify_expression(arg) || !iassert(arg_var->type.is_compatible(arg->type),
+                                                            arg->origin,
+                                                            "passing value of type '%s' to argument of type '%s'",
+                                                            arg->type.str().c_str(),
+                                                            arg_var->type.str().c_str()) || !verify_expression(arg))
                         return false;
                 }
+                ce->assign_type(func->return_type);
             } else {
                 return iassert(false, ce->origin, "calling of expressions is unimplemented");
             }
@@ -185,33 +211,70 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            return verify_expression(ae->left) && verify_expression(ae->right)
-                && iassert(ae->left->get_type().is_compatible(ae->right->get_type()), ae->origin, "invalid operands to binary expression");
+            if (!verify_expression(ae->left) || !verify_expression(ae->right)
+                || !iassert(ae->left->type.is_compatible(ae->right->type), ae->origin, "invalid operands to binary expression"))
+                return false;
+            if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR) ae->assign_type(Type(BOOL));
+                // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
+                //  to the highest bit width of the two operand
+            else ae->assign_type(ae->left->type);
+            break;
+        }
+        case MEM_ACC_EXPR: {
+            auto mae = (BinaryOperatorExpression *) expression;
+            auto left = mae->left;
+            auto right = mae->right;
+
+            if (!verify_expression(left)) return false;
+
+            if (!iassert(!left->type.is_primitive, left->origin, "'%s' is not a structure", left->type.str().c_str())) return false;
+            StructStatement *s = left->type.type.user_type;
+            if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier")) return false;
+            std::string member_name = ((NameExpression *) right)->name;
+
+            if (!iassert(s->has_member(member_name),
+                         right->origin,
+                         "no member named '%s' in '%s'",
+                         member_name.c_str(),
+                         left->type.str().c_str()))
+                return false;
+            mae->assign_type(s->get_member_type(member_name));
+            break;
         }
         case PREFIX_EXPR: {
             auto pe = (PrefixOperatorExpression *) expression;
-            return verify_expression(pe->operand)
-                && iassert(pe->get_type().is_primitive || pe->get_type().pointer_level > 0, pe->origin, "invalid operand to unary expression");
+            if (!verify_expression(pe->operand)) return false;
+            pe->assign_type(pe->operand->type);
+            return iassert(pe->type.is_primitive || pe->type.pointer_level > 0, pe->origin, "invalid operand to unary expression");
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
-            return iassert(is_var_declared(ne->name), expression->origin, "undefined variable '%s'", ne->name.c_str());
+            if (!iassert(is_var_declared(ne->name), expression->origin, "undefined variable '%s'", ne->name.c_str())) return false;
+            ne->assign_type(get_variable(ne->name)->type);
+            break;
         }
         case INT_EXPR:
+            expression->assign_type(Type(I32));
+            break;
         case REAL_EXPR:
+            expression->assign_type(Type(F32));
+            break;
         case STR_EXPR:
+            expression->assign_type(Type(U8, 1));
+            break;
         case BOOL_EXPR:
+            expression->assign_type(Type(BOOL));
             break;
     }
     return true;
 }
 
 bool Analyser::does_always_return(ScopeStatement *scope) {
-    for (auto it = scope->block.begin(); it != scope->block.end(); it++) {
-        if (((*it)->statement_type == RETURN_STMT) || ((*it)->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) (*it)))
-            || ((*it)->statement_type == IF_STMT && ((IfStatement *) *it)->else_statement && does_always_return((ScopeStatement *) (*it))
-                && does_always_return(((IfStatement *) *it)->else_statement))
-            || ((*it)->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) (*it))))
+    for (auto &it : scope->block) {
+        if ((it->statement_type == RETURN_STMT) || (it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it))
+            || (it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement && does_always_return((ScopeStatement *) it)
+                && does_always_return(((IfStatement *) it)->else_statement))
+            || (it->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) it)))
             return true;
     }
     return false;
@@ -233,4 +296,8 @@ FuncStCommon *Analyser::get_func_decl(const std::string &name) {
     auto decl = std::find_if(declarations.begin(), declarations.end(), [name](FuncDeclareStatement *v) { return name == v->name; });
     if (decl != declarations.end()) return *decl;
     return nullptr;
+}
+
+VariableStatement *Analyser::get_variable(const std::string &name) {
+    return *std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; });
 }

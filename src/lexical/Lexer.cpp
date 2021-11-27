@@ -151,11 +151,14 @@ Token Lexer::consume() {
         }
     }
 
+    auto actual_pos = pos;
     while (isspace(peek_stream())) read_stream();
 
     if (stream->eof() && tok.empty()) {
-        return Token(END, "", pos);
+        return Token(END, "", actual_pos);
     }
+
+    if (tok == ".") op = true;
 
     TokenType type;
     if (op && operators.count(tok)) {
@@ -171,7 +174,7 @@ Token Lexer::consume() {
     } else {
         type = NAME;
     }
-    return Token(type, tok, pos);
+    return Token(type, tok, actual_pos);
 }
 
 LexerPos Lexer::where() {

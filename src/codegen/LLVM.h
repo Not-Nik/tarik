@@ -36,6 +36,7 @@ class LLVM {
     llvm::BasicBlock *last_loop_entry = nullptr, *last_loop_exit = nullptr;
     std::map<std::string, llvm::FunctionType *> functions;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
+    std::map<StructStatement *, llvm::StructType *> structures;
 public:
     explicit LLVM(const std::string &name);
     static void force_init();
@@ -72,8 +73,9 @@ protected:
     llvm::Value *generate_expression(Expression *expression);
     static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 
-    static llvm::Type *make_llvm_type(const Type &t);
-    static llvm::FunctionType *make_llvm_function_type(FuncStCommon *func);
+    llvm::Type *make_llvm_type(const Type &t);
+    llvm::FunctionType *make_llvm_function_type(FuncStCommon *func);
+    llvm::Value *generate_member_access(BinaryOperatorExpression *mae);
 };
 
 #endif //TARIK_SRC_CODEGEN_LLVM_H_

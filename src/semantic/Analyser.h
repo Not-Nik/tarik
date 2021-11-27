@@ -9,6 +9,7 @@
 
 class Analyser {
     std::vector<FuncStatement *> functions;
+    std::vector<StructStatement *> structures;
     std::vector<VariableStatement *> variables;
     std::vector<FuncDeclareStatement *> declarations;
     Statement *last_loop = nullptr;
@@ -33,7 +34,9 @@ protected:
     bool does_always_return(ScopeStatement *scope);
     bool is_var_declared(const std::string &name);
     bool is_func_declared(const std::string &name);
+
     FuncStCommon *get_func_decl(const std::string &name);
+    VariableStatement *get_variable(const std::string &name);
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_

@@ -178,7 +178,7 @@ public:
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
     FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args)
-        :Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args) {}
+        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args) {}
 
     [[nodiscard]] std::string print() const override {
         return head();
@@ -200,6 +200,9 @@ public:
     std::string name;
     std::vector<VariableStatement *> members;
 
+    StructStatement(const LexerPos &o, std::string n, std::vector<VariableStatement *> m)
+        : Statement(STRUCT_STMT, o), name(std::move(n)), members(std::move(m)) {}
+
     ~StructStatement() override {
         for (auto *m: members) {
             delete m;
@@ -207,17 +210,26 @@ public:
     }
 
     bool has_member(const std::string &n) {
-        return std::any_of(members.front(), members.back(), [n](const VariableStatement &mem) {
-            return mem.name == n;
-        });
+        for (auto mem: members) {
+            if (mem->name == n)
+                return true;
+        }
+        return false;
     }
 
     Type get_member_type(const std::string &n) {
-        for (auto *mem: members) {
+        for (auto mem: members) {
             if (mem->name == n)
                 return mem->type;
         }
         return {};
+    }
+
+    int get_member_index(const std::string &n) {
+        for (size_t i = 0; i < members.size(); i++) {
+            if (members[i]->name == n) return i;
+        }
+        return -1;
     }
 
     [[nodiscard]] std::string print() const override {
