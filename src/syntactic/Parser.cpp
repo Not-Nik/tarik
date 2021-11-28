@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <utility>
+#include <filesystem>
 
 Precedence Parser::get_precedence() {
     if (lexer.peek().id == SEMICOLON) {
@@ -196,7 +197,8 @@ Statement *Parser::parse_statement() {
 
     if (token.id == FUNC) {
         lexer.consume();
-        std::string name = expect(NAME).raw;
+        Token name_tok = expect(NAME);
+        std::string name = name_tok.raw;
 
         std::vector<VariableStatement *> args;
         bool var_arg = false;
@@ -220,9 +222,12 @@ Statement *Parser::parse_statement() {
         if (lexer.peek().id == CURLY_OPEN || lexer.peek().id == SEMICOLON) t = Type(VOID);
         else t = type();
 
-        if (lexer.peek().id == SEMICOLON) {lexer.consume(); return new FuncDeclareStatement(--where(), name, t, args, var_arg);}
+        if (lexer.peek().id == SEMICOLON) {
+            lexer.consume();
+            return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg);
+        }
 
-        FuncStatement *fs = register_func(new FuncStatement(--where(), name, t, args, {}, var_arg));
+        FuncStatement *fs = register_func(new FuncStatement(name_tok.where, name, t, args, {}, var_arg));
         fs->block = block();
         return fs;
     } else if (token.id == RETURN) {
@@ -277,6 +282,24 @@ Statement *Parser::parse_statement() {
         lexer.consume();
 
         return register_struct(new StructStatement(token.where, name, members));
+    } else if (token.id == IMPORT) {
+        lexer.consume();
+
+        Token import = expect(STRING);
+        std::vector<Statement *> statements;
+        if (import.id == STRING) {
+            std::filesystem::path path = import.raw;
+            if (iassert(exists(path), "tried to import '%s', but file can't be found", import.raw.c_str())) {
+                Parser p(absolute(path));
+                do {
+                    statements.push_back(p.parse_statement());
+                } while (statements.back());
+                statements.pop_back();
+            }
+        }
+        expect(SEMICOLON);
+
+        return new ImportStatement(token.where, statements);
     } else if (token.id == TYPE or token.id == USER_TYPE) {
         Type t = type();
 

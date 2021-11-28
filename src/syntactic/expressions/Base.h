@@ -19,6 +19,7 @@ enum StmtType {
     CONTINUE_STMT,
     VARIABLE_STMT,
     STRUCT_STMT,
+    IMPORT_STMT,
     EXPR_STMT
 };
 

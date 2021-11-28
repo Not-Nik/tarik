@@ -29,6 +29,8 @@ bool Analyser::verify_statement(Statement *statement) {
             return verify_variable((VariableStatement *) statement);
         case STRUCT_STMT:
             return verify_struct((StructStatement *) statement);
+        case IMPORT_STMT:
+            return verify_import((ImportStatement *) statement);
         case EXPR_STMT:
             return verify_expression((Expression *) statement);
     }
@@ -168,6 +170,10 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     }
     structures.push_back(struct_);
     return true;
+}
+
+bool Analyser::verify_import(ImportStatement *import) {
+    return verify_statements(import->block);
 }
 
 bool Analyser::verify_expression(Expression *expression) {

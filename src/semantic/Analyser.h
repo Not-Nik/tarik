@@ -29,6 +29,7 @@ protected:
     bool verify_continue(ContinueStatement *continue_);
     bool verify_variable(VariableStatement *var);
     bool verify_struct(StructStatement *struct_);
+    bool verify_import(ImportStatement *import);
     bool verify_expression(Expression *expression);
 
     bool does_always_return(ScopeStatement *scope);

@@ -107,6 +107,9 @@ void LLVM::generate_statement(Statement *statement) {
         case STRUCT_STMT:
             generate_struct((StructStatement *) statement);
             break;
+        case IMPORT_STMT:
+            generate_import((ImportStatement *) statement);
+            break;
         case EXPR_STMT:
             generate_expression((Expression *) statement);
             break;
@@ -247,20 +250,18 @@ void LLVM::generate_struct(StructStatement *struct_) {
     structures.emplace(struct_, llvm::StructType::create(context, members, struct_->name));
 }
 
+void LLVM::generate_import(ImportStatement *import) {
+    generate_statements(import->block);
+}
+
 // https://stackoverflow.com/questions/3407012/rounding-up-to-the-nearest-multiple-of-a-number#3407254
-template <std::integral T> int roundUp(T
-numToRound,
-T multiple
-) {
-if (multiple == 0) return
-numToRound;
+template <std::integral T> int roundUp(T numToRound, T multiple) {
+    if (multiple == 0) return numToRound;
 
-T remainder = numToRound % multiple;
-if (remainder == 0) return
-numToRound;
+    T remainder = numToRound % multiple;
+    if (remainder == 0) return numToRound;
 
-return numToRound + multiple -
-remainder;
+    return numToRound + multiple - remainder;
 }
 
 llvm::Value *LLVM::generate_expression(Expression *expression) {

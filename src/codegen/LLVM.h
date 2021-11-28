@@ -70,6 +70,7 @@ protected:
     void generate_continue(ContinueStatement *continue_);
     void generate_variable(VariableStatement *var);
     void generate_struct(StructStatement *struct_);
+    void generate_import(ImportStatement *import);
     llvm::Value *generate_expression(Expression *expression);
     static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 

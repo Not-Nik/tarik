@@ -62,6 +62,7 @@ public:
 
     ~IfStatement() override {
         delete condition;
+        delete else_statement;
     }
 
     [[nodiscard]] std::string print() const override {
@@ -240,6 +241,12 @@ public:
         }
         return res + "\n}";
     }
+};
+
+class ImportStatement : public ScopeStatement {
+public:
+    ImportStatement(const LexerPos &o, std::vector<Statement *> s)
+        : ScopeStatement(IMPORT_STMT, o, std::move(s)) {}
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
