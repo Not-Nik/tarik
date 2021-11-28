@@ -49,7 +49,20 @@ enum Precedence {
 };
 
 enum ExprType {
-    CALL_EXPR, DASH_EXPR, DOT_EXPR, EQ_EXPR, COMP_EXPR, MEM_ACC_EXPR, PREFIX_EXPR, ASSIGN_EXPR, NAME_EXPR, INT_EXPR, BOOL_EXPR, REAL_EXPR, STR_EXPR
+    CALL_EXPR,
+    DASH_EXPR,
+    DOT_EXPR,
+    EQ_EXPR,
+    COMP_EXPR,
+    MEM_ACC_EXPR,
+    PREFIX_EXPR,
+    ASSIGN_EXPR,
+    NAME_EXPR,
+    INT_EXPR,
+    BOOL_EXPR,
+    REAL_EXPR,
+    STR_EXPR,
+    NULL_EXPR
 };
 
 class Expression : public Statement {

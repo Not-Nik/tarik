@@ -285,6 +285,9 @@ bool Analyser::verify_expression(Expression *expression) {
         case BOOL_EXPR:
             expression->assign_type(Type(BOOL));
             break;
+        case NULL_EXPR:
+            expression->assign_type(Type(VOID, 1));
+            break;
     }
     return true;
 }

@@ -54,7 +54,7 @@ class PrimitiveExpression : public Expression {
 public:
     PrimitiveType n;
 
-    explicit PrimitiveExpression(LexerPos lp, const std::string &n)
+    PrimitiveExpression(LexerPos lp, const std::string &n)
         : Expression(expr_type, lp), n(smart_cast_from_string<PrimitiveType>(n)) {}
 
     [[nodiscard]] std::string print() const override {
@@ -66,6 +66,16 @@ using IntExpression = PrimitiveExpression<long long int, INT_EXPR>;
 using BoolExpression = PrimitiveExpression<bool, BOOL_EXPR>;
 using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
 using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
+
+class NullExpression : public Expression {
+public:
+    explicit NullExpression(LexerPos lp)
+        : Expression(NULL_EXPR, lp) {}
+
+    [[nodiscard]] std::string print() const override {
+        return "null";
+    }
+};
 
 enum PrefixType {
     POS, NEG, REF, DEREF, LOG_NOT

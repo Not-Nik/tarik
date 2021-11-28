@@ -38,7 +38,7 @@ inline std::string to_string(const TypeSize &ts) {
     if (ts == F32) return "f32";
     if (ts == F64) return "f64";
     if (ts == BOOL) return "bool";
-    if (ts == VOID) return "";
+    if (ts == VOID) return "void";
     return "";
 }
 
@@ -69,9 +69,9 @@ public:
     [[nodiscard]] bool is_compatible(const Type &t) const {
         if (operator==(Type(VOID)) || t == Type(VOID)) return false;
         if ((pointer_level == 0 && t.pointer_level > 0) || (t.pointer_level == 0 && pointer_level > 0)) return false;
+        if (pointer_level > 0 && t.pointer_level > 0) return true;
         if (is_primitive != t.is_primitive) return false;
         if (is_primitive) return true;
-        if (pointer_level > 0 && t.pointer_level > 0) return true;
         return type.user_type == t.type.user_type;
     }
 

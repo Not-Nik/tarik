@@ -49,6 +49,7 @@ enum TokenType {
     BREAK,
     CONTINUE,
     STRUCT,
+    NULL_,
     TYPE,
     USER_TYPE
 };
@@ -91,6 +92,7 @@ inline std::map<std::string, TokenType> keywords = {
         {"break",    BREAK},
         {"continue", CONTINUE},
         {"struct",   STRUCT},
+        {"null",     NULL_},
         {"i8",       TYPE},
         {"i16",      TYPE},
         {"i32",      TYPE},
