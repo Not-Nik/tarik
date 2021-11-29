@@ -2,6 +2,18 @@
 
 tarik is a minimal, compiled language, designed for low-level programming.
 
+## Hello World
+
+```rust
+fn puts(u8 *s) i32;
+
+fn main() i32 {
+    puts("Hello, World!");
+
+    return 0;
+}
+```
+
 ## Inspiration
 
 tarik is inspired by
@@ -10,3 +22,15 @@ tarik is inspired by
 - C++
 - [Rust](https://github.com/rust-lang/rust)
 - [oak](https://github.com/adam-mcdaniel/oakc)
+
+## Building
+
+To build tarik you will need a C++ compiler, LLVM 13 and CMake >= 3.17.
+
+Then the build procedure is as usual with cmake:
+
+```shell
+mkdir build && cd build
+cmake ..
+cmake --build .
+```

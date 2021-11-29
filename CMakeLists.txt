@@ -3,7 +3,7 @@ project(tarik)
 
 set(CMAKE_CXX_STANDARD 20)
 
-find_package(llvm REQUIRED)
+find_package(llvm 13.0.0 EXACT REQUIRED)
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})
