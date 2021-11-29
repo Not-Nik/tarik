@@ -179,8 +179,10 @@ public:
 
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
-    FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, bool var_arg)
-        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg) {}
+    bool definable;
+
+    FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, bool var_arg, bool define = true)
+        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg), definable(define) {}
 
     [[nodiscard]] std::string print() const override {
         return head();

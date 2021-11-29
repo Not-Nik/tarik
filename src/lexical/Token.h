@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <filesystem>
 
 enum TokenType {
     END,
@@ -116,7 +117,7 @@ inline std::string to_string(const TokenType &tt) {
 
 struct LexerPos {
     int l, p;
-    std::string filename;
+    std::filesystem::path filename;
 
     LexerPos &operator--() {
         if (p > 0) p--;

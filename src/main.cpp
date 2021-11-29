@@ -86,9 +86,7 @@ int main(int argc, const char *argv[]) {
             analyser.verify_statements(statements);
         }
 
-        if (!endfile()) return 1;
-
-        if (Parser::error_count() == 0) {
+        if (errorcount() == 0) {
             std::ofstream out(output_filename);
             if (re_emit && !emit_llvm) {
                 for (auto s: statements) {
@@ -113,5 +111,5 @@ int main(int argc, const char *argv[]) {
         std::for_each(statements.begin(), statements.end(), [](auto &p) { delete p; });
     }
 
-    return 0;
+    return endfile() ? 0 : 1;
 }

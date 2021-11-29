@@ -7,9 +7,9 @@
 
 #include <comperr.h>
 
-#include <fstream>
 #include <utility>
-#include <filesystem>
+
+std::vector<std::filesystem::path> Parser::imported;
 
 Precedence Parser::get_precedence() {
     if (lexer.peek().id == SEMICOLON) {
@@ -34,7 +34,7 @@ std::vector<Statement *> Parser::block() {
 
 Type Parser::type() {
     auto peek = lexer.peek();
-    iassert(peek.id == TYPE or peek.id == USER_TYPE, "expected type name");
+    iassert(peek.id == TYPE or (peek.id == NAME and has_struct_with_name(peek.raw)), "expected type name");
     Type t;
 
     if (peek.id == TYPE) {
@@ -52,6 +52,7 @@ Type Parser::type() {
                 break;
             }
         }
+        // this is unreachable?
         iassert(structure, "undefined structure %s", peek.raw.c_str());
         t.type.user_type = structure;
         t.is_primitive = false;
@@ -103,13 +104,13 @@ void Parser::init_parslets() {
     infix_parslets.emplace(EQUAL, new AssignParselet());
 }
 
-Parser::Parser(std::istream *code)
-    : lexer(code) {
+Parser::Parser(std::istream *code, bool dry)
+    : lexer(code), dry_parsing(dry) {
     init_parslets();
 }
 
-Parser::Parser(const std::filesystem::path &f)
-    : lexer(f) {
+Parser::Parser(const std::filesystem::path &f, bool dry)
+    : lexer(f), dry_parsing(dry) {
     init_parslets();
 }
 
@@ -156,20 +157,16 @@ bool Parser::check_expect(TokenType raw) {
     return r;
 }
 
-VariableStatement *Parser::register_var(VariableStatement *var) {
-    variables.push_back(var);
-    return var;
-}
-
-FuncStatement *Parser::register_func(FuncStatement *func) {
-    functions.push_back(func);
-    return func;
-}
-
 StructStatement *Parser::register_struct(StructStatement *struct_) {
-    keywords.emplace(struct_->name, USER_TYPE);
     structures.push_back(struct_);
     return struct_;
+}
+
+bool Parser::has_struct_with_name(const std::string &name) {
+    for (auto str : structures) {
+        if (str->name == name) return true;
+    }
+    return false;
 }
 
 Expression *Parser::parse_expression(int precedence) {
@@ -212,7 +209,7 @@ Statement *Parser::parse_statement() {
                     lexer.consume();
                     break;
                 }
-                args.push_back(register_var(new VariableStatement(where(), type(), expect(NAME).raw)));
+                args.push_back(new VariableStatement(where(), type(), expect(NAME).raw));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -227,9 +224,13 @@ Statement *Parser::parse_statement() {
             return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg);
         }
 
-        FuncStatement *fs = register_func(new FuncStatement(name_tok.where, name, t, args, {}, var_arg));
-        fs->block = block();
-        return fs;
+        std::vector<Statement *> body = block();
+        if (dry_parsing) {
+            for (auto s : body) delete s;
+            return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg, false);
+        } else {
+            return new FuncStatement(name_tok.where, name, t, args, body, var_arg);
+        }
     } else if (token.id == RETURN) {
         lexer.consume();
         auto *s = new ReturnStatement(where(), parse_expression());
@@ -288,19 +289,22 @@ Statement *Parser::parse_statement() {
         Token import = expect(STRING);
         std::vector<Statement *> statements;
         if (import.id == STRING) {
-            std::filesystem::path path = import.raw;
-            if (iassert(exists(path), "tried to import '%s', but file can't be found", import.raw.c_str())) {
-                Parser p(absolute(path));
-                do {
-                    statements.push_back(p.parse_statement());
-                } while (statements.back());
-                statements.pop_back();
+            std::filesystem::path path = std::filesystem::absolute(import.raw);
+            if (std::find(imported.begin(), imported.end(), path) == imported.end()) {
+                imported.push_back(path);
+                if (iassert(exists(path), "tried to import '%s', but file can't be found", import.raw.c_str())) {
+                    Parser p(path, true);
+                    do {
+                        statements.push_back(p.parse_statement());
+                    } while (statements.back());
+                    statements.pop_back();
+                }
             }
         }
         expect(SEMICOLON);
 
         return new ImportStatement(token.where, statements);
-    } else if (token.id == TYPE or token.id == USER_TYPE) {
+    } else if (token.id == TYPE or (token.id == NAME and has_struct_with_name(token.raw))) {
         Type t = type();
 
         iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
@@ -311,7 +315,7 @@ Statement *Parser::parse_statement() {
             expect(SEMICOLON);
         }
 
-        return register_var(new VariableStatement(where(), t, name));
+        return new VariableStatement(where(), t, name);
     }
     Expression *e = parse_expression();
     if (e == reinterpret_cast<Expression *>(-1)) {
@@ -322,8 +326,4 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
         return e;
     }
-}
-
-int Parser::error_count() {
-    return errorcount();
 }

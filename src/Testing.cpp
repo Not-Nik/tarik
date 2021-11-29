@@ -71,10 +71,8 @@ bool test() {
         }
         {
             Parser p(&(c = ss("-name + 4 * -5")));
-            auto *v = p.register_var(new VariableStatement({}, integer, "name"));
             Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
-            delete v;
             delete e;
         }
         {
@@ -95,13 +93,8 @@ bool test() {
 
         {
             Parser p = Parser(&(c = ss("func(1, 2, 3, 4)")));
-            FuncStatement *f = p.register_func(new FuncStatement({}, "func", {}, {
-                new VariableStatement({}, integer, ""), new VariableStatement({}, integer, ""), new VariableStatement({}, integer, ""),
-                new VariableStatement({}, integer, "")
-            }, {}, false));
             Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
-            delete f;
             delete e;
         }//
 

@@ -13,7 +13,7 @@ Lexer::Lexer(std::istream *s)
 Lexer::Lexer(const std::filesystem::path &f)
     : Lexer(new std::ifstream(f)) {
     allocated = true;
-    pos.filename = f.string();
+    pos.filename = f;
 }
 
 Lexer::~Lexer() {

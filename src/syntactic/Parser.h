@@ -5,6 +5,7 @@
 
 #include <map>
 #include <vector>
+#include <filesystem>
 
 #include "lexical/Lexer.h"
 #include "syntactic/expressions/Expression.h"
@@ -17,15 +18,16 @@ class InfixParselet;
 class Parser {
     friend class CallParselet;
 
+    static std::vector<std::filesystem::path> imported;
+
     Lexer lexer;
 
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
 
-    std::vector<VariableStatement *> variables;
-
     std::vector<StructStatement *> structures;
-    std::vector<FuncStatement *> functions;
+
+    bool dry_parsing;
 
     Precedence get_precedence();
 
@@ -36,8 +38,8 @@ class Parser {
     void init_parslets();
 
 public:
-    explicit Parser(std::istream *code);
-    explicit Parser(const std::filesystem::path &f);
+    explicit Parser(std::istream *code, bool dry = false);
+    explicit Parser(const std::filesystem::path &f, bool dry = false);
 
     ~Parser();
 
@@ -52,15 +54,12 @@ public:
 
     bool is_peek(TokenType raw);
 
-    VariableStatement *register_var(VariableStatement *var);
-    FuncStatement *register_func(FuncStatement *func);
     StructStatement *register_struct(StructStatement *struct_);
+    [[nodiscard]] bool has_struct_with_name(const std::string &name);
 
     Expression *parse_expression(int precedence = 0);
 
     Statement *parse_statement();
-
-    static int error_count();
 };
 
 #endif //TARIK_SRC_SYNTACTIC_PARSER_H_

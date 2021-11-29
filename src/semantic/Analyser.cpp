@@ -63,9 +63,14 @@ bool Analyser::verify_function(FuncStatement *func) {
     }
 
     for (auto decl: declarations) {
-        if (decl->name != func->name || decl->return_type == func->return_type) continue;
-        error(func->origin, "definition of '%s' with different type from declaration", decl->name.c_str());
-        note(decl->origin, "declaration here");
+        if (decl->name != func->name) continue;
+        if (!decl->definable) {
+            error(func->origin, "redefinition of '%s'", func->name.c_str());
+            note(decl->origin, "previous definition in imported file '%s'", decl->origin.filename.filename().c_str());
+        } else if (decl->return_type != func->return_type) {
+            error(func->origin, "definition of '%s' with different type from declaration", decl->name.c_str());
+            note(decl->origin, "declaration here");
+        }
         return false;
     }
 
