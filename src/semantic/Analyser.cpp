@@ -48,7 +48,15 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
 }
 
 bool Analyser::verify_scope(ScopeStatement *scope) {
-    return verify_statements(scope->block);
+    size_t old_var_count = variables.size();
+    size_t old_struct_count = structures.size();
+
+    bool res = verify_statements(scope->block);
+
+    while (old_var_count < variables.size()) variables.pop_back();
+    while (old_struct_count < structures.size()) structures.pop_back();
+
+    return res;
 }
 
 bool Analyser::verify_function(FuncStatement *func) {
