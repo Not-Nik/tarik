@@ -72,10 +72,10 @@ void LLVM::write_object_file(const std::string &to, const std::string &triple) {
     stream.flush();
 }
 
-void LLVM::generate_statement(Statement *statement) {
+void LLVM::generate_statement(Statement *statement, bool is_last) {
     switch (statement->statement_type) {
         case SCOPE_STMT:
-            generate_scope((ScopeStatement *) statement);
+            generate_scope((ScopeStatement *) statement, is_last);
             break;
         case FUNC_STMT:
             generate_function((FuncStatement *) statement);
@@ -84,7 +84,7 @@ void LLVM::generate_statement(Statement *statement) {
             generate_func_decl((FuncDeclareStatement *) statement);
             break;
         case IF_STMT:
-            generate_if((IfStatement *) statement);
+            generate_if((IfStatement *) statement, is_last);
             break;
         case ELSE_STMT:
             generate_else((ElseStatement *) statement);
@@ -93,7 +93,7 @@ void LLVM::generate_statement(Statement *statement) {
             generate_return((ReturnStatement *) statement);
             break;
         case WHILE_STMT:
-            generate_while((WhileStatement *) statement);
+            generate_while((WhileStatement *) statement, is_last);
             break;
         case BREAK_STMT:
             generate_break((BreakStatement *) statement);
@@ -108,7 +108,7 @@ void LLVM::generate_statement(Statement *statement) {
             generate_struct((StructStatement *) statement);
             break;
         case IMPORT_STMT:
-            generate_import((ImportStatement *) statement);
+            generate_import((ImportStatement *) statement, is_last);
             break;
         case EXPR_STMT:
             generate_expression((Expression *) statement);
@@ -116,14 +116,14 @@ void LLVM::generate_statement(Statement *statement) {
     }
 }
 
-void LLVM::generate_statements(const std::vector<Statement *> &statements) {
-    for (auto statement: statements) {
-        generate_statement(statement);
+void LLVM::generate_statements(const std::vector<Statement *> &statements, bool is_last) {
+    for (auto it = statements.begin(); it != statements.end(); ++it) {
+        generate_statement(*it, is_last && it + 1 == statements.end());
     }
 }
 
-void LLVM::generate_scope(ScopeStatement *scope) {
-    generate_statements(scope->block);
+void LLVM::generate_scope(ScopeStatement *scope, bool is_last) {
+    generate_statements(scope->block, is_last);
 }
 
 void LLVM::generate_function(FuncStatement *func) {
@@ -149,7 +149,7 @@ void LLVM::generate_function(FuncStatement *func) {
         return_type_signed_int = func->return_type.is_signed_int();
     functions.emplace(func->name, func_type);
 
-    generate_scope(func);
+    generate_scope(func, true);
 
     if (func->return_type == Type(VOID)) {
         builder.CreateRetVoid();
@@ -162,7 +162,7 @@ bool LLVM::generate_func_decl(FuncDeclareStatement *decl) {
     return false;
 }
 
-void LLVM::generate_if(IfStatement *if_) {
+void LLVM::generate_if(IfStatement *if_, bool is_last) {
     llvm::BasicBlock *if_block = llvm::BasicBlock::Create(context, "if_block", current_function);
     llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
     llvm::BasicBlock *else_block = nullptr;
@@ -173,21 +173,24 @@ void LLVM::generate_if(IfStatement *if_) {
         else_block = llvm::BasicBlock::Create(context, "else_block", current_function);
         builder.CreateCondBr(condition, if_block, else_block);
     } else {
+        // An if without an else can never be the last statement, because it doesn't guarantee a return statement
         builder.CreateCondBr(condition, if_block, endif_block);
     }
     builder.SetInsertPoint(if_block);
 
-    generate_scope(if_);
-    builder.CreateBr(endif_block);
+    generate_scope(if_, false);
+    if (!is_last) builder.CreateBr(endif_block);
 
     if (else_block) {
         builder.SetInsertPoint(else_block);
-        generate_scope(if_->else_statement);
-        builder.CreateBr(endif_block);
+        generate_scope(if_->else_statement, is_last);
+        if (!is_last) builder.CreateBr(endif_block);
     }
 
-    current_function->getBasicBlockList().push_back(endif_block);
-    builder.SetInsertPoint(endif_block);
+    if (!is_last) {
+        current_function->getBasicBlockList().push_back(endif_block);
+        builder.SetInsertPoint(endif_block);
+    }
 }
 
 void LLVM::generate_else(ElseStatement *) {} // this will never happen
@@ -197,7 +200,7 @@ void LLVM::generate_return(ReturnStatement *return_) {
     builder.CreateRet(generate_cast(generate_expression(return_->value), return_type, return_type_signed_int));
 }
 
-void LLVM::generate_while(WhileStatement *while_) {
+void LLVM::generate_while(WhileStatement *while_, bool is_last) {
     llvm::BasicBlock *while_comp_block = llvm::BasicBlock::Create(context, "while_comp_block");
     llvm::BasicBlock *while_block = llvm::BasicBlock::Create(context, "while_block");
     llvm::BasicBlock *endwhile_block = llvm::BasicBlock::Create(context, "endwhile_block");
@@ -209,7 +212,7 @@ void LLVM::generate_while(WhileStatement *while_) {
 
     // Todo: this should probably compare to zero instead of casting
     llvm::Value *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
-    builder.CreateCondBr(condition, while_block, endwhile_block);
+    builder.CreateCondBr(condition, while_block, is_last ? nullptr : endwhile_block);
 
     current_function->getBasicBlockList().push_back(while_block);
     builder.SetInsertPoint(while_block);
@@ -218,14 +221,16 @@ void LLVM::generate_while(WhileStatement *while_) {
     last_loop_entry = while_comp_block;
     last_loop_exit = endwhile_block;
 
-    generate_scope(while_);
+    generate_scope(while_, is_last);
     builder.CreateBr(while_comp_block);
 
     last_loop_entry = old_llen;
     last_loop_exit = old_llex;
 
-    current_function->getBasicBlockList().push_back(endwhile_block);
-    builder.SetInsertPoint(endwhile_block);
+    if (!is_last) {
+        current_function->getBasicBlockList().push_back(endwhile_block);
+        builder.SetInsertPoint(endwhile_block);
+    }
 }
 
 void LLVM::generate_break(BreakStatement *) {
@@ -250,8 +255,8 @@ void LLVM::generate_struct(StructStatement *struct_) {
     structures.emplace(struct_, llvm::StructType::create(context, members, struct_->name));
 }
 
-void LLVM::generate_import(ImportStatement *import) {
-    generate_statements(import->block);
+void LLVM::generate_import(ImportStatement *import, bool is_last) {
+    generate_statements(import->block, is_last);
 }
 
 // https://stackoverflow.com/questions/3407012/rounding-up-to-the-nearest-multiple-of-a-number#3407254
@@ -504,12 +509,12 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
 }
 
 llvm::FunctionType *LLVM::make_llvm_function_type(FuncStCommon *func) {
-    llvm::Type *return_type = make_llvm_type(func->return_type);
+    llvm::Type *rt = make_llvm_type(func->return_type);
     std::vector<llvm::Type *> argument_types;
     for (auto arg: func->arguments) {
         argument_types.push_back(make_llvm_type(arg->type));
     }
-    llvm::FunctionType *func_type = llvm::FunctionType::get(return_type, argument_types, func->var_arg);
+    llvm::FunctionType *func_type = llvm::FunctionType::get(rt, argument_types, func->var_arg);
     return func_type;
 }
 

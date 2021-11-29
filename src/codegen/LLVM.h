@@ -30,9 +30,9 @@
 
 class LLVM {
     std::unique_ptr<llvm::Module> module;
-    llvm::Type *return_type;
-    bool return_type_signed_int;
-    llvm::Function *current_function;
+    llvm::Type *return_type = nullptr;
+    bool return_type_signed_int = false;
+    llvm::Function *current_function = nullptr;
     llvm::BasicBlock *last_loop_entry = nullptr, *last_loop_exit = nullptr;
     std::map<std::string, llvm::FunctionType *> functions;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
@@ -44,8 +44,8 @@ public:
     void dump_ir(const std::string &to);
     void write_object_file(const std::string &to, const std::string &triple = default_triple);
 
-    void generate_statement(Statement *s);
-    void generate_statements(const std::vector<Statement *> &s);
+    void generate_statement(Statement *s, bool is_last);
+    void generate_statements(const std::vector<Statement *> &s, bool is_last = true);
 
     static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();
     static bool is_valid_triple(const std::string &triple) {
@@ -59,18 +59,18 @@ public:
         return res;
     }
 protected:
-    void generate_scope(ScopeStatement *scope);
+    void generate_scope(ScopeStatement *scope, bool is_last);
     void generate_function(FuncStatement *func);
     bool generate_func_decl(FuncDeclareStatement *decl);
-    void generate_if(IfStatement *if_);
+    void generate_if(IfStatement *if_, bool is_last);
     void generate_else(ElseStatement *else_);
     void generate_return(ReturnStatement *return_);
-    void generate_while(WhileStatement *while_);
+    void generate_while(WhileStatement *while_, bool is_last);
     void generate_break(BreakStatement *break_);
     void generate_continue(ContinueStatement *continue_);
     void generate_variable(VariableStatement *var);
     void generate_struct(StructStatement *struct_);
-    void generate_import(ImportStatement *import);
+    void generate_import(ImportStatement *import, bool is_last);
     llvm::Value *generate_expression(Expression *expression);
     static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 
