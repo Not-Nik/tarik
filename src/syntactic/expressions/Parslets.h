@@ -111,7 +111,7 @@ class CallParselet : public InfixParselet {
     Expression *parse(Parser *parser, const Token &token, Expression *left) override {
         std::vector<Expression *> args;
 
-        while (!parser->lexer.peek().raw.empty() && parser->lexer.peek().id != PAREN_CLOSE) {
+        while (parser->lexer.peek().id != END && parser->lexer.peek().id != PAREN_CLOSE) {
             args.push_back(parser->parse_expression());
 
             if (parser->lexer.peek().id != PAREN_CLOSE)

@@ -24,7 +24,7 @@ std::vector<Statement *> Parser::block() {
     if (!check_expect(CURLY_OPEN))
         return {};
     std::vector<Statement *> res;
-    while (!lexer.peek().raw.empty() && lexer.peek().id != CURLY_CLOSE) {
+    while (lexer.peek().id != END && lexer.peek().id != CURLY_CLOSE) {
         Statement *statement = parse_statement();
         res.push_back(statement);
     }
@@ -58,7 +58,7 @@ Type Parser::type() {
         t.is_primitive = false;
     }
     lexer.consume();
-    while (!lexer.peek().raw.empty() && lexer.peek().id == ASTERISK) {
+    while (lexer.peek().id != END && lexer.peek().id == ASTERISK) {
         t.pointer_level++;
         lexer.consume();
     }
@@ -171,7 +171,7 @@ bool Parser::has_struct_with_name(const std::string &name) {
 
 Expression *Parser::parse_expression(int precedence) {
     Token token = lexer.consume();
-    if (token.raw.empty()) return reinterpret_cast<Expression *>(-1);
+    if (token.id == END) return reinterpret_cast<Expression *>(-1);
     if (!iassert(prefix_parslets.count(token.id) > 0, "unexpected token '%s'", token.raw.c_str()))
         return nullptr;
     PrefixParselet *prefix = prefix_parslets[token.id];
@@ -201,9 +201,9 @@ Statement *Parser::parse_statement() {
         bool var_arg = false;
 
         if (!check_expect(PAREN_OPEN))
-            while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
+            while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
         else
-            while (!lexer.peek().raw.empty() && lexer.peek().id != PAREN_CLOSE) {
+            while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE) {
                 if (lexer.peek().id == TRIPLE_PERIOD) {
                     var_arg = true;
                     lexer.consume();
