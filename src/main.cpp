@@ -52,7 +52,7 @@ int main(int argc, const char *argv[]) {
             std::cout << version_id << " tarik compiler version " << version_string << "\n";
             std::cout << "    Default target: " << LLVM::default_triple << "\n";
             std::cout << "    Available LLVM targets:\n";
-            for (const auto& t :LLVM::get_available_triples()) {
+            for (const auto &t: LLVM::get_available_triples()) {
                 std::cout << "        " << t << "\n";
             }
             return 0;
@@ -64,15 +64,24 @@ int main(int argc, const char *argv[]) {
     }
 
     if (!output_filename.empty() && parser.get_inputs().size() > 1) {
-        std::cerr << "An explicit output file with multiple input files will overwrite compilation results. (Where'd you want me to write the rest?)";
+        std::cerr << "An explicit output file with multiple input files will discard compilation results. (Where'd you want me to write the rest?)\n";
         return 1;
     }
 
     for (const auto &input: parser.get_inputs()) {
         fs::path input_path = fs::absolute(input);
         fs::path output_path;
-        if (output_filename.empty()) output_path = fs::absolute(input_path).replace_extension(".o");
-        else output_path = fs::absolute(output_filename);
+        if (output_filename.empty()) {
+            std::string new_extension;
+            if (re_emit && !emit_llvm) {
+                new_extension = ".re.tk";
+            } else if (emit_llvm) {
+                new_extension = ".ll";
+            } else {
+                new_extension = ".o";
+            }
+            output_path = fs::absolute(input_path).replace_extension(new_extension);
+        } else output_path = fs::absolute(output_filename);
         Parser p(input_path);
 
         std::vector<Statement *> statements;
@@ -87,7 +96,7 @@ int main(int argc, const char *argv[]) {
         }
 
         if (errorcount() == 0) {
-            std::ofstream out(output_filename);
+            std::ofstream out(output_path);
             if (re_emit && !emit_llvm) {
                 for (auto s: statements) {
                     out << s->print() << "\n\n";
@@ -97,7 +106,7 @@ int main(int argc, const char *argv[]) {
             if (!re_emit) {
                 LLVM generator(input);
                 if (!triple.empty() && !LLVM::is_valid_triple(triple)) {
-                    std::cerr << "Invalid triple '" << triple << "'";
+                    std::cerr << "Invalid triple '" << triple << "'\n";
                     return 1;
                 }
                 generator.generate_statements(statements);
