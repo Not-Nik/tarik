@@ -1,0 +1,12 @@
+# These functions are a bit risky to use, since time_t isn't guaranteed to be an i64
+fn time(i64 *arg) i32;
+fn ctime(i64 *timer) u8*;
+fn printf(u8 *s, ...) i32;
+
+fn main() i32 {
+    i64 current_time = time(null);
+    u8 *time_str = ctime(&current_time);
+    printf("Current time is %s", time_str);
+
+    return 0;
+}
