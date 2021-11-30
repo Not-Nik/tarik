@@ -3,9 +3,7 @@ fn printf(u8 *s, ...) i32;
 
 fn main(i32 argc, u8 **argv) i32 {
     if argc > 1 {
-        printf("You passed %i arguments!", argc - 1);
-        # Escape codes aren't supported yet
-        puts("");
+        printf("You passed %i arguments!\n", argc - 1);
         return 0;
     } else {
         puts("Try passing some arguments");
