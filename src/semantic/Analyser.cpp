@@ -95,29 +95,34 @@ bool Analyser::verify_function(FuncStatement *func) {
 }
 
 bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
+    bool warned = false, func_warned = false, decl_warned = false;
     for (auto registered: functions) {
         if (registered->name != decl->name) continue;
         bool critical = registered->return_type != decl->return_type;
-        if (!critical)
-            warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
-        else
+        if (!critical) {
+            if (!func_warned) warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
+        } else
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
-        note(registered->origin, "%sdefinition here", critical ? "" : "previous ");
+        note(registered->origin, "%s definition here", critical ? "" : "previous ");
         if (critical) return false;
+        warned = true;
+        func_warned = true;
     }
 
     for (auto d: declarations) {
         if (d->name != decl->name) continue;
         bool critical = d->return_type != decl->return_type;
-        if (!critical)
-            warning(decl->origin, "declaration of already declared function '%s'", decl->name.c_str());
-        else
+        if (!critical) {
+            if (!decl_warned) warning(decl->origin, "declaration of already declared function '%s'", decl->name.c_str());
+        } else
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
         note(d->origin, "previous declaration here");
         if (critical) return false;
+        warned = true;
+        decl_warned = true;
     }
 
-    declarations.push_back(decl);
+    if (!warned) declarations.push_back(decl);
     return true;
 }
 
