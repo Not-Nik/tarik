@@ -104,13 +104,14 @@ void Parser::init_parslets() {
     infix_parslets.emplace(EQUAL, new AssignParselet());
 }
 
-Parser::Parser(std::istream *code, bool dry)
-    : lexer(code), dry_parsing(dry) {
+Parser::Parser(std::istream *code, std::vector<std::filesystem::path> paths, bool dry)
+    : lexer(code), search_paths(std::move(paths)), dry_parsing(dry) {
     init_parslets();
 }
 
-Parser::Parser(const std::filesystem::path &f, bool dry)
-    : lexer(f), dry_parsing(dry) {
+Parser::Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths, bool dry)
+    : lexer(f), search_paths(std::move(paths)), dry_parsing(dry) {
+    imported.push_back(absolute(f));
     init_parslets();
 }
 
@@ -142,19 +143,44 @@ LexerPos Parser::where() {
 
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
-    iassert(lexer.peek().id == raw, "expected a '%s' found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
     return lexer.consume();
+}
+
+bool Parser::check_expect(TokenType raw) {
+    std::string s = to_string(raw);
+    bool r = iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    lexer.consume();
+    return r;
 }
 
 bool Parser::is_peek(TokenType raw) {
     return lexer.peek().id == raw;
 }
 
-bool Parser::check_expect(TokenType raw) {
-    std::string s = to_string(raw);
-    bool r = iassert(lexer.peek().id == raw, "expected a '%s' found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
-    lexer.consume();
-    return r;
+std::filesystem::path Parser::find_import() {
+    Token next = expect(NAME);
+
+    std::filesystem::path import;
+
+    while (next.id == NAME) {
+        import /= next.raw;
+        if (is_peek(PERIOD)) {
+            lexer.consume();
+            next = expect(NAME);
+        } else break;
+    }
+
+    import.replace_extension(".tk");
+
+    if (exists(import)) return import;
+
+    for (const auto &path: search_paths) {
+        if (exists(path / import)) {
+            return path / import;
+        }
+    }
+    return import;
 }
 
 StructStatement *Parser::register_struct(StructStatement *struct_) {
@@ -163,7 +189,7 @@ StructStatement *Parser::register_struct(StructStatement *struct_) {
 }
 
 bool Parser::has_struct_with_name(const std::string &name) {
-    for (auto str : structures) {
+    for (auto str: structures) {
         if (str->name == name) return true;
     }
     return false;
@@ -226,7 +252,7 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
         if (dry_parsing) {
-            for (auto s : body) delete s;
+            for (auto s: body) delete s;
             return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg, false);
         } else {
             return new FuncStatement(name_tok.where, name, t, args, body, var_arg);
@@ -264,9 +290,7 @@ Statement *Parser::parse_statement() {
     } else if (token.id == STRUCT) {
         lexer.consume();
 
-        iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
-        std::string name = lexer.consume().raw;
-
+        std::string name = expect(NAME).raw;
         expect(CURLY_OPEN);
 
         std::vector<VariableStatement *> members;
@@ -274,8 +298,7 @@ Statement *Parser::parse_statement() {
         while (lexer.peek().id != CURLY_CLOSE) {
             Type member_type = type();
 
-            iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
-            std::string member_name = lexer.consume().raw;
+            std::string member_name = expect(NAME).raw;
 
             members.push_back(new VariableStatement(where(), member_type, member_name));
             expect(SEMICOLON);
@@ -286,20 +309,19 @@ Statement *Parser::parse_statement() {
     } else if (token.id == IMPORT) {
         lexer.consume();
 
-        Token import = expect(STRING);
+        auto import = find_import();
         std::vector<Statement *> statements;
-        if (import.id == STRING) {
-            std::filesystem::path path = std::filesystem::absolute(import.raw);
-            if (std::find(imported.begin(), imported.end(), path) == imported.end()) {
-                imported.push_back(path);
-                if (iassert(exists(path), "tried to import '%s', but file can't be found", import.raw.c_str())) {
-                    Parser p(path, true);
-                    do {
-                        statements.push_back(p.parse_statement());
-                    } while (statements.back());
-                    statements.pop_back();
-                }
+        if (exists(import)) {
+            if (std::find(imported.begin(), imported.end(), absolute(import)) == imported.end()) {
+                imported.push_back(absolute(import));
+                Parser p(import, search_paths, true);
+                do {
+                    statements.push_back(p.parse_statement());
+                } while (statements.back());
+                statements.pop_back();
             }
+        } else {
+            iassert(false, "tried to import '%s', but file can't be found", import.string().c_str());
         }
         expect(SEMICOLON);
 

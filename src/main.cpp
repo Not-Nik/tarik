@@ -26,10 +26,12 @@ int main(int argc, const char *argv[]) {
     Option *re_emit_option = parser.add_option("re-emit", "Parse code, and re-emit it based on the internal AST");
     Option *emit_llvm_option = parser.add_option("emit-llvm", "Emit generated LLVM IR");
     Option *override_triple = parser.add_option("target", "Set the target-triple (defaults to '" + LLVM::default_triple + "')", true, "triple", 't');
+    Option *search_path = parser.add_option("search-path", "Add an import search path", true, "path", 's');
     Option *version = parser.add_option("version", "Display the compiler version");
 
     bool re_emit = false, emit_llvm = false;
     std::string output_filename, triple = LLVM::default_triple;
+    std::vector<fs::path> search_paths;
 
     for (const auto &option: parser) {
         if (option == test_option) {
@@ -47,6 +49,8 @@ int main(int argc, const char *argv[]) {
             output_filename = option.argument;
         } else if (option == override_triple) {
             triple = option.argument;
+        } else if (option == search_path) {
+            search_paths.emplace_back(option.argument);
         } else if (option == version) {
             LLVM::force_init();
             std::cout << version_id << " tarik compiler version " << version_string << "\n";
@@ -69,7 +73,7 @@ int main(int argc, const char *argv[]) {
     }
 
     for (const auto &input: parser.get_inputs()) {
-        fs::path input_path = fs::absolute(input);
+        fs::path input_path = input;
         fs::path output_path;
         if (output_filename.empty()) {
             std::string new_extension;
@@ -80,9 +84,13 @@ int main(int argc, const char *argv[]) {
             } else {
                 new_extension = ".o";
             }
-            output_path = fs::absolute(input_path).replace_extension(new_extension);
-        } else output_path = fs::absolute(output_filename);
-        Parser p(input_path);
+            output_path = input_path.replace_extension(new_extension);
+        } else output_path = output_filename;
+
+        if (!exists(output_path.parent_path())) {
+            fs::create_directories(output_path.parent_path());
+        }
+        Parser p(input_path, search_paths);
 
         std::vector<Statement *> statements;
         do {

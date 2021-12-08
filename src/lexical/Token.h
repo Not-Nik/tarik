@@ -110,8 +110,11 @@ inline std::map<std::string, TokenType> keywords = {
 };
 
 inline std::string to_string(const TokenType &tt) {
-    for (const auto &op: operators) if (op.second == tt) return op.first;
-    for (const auto &key: keywords) if (key.second == tt) return key.first;
+    for (const auto &op: operators) if (op.second == tt) return "'" + op.first + "'";
+    for (const auto &key: keywords) if (key.second == tt) return "'" + key.first + "'";
+    if (tt == NAME) return "name";
+    if (tt == STRING) return "string";
+    if (tt == INTEGER || tt == REAL) return "number";
     return "";
 }
 

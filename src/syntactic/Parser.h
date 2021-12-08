@@ -27,6 +27,8 @@ class Parser {
 
     std::vector<StructStatement *> structures;
 
+    std::vector<std::filesystem::path> search_paths;
+
     bool dry_parsing;
 
     Precedence get_precedence();
@@ -38,8 +40,8 @@ class Parser {
     void init_parslets();
 
 public:
-    explicit Parser(std::istream *code, bool dry = false);
-    explicit Parser(const std::filesystem::path &f, bool dry = false);
+    explicit Parser(std::istream *code, std::vector<std::filesystem::path> paths = {}, bool dry = false);
+    explicit Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths = {}, bool dry = false);
 
     ~Parser();
 
@@ -49,10 +51,10 @@ public:
     LexerPos where();
 
     Token expect(TokenType raw);
-
     bool check_expect(TokenType raw);
-
     bool is_peek(TokenType raw);
+
+    std::filesystem::path find_import();
 
     StructStatement *register_struct(StructStatement *struct_);
     [[nodiscard]] bool has_struct_with_name(const std::string &name);
