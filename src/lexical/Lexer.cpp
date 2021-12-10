@@ -60,7 +60,7 @@ Token Lexer::peek(int dist) {
 }
 
 std::string post_process_string(std::string s) {
-    for (int i = 0; i < s.size(); i++) {
+    for (size_t i = 0; i < s.size(); i++) {
         if (s[i] == '\\') {
             s.erase(1);
             i++;
