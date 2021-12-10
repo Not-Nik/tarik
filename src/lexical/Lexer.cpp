@@ -4,6 +4,7 @@
 
 #include <utility>
 #include <fstream>
+#include <iostream>
 #include <algorithm>
 
 Lexer::Lexer(std::istream *s)
@@ -12,6 +13,9 @@ Lexer::Lexer(std::istream *s)
 
 Lexer::Lexer(const std::filesystem::path &f)
     : Lexer(new std::ifstream(f)) {
+    if (stream->fail()) {
+        std::cerr << "Couldn't open " << f << ": " << std::strerror(errno) << std::endl;
+    }
     allocated = true;
     pos.filename = f;
 }
@@ -29,6 +33,7 @@ bool Lexer::operator_startswith(std::string c) {
 }
 
 char Lexer::read_stream() {
+    if (stream->fail()) return -1;
     char c = (char) stream->get();
     if (c == '\n') {
         pos.l++;

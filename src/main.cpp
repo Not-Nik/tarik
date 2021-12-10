@@ -74,7 +74,13 @@ int main(int argc, const char *argv[]) {
 
     for (const auto &input: parser.get_inputs()) {
         fs::path input_path = input;
-        fs::path output_path;
+
+        if (!exists(input_path)) {
+            std::cerr << "'" << input_path << "' doesn't exist...\n";
+            return 1;
+        }
+
+        fs::path output_path = input_path;
         if (output_filename.empty()) {
             std::string new_extension;
             if (re_emit && !emit_llvm) {
@@ -84,10 +90,10 @@ int main(int argc, const char *argv[]) {
             } else {
                 new_extension = ".o";
             }
-            output_path = input_path.replace_extension(new_extension);
+            output_path.replace_extension(new_extension);
         } else output_path = output_filename;
 
-        if (!exists(output_path.parent_path())) {
+        if (output_path.has_parent_path() && !exists(output_path.parent_path())) {
             fs::create_directories(output_path.parent_path());
         }
         Parser p(input_path, search_paths);

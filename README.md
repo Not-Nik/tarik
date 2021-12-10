@@ -14,6 +14,12 @@ fn main() i32 {
 }
 ```
 
+```shell
+tarik hello.tk
+gcc hello.o -o hello
+./hello
+```
+
 ## Inspiration
 
 tarik is inspired by
