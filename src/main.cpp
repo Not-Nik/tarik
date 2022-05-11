@@ -28,6 +28,7 @@ int main(int argc, const char *argv[]) {
     Option *override_triple = parser.add_option("target", "Set the target-triple (defaults to '" + LLVM::default_triple + "')", true, "triple", 't');
     Option *search_path = parser.add_option("search-path", "Add an import search path", true, "path", 's');
     Option *version = parser.add_option("version", "Display the compiler version");
+    Option *list_targets = parser.add_option("list-targets", "Lists all available targets");
 
     bool re_emit = false, emit_llvm = false;
     std::string output_filename, triple = LLVM::default_triple;
@@ -54,10 +55,12 @@ int main(int argc, const char *argv[]) {
         } else if (option == version) {
             LLVM::force_init();
             std::cout << version_id << " tarik compiler version " << version_string << "\n";
-            std::cout << "    Default target: " << LLVM::default_triple << "\n";
-            std::cout << "    Available LLVM targets:\n";
+            std::cout << "Default target: " << LLVM::default_triple << "\n";
+            return 0;
+        } else if (option == list_targets) {
+            std::cout << "Available LLVM targets:\n";
             for (const auto &t: LLVM::get_available_triples()) {
-                std::cout << "        " << t << "\n";
+                std::cout << "    " << t << "\n";
             }
             return 0;
         }
