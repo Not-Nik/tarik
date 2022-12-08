@@ -434,7 +434,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
         }
         case INT_EXPR: {
             auto ie = (IntExpression *) expression;
-            size_t width = std::max(8, roundUp(std::bit_width((size_t) ie->n), size_t(8)));
+            size_t width = std::max(8, roundUp((size_t) std::bit_width((size_t) ie->n), size_t(8)));
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
         }
         case REAL_EXPR: {
