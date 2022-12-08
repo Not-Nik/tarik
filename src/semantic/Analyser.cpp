@@ -152,7 +152,7 @@ bool Analyser::verify_break(BreakStatement *break_) {
 }
 
 bool Analyser::verify_continue(ContinueStatement *continue_) {
-    return iassert(last_loop, continue_->origin, "break outside of continue");
+    return iassert(last_loop, continue_->origin, "continue outside of loop");
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
