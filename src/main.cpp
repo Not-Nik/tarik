@@ -28,7 +28,7 @@ int main(int argc, const char *argv[]) {
     Option *override_triple = parser.add_option("target", "Set the target-triple (defaults to '" + LLVM::default_triple + "')", true, "triple", 't');
     Option *search_path = parser.add_option("search-path", "Add an import search path", true, "path", 's');
     Option *version = parser.add_option("version", "Display the compiler version");
-    Option *list_targets = parser.add_option("list-targets", "Lists all available targets");
+    Option *list_targets = parser.add_option("list-targets", "List all available targets");
 
     bool re_emit = false, emit_llvm = false;
     std::string output_filename, triple = LLVM::default_triple;
@@ -58,6 +58,7 @@ int main(int argc, const char *argv[]) {
             std::cout << "Default target: " << LLVM::default_triple << "\n";
             return 0;
         } else if (option == list_targets) {
+            LLVM::force_init();
             std::cout << "Available LLVM targets:\n";
             for (const auto &t: LLVM::get_available_triples()) {
                 std::cout << "    " << t << "\n";
@@ -71,7 +72,8 @@ int main(int argc, const char *argv[]) {
     }
 
     if (!output_filename.empty() && parser.get_inputs().size() > 1) {
-        std::cerr << "An explicit output file with multiple input files will discard compilation results. (Where'd you want me to write the rest?)\n";
+        std::cerr << "An explicit output file with multiple input files would discard compilation results. (Where'd "
+                     "you want me to write the rest?)\n";
         return 1;
     }
 

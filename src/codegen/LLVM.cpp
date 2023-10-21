@@ -6,7 +6,7 @@
 #include <vector>
 #include <sstream>
 #include <iostream>
-#include <concepts>
+#include <optional>
 
 #include <llvm/IR/Function.h>
 #include <llvm/IR/IRBuilder.h>
@@ -61,7 +61,7 @@ void LLVM::write_object_file(const std::string &to, const std::string &triple) {
     auto features = "";
 
     llvm::TargetOptions opt;
-    auto rm = llvm::Optional<llvm::Reloc::Model>();
+    auto rm = std::optional<llvm::Reloc::Model>();
     auto target_machine = target->createTargetMachine(triple, cpu, features, opt, rm);
 
     module->setDataLayout(target_machine->createDataLayout());
@@ -199,7 +199,7 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     }
 
     if (!is_last) {
-        current_function->getBasicBlockList().push_back(endif_block);
+        current_function->insert(current_function->end(), endif_block);
         builder.SetInsertPoint(endif_block);
     }
 }
@@ -218,14 +218,14 @@ void LLVM::generate_while(WhileStatement *while_, bool is_last) {
 
     builder.CreateBr(while_comp_block);
 
-    current_function->getBasicBlockList().push_back(while_comp_block);
+    current_function->insert(current_function->end(), while_comp_block);
     builder.SetInsertPoint(while_comp_block);
 
     // Todo: this should probably compare to zero instead of casting
     llvm::Value *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
     builder.CreateCondBr(condition, while_block, is_last ? nullptr : endwhile_block);
 
-    current_function->getBasicBlockList().push_back(while_block);
+    current_function->insert(current_function->end(), while_block);
     builder.SetInsertPoint(while_block);
 
     llvm::BasicBlock *old_llen = last_loop_entry, *old_llex = last_loop_exit;
@@ -239,7 +239,7 @@ void LLVM::generate_while(WhileStatement *while_, bool is_last) {
     last_loop_exit = old_llex;
 
     if (!is_last) {
-        current_function->getBasicBlockList().push_back(endwhile_block);
+        current_function->insert(current_function->end(), endwhile_block);
         builder.SetInsertPoint(endwhile_block);
     }
 }
