@@ -29,7 +29,9 @@ bool Lexer::operator_startswith(char c) {
 }
 
 bool Lexer::operator_startswith(std::string c) {
-    return std::any_of(operators.begin(), operators.end(), [c](auto op) { return op.first.find(c) != std::string::npos; });
+    return std::any_of(operators.begin(),
+                       operators.end(),
+                       [c](auto op) { return op.first.find(c) != std::string::npos; });
 }
 
 char Lexer::read_stream() {
@@ -264,4 +266,8 @@ Token Lexer::consume() {
 
 LexerPos Lexer::where() {
     return this->pos;
+}
+
+void Lexer::read_until(std::vector<char> d) {
+    while (std::find(d.begin(), d.end(), peek_stream()) == d.end()) read_stream();
 }

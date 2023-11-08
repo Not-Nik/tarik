@@ -5,6 +5,7 @@
 
 #include "Token.h"
 
+#include <vector>
 #include <istream>
 #include <filesystem>
 
@@ -32,6 +33,8 @@ public:
     Token consume();
 
     LexerPos where();
+
+    void read_until(std::vector<char> d);
 };
 
 #endif //TARIK_SRC_LEXICAL_LEXER_H_

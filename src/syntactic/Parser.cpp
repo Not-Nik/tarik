@@ -127,6 +127,8 @@ bool Parser::iassert(bool cond, std::string what, ...) {
     va_start(args, what);
     ::iassert(cond, where(), what, args);
     va_end(args);
+    if (!cond)
+        lexer.read_until({';', '}'});
     return cond;
 }
 
@@ -161,26 +163,26 @@ bool Parser::is_peek(TokenType raw) {
 std::filesystem::path Parser::find_import() {
     Token next = expect(NAME);
 
-    std::filesystem::path import;
+    std::filesystem::path import_;
 
     while (next.id == NAME) {
-        import /= next.raw;
+        import_ /= next.raw;
         if (is_peek(PERIOD)) {
             lexer.consume();
             next = expect(NAME);
         } else break;
     }
 
-    import.replace_extension(".tk");
+    import_.replace_extension(".tk");
 
-    if (exists(import)) return import;
+    if (exists(import_)) return import_;
 
     for (const auto &path: search_paths) {
-        if (exists(path / import)) {
-            return path / import;
+        if (exists(path / import_)) {
+            return path / import_;
         }
     }
-    return import;
+    return import_;
 }
 
 StructStatement *Parser::register_struct(StructStatement *struct_) {
@@ -267,7 +269,8 @@ Statement *Parser::parse_statement() {
         auto is = new IfStatement(where(), parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             auto es = parse_statement();
-            iassert(es->statement_type == ELSE_STMT, "internal: next token is 'else', but parsed statement isn't. report this as a bug");
+            iassert(es->statement_type == ELSE_STMT,
+                    "internal: next token is 'else', but parsed statement isn't. report this as a bug");
             is->else_statement = (ElseStatement *) es;
         }
         return is;
