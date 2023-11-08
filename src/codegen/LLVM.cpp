@@ -142,7 +142,8 @@ void LLVM::generate_function(FuncStatement *func) {
 
     llvm::FunctionType *func_type = make_llvm_function_type(func);
 
-    llvm::Function *llvm_func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func->name, module.get());
+    llvm::Function
+        *llvm_func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func->name, module.get());
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "func_entry", llvm_func);
     builder.SetInsertPoint(entry);
     current_function = llvm_func;
@@ -178,7 +179,8 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
     llvm::BasicBlock *else_block = nullptr;
     // Todo: this should probably compare to zero instead of casting
-    llvm::Value *condition = generate_cast(generate_expression(if_->condition), llvm::Type::getIntNTy(context, 1), false);
+    llvm::Value
+        *condition = generate_cast(generate_expression(if_->condition), llvm::Type::getIntNTy(context, 1), false);
 
     if (if_->else_statement) {
         else_block = llvm::BasicBlock::Create(context, "else_block", current_function);
@@ -222,7 +224,8 @@ void LLVM::generate_while(WhileStatement *while_, bool is_last) {
     builder.SetInsertPoint(while_comp_block);
 
     // Todo: this should probably compare to zero instead of casting
-    llvm::Value *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
+    llvm::Value
+        *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
     builder.CreateCondBr(condition, while_block, is_last ? nullptr : endwhile_block);
 
     current_function->insert(current_function->end(), while_block);
@@ -264,14 +267,17 @@ void LLVM::generate_struct(StructStatement *struct_) {
     }
 
     structures.emplace(struct_, llvm::StructType::create(context, members, struct_->name));
+
+    generate_function(struct_->ctor);
 }
 
-void LLVM::generate_import(ImportStatement *import, bool is_last) {
-    generate_statements(import->block, is_last);
+void LLVM::generate_import(ImportStatement *import_, bool is_last) {
+    generate_statements(import_->block, is_last);
 }
 
 // https://stackoverflow.com/questions/3407012/rounding-up-to-the-nearest-multiple-of-a-number#3407254
-template <std::integral T> int roundUp(T numToRound, T multiple) {
+template <std::integral T>
+int roundUp(T numToRound, T multiple) {
     if (multiple == 0) return numToRound;
 
     T remainder = numToRound % multiple;
@@ -417,7 +423,8 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             } else if (ae->left->expression_type == MEM_ACC_EXPR) {
                 dest = generate_member_access((BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
-            } else if (ae->left->expression_type == PREFIX_EXPR && ((PrefixOperatorExpression *) ae->left)->prefix_type == DEREF) {
+            } else if (ae->left->expression_type == PREFIX_EXPR
+                && ((PrefixOperatorExpression *) ae->left)->prefix_type == DEREF) {
                 auto deref = (PrefixOperatorExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
@@ -539,7 +546,8 @@ llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
         std::string var_name = ((NameExpression *) mae->left)->name;
         auto var = variables.at(var_name);
 
-        auto it = std::find_if(structures.begin(), structures.end(), [var](auto pair) { return pair.second == var.second; });
+        auto it =
+            std::find_if(structures.begin(), structures.end(), [var](auto pair) { return pair.second == var.second; });
         if (it == structures.end()) {/*jaix*/throw; }
 
         left = var.first;

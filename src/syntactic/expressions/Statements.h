@@ -181,7 +181,12 @@ class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
     bool definable;
 
-    FuncDeclareStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, bool var_arg, bool define = true)
+    FuncDeclareStatement(const LexerPos &o,
+                         std::string n,
+                         Type ret,
+                         std::vector<VariableStatement *> args,
+                         bool var_arg,
+                         bool define = true)
         : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg), definable(define) {}
 
     [[nodiscard]] std::string print() const override {
@@ -191,7 +196,12 @@ public:
 
 class FuncStatement : public ScopeStatement, public FuncStCommon {
 public:
-    FuncStatement(const LexerPos &o, std::string n, Type ret, std::vector<VariableStatement *> args, std::vector<Statement *> b, bool var_arg)
+    FuncStatement(const LexerPos &o,
+                  std::string n,
+                  Type ret,
+                  std::vector<VariableStatement *> args,
+                  std::vector<Statement *> b,
+                  bool var_arg)
         : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args), var_arg) {}
 
     [[nodiscard]] std::string print() const override {
@@ -203,6 +213,7 @@ class StructStatement : public Statement {
 public:
     std::string name;
     std::vector<VariableStatement *> members;
+    FuncStatement *ctor = nullptr;
 
     StructStatement(const LexerPos &o, std::string n, std::vector<VariableStatement *> m)
         : Statement(STRUCT_STMT, o), name(std::move(n)), members(std::move(m)) {}
@@ -219,6 +230,10 @@ public:
                 return true;
         }
         return false;
+    }
+
+    Type get_type() {
+        return Type(TypeUnion{.user_type = this}, false, 0);
     }
 
     Type get_member_type(const std::string &n) {

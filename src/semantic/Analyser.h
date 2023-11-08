@@ -29,12 +29,13 @@ protected:
     bool verify_continue(ContinueStatement *continue_);
     bool verify_variable(VariableStatement *var);
     bool verify_struct(StructStatement *struct_);
-    bool verify_import(ImportStatement *import);
+    bool verify_import(ImportStatement *import_);
     bool verify_expression(Expression *expression);
 
     bool does_always_return(ScopeStatement *scope);
     bool is_var_declared(const std::string &name);
     bool is_func_declared(const std::string &name);
+    bool is_struct_declared(const std::string &name);
 
     FuncStCommon *get_func_decl(const std::string &name);
     VariableStatement *get_variable(const std::string &name);

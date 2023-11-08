@@ -39,6 +39,7 @@ enum TokenType {
     SMALLER,
     GREATER,
     NOT,
+    DOLLAR,
     // Keywords
     FUNC,
     RETURN,
@@ -81,7 +82,8 @@ inline std::map<std::string, TokenType> operators = {
         {">=",  GREATER_EQUAL},
         {"<",   SMALLER},
         {">",   GREATER},
-        {"!",   NOT}};
+        {"!",   NOT},
+        {"$",   DOLLAR}};
 
 inline std::map<std::string, TokenType> keywords = {
         {"fn",       FUNC},

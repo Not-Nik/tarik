@@ -82,7 +82,9 @@ bool Analyser::verify_function(FuncStatement *func) {
         return false;
     }
 
-    if (!iassert(func->return_type == Type(VOID) || does_always_return(func), func->origin, "function with return type doesn't always return"))
+    if (!iassert(func->return_type == Type(VOID) || does_always_return(func),
+                 func->origin,
+                 "function with return type doesn't always return"))
         return false;
     functions.push_back(func);
     for (auto arg: func->arguments) {
@@ -103,7 +105,7 @@ bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
             if (!func_warned) warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
         } else
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
-        note(registered->origin, "%s definition here", critical ? "" : "previous ");
+        note(registered->origin, "previous definition here");
         if (critical) return false;
         warned = true;
         func_warned = true;
@@ -113,7 +115,8 @@ bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
         if (d->name != decl->name) continue;
         bool critical = d->return_type != decl->return_type;
         if (!critical) {
-            if (!decl_warned) warning(decl->origin, "declaration of already declared function '%s'", decl->name.c_str());
+            if (!decl_warned)
+                warning(decl->origin, "declaration of already declared function '%s'", decl->name.c_str());
         } else
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
         note(d->origin, "previous declaration here");
@@ -127,7 +130,8 @@ bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
 }
 
 bool Analyser::verify_if(IfStatement *if_) {
-    return verify_expression(if_->condition) && verify_scope(if_) && (!if_->else_statement || verify_scope(if_->else_statement));
+    return verify_expression(if_->condition) && verify_scope(if_)
+        && (!if_->else_statement || verify_scope(if_->else_statement));
 }
 
 bool Analyser::verify_else(ElseStatement *else_) {
@@ -178,6 +182,12 @@ bool Analyser::verify_struct(StructStatement *struct_) {
         }
     }
 
+    std::vector<VariableStatement *> ctor_args;
+    std::vector<Statement *> body;
+
+    auto *instance = new VariableStatement(struct_->origin, struct_->get_type(), "_instance");
+    body.push_back(instance);
+
     for (auto member: struct_->members) {
         if (!iassert(std::find(registered.begin(), registered.end(), member->name) == registered.end(),
                      member->origin,
@@ -185,13 +195,36 @@ bool Analyser::verify_struct(StructStatement *struct_) {
                      member->name.c_str()))
             return false;
         registered.push_back(member->name);
+        ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
+
+        auto *member_access = new BinaryOperatorExpression(struct_->origin,
+                                                           MEM_ACC,
+                                                           new NameExpression(struct_->origin, "_instance"),
+                                                           new NameExpression(struct_->origin, member->name));
+
+        body.push_back(new BinaryOperatorExpression(struct_->origin,
+                                                    ASSIGN,
+                                                    member_access,
+                                                    new NameExpression(struct_->origin, member->name)));
     }
+    body.push_back(new ReturnStatement(struct_->origin, new NameExpression(struct_->origin, "_instance")));
+
+    auto *ctor = new FuncStatement(struct_->origin,
+                                   "$__" + struct_->name + "_ctor",
+                                   struct_->get_type(),
+                                   ctor_args,
+                                   body,
+                                   false);
+
+    struct_->ctor = ctor;
+
     structures.push_back(struct_);
-    return true;
+
+    return verify_function(ctor);
 }
 
-bool Analyser::verify_import(ImportStatement *import) {
-    return verify_statements(import->block);
+bool Analyser::verify_import(ImportStatement *import_) {
+    return verify_statements(import_->block);
 }
 
 bool Analyser::verify_expression(Expression *expression) {
@@ -199,8 +232,16 @@ bool Analyser::verify_expression(Expression *expression) {
         case CALL_EXPR: {
             auto ce = (CallExpression *) expression;
             if (ce->callee->expression_type == NAME_EXPR) {
-                std::string func_name = ((NameExpression *) ce->callee)->name;
-                if (!iassert(is_func_declared(func_name), ce->origin, "undefined function '%s'", func_name.c_str())) return false;
+                auto *ne = (NameExpression *) ce->callee;
+                std::string func_name = ne->name;
+
+                if (is_struct_declared(func_name)) {
+                    ne->name = func_name = "$__" + func_name + "_ctor";
+                    // TODO: check if there exists a function with the same name
+                }
+
+                if (!iassert(is_func_declared(func_name), ce->origin, "undefined function '%s'", func_name.c_str()))
+                    return false;
                 FuncStCommon *func = get_func_decl(func_name);
                 if (!iassert(ce->arguments.size() >= func->arguments.size(),
                              ce->callee->origin,
@@ -238,9 +279,12 @@ bool Analyser::verify_expression(Expression *expression) {
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
             if (!verify_expression(ae->left) || !verify_expression(ae->right)
-                || !iassert(ae->left->type.is_compatible(ae->right->type), ae->origin, "invalid operands to binary expression"))
+                || !iassert(ae->left->type.is_compatible(ae->right->type),
+                            ae->origin,
+                            "invalid operands to binary expression"))
                 return false;
-            if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR) ae->assign_type(Type(BOOL));
+            if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
+                ae->assign_type(Type(BOOL));
                 // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
                 //  to the highest bit width of the two operand
             else ae->assign_type(ae->left->type);
@@ -253,12 +297,17 @@ bool Analyser::verify_expression(Expression *expression) {
 
             if (!verify_expression(left)) return false;
 
-            if (!iassert(!left->type.is_primitive, left->origin, "'%s' is not a structure", left->type.str().c_str())) return false;
+            if (!iassert(!left->type.is_primitive, left->origin, "'%s' is not a structure", left->type.str().c_str()))
+                return false;
             StructStatement *s = left->type.type.user_type;
             if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier")) return false;
             std::string member_name = ((NameExpression *) right)->name;
 
-            if (!iassert(s->has_member(member_name), right->origin, "no member named '%s' in '%s'", member_name.c_str(), left->type.str().c_str()))
+            if (!iassert(s->has_member(member_name),
+                         right->origin,
+                         "no member named '%s' in '%s'",
+                         member_name.c_str(),
+                         left->type.str().c_str()))
                 return false;
             mae->assign_type(s->get_member_type(member_name));
             break;
@@ -274,17 +323,25 @@ bool Analyser::verify_expression(Expression *expression) {
                 case POS:
                 case NEG:
                 case LOG_NOT:
-                    res = iassert(pe_type.is_primitive || pe_type.pointer_level > 0, pe->origin, "invalid operand to unary expression");
+                    res = iassert(pe_type.is_primitive || pe_type.pointer_level > 0,
+                                  pe->origin,
+                                  "invalid operand to unary expression");
                     break;
                 case REF: {
                     pe_type.pointer_level++;
                     ExprType etype = pe->operand->expression_type;
-                    res = iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR, pe->origin, "cannot take reference of temporary value");
-                    if (!res) note(pe->operand->origin, "'%s' produces a temporary value", pe->operand->print().c_str());
+                    res = iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR,
+                                  pe->origin,
+                                  "cannot take reference of temporary value");
+                    if (!res)
+                        note(pe->operand->origin, "'%s' produces a temporary value", pe->operand->print().c_str());
                     break;
                 }
                 case DEREF:
-                    res = iassert(pe_type.pointer_level > 0, pe->origin, "cannot dereference non-pointer type '%s'", pe->operand->type.str().c_str());
+                    res = iassert(pe_type.pointer_level > 0,
+                                  pe->origin,
+                                  "cannot dereference non-pointer type '%s'",
+                                  pe->operand->type.str().c_str());
                     pe_type.pointer_level--;
             }
 
@@ -293,7 +350,8 @@ bool Analyser::verify_expression(Expression *expression) {
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
-            if (!iassert(is_var_declared(ne->name), expression->origin, "undefined variable '%s'", ne->name.c_str())) return false;
+            if (!iassert(is_var_declared(ne->name), expression->origin, "undefined variable '%s'", ne->name.c_str()))
+                return false;
             ne->assign_type(get_variable(ne->name)->type);
             break;
         }
@@ -318,8 +376,10 @@ bool Analyser::verify_expression(Expression *expression) {
 
 bool Analyser::does_always_return(ScopeStatement *scope) {
     for (auto &it: scope->block) {
-        if ((it->statement_type == RETURN_STMT) || (it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it))
-            || (it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement && does_always_return((ScopeStatement *) it)
+        if ((it->statement_type == RETURN_STMT)
+            || (it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it))
+            || (it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement
+                && does_always_return((ScopeStatement *) it)
                 && does_always_return(((IfStatement *) it)->else_statement))
             || (it->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) it)))
             return true;
@@ -328,19 +388,30 @@ bool Analyser::does_always_return(ScopeStatement *scope) {
 }
 
 bool Analyser::is_var_declared(const std::string &name) {
-    return std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; }) != variables.end();
+    return std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; })
+        != variables.end();
 }
 
 bool Analyser::is_func_declared(const std::string &name) {
-    return std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; }) != functions.end()
-        || std::find_if(declarations.begin(), declarations.end(), [name](FuncDeclareStatement *v) { return name == v->name; }) != declarations.end();
+    return std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; })
+        != functions.end() || std::find_if(declarations.begin(),
+                                           declarations.end(),
+                                           [name](FuncDeclareStatement *v) { return name == v->name; })
+        != declarations.end();
+}
+
+bool Analyser::is_struct_declared(const std::string &name) {
+    return std::find_if(structures.begin(), structures.end(), [name](StructStatement *s) { return name == s->name; })
+        != structures.end();
 }
 
 FuncStCommon *Analyser::get_func_decl(const std::string &name) {
     auto fun = std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; });
     if (fun != functions.end()) return *fun;
 
-    auto decl = std::find_if(declarations.begin(), declarations.end(), [name](FuncDeclareStatement *v) { return name == v->name; });
+    auto decl = std::find_if(declarations.begin(),
+                             declarations.end(),
+                             [name](FuncDeclareStatement *v) { return name == v->name; });
     if (decl != declarations.end()) return *decl;
     return nullptr;
 }
