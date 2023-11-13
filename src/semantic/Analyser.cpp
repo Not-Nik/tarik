@@ -103,8 +103,9 @@ bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
         bool critical = registered->return_type != decl->return_type;
         if (!critical) {
             if (!func_warned) warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
-        } else
+        } else {
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
+        }
         note(registered->origin, "previous definition here");
         if (critical) return false;
         warned = true;
@@ -117,8 +118,9 @@ bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
         if (!critical) {
             if (!decl_warned)
                 warning(decl->origin, "declaration of already declared function '%s'", decl->name.c_str());
-        } else
+        } else {
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
+        }
         note(d->origin, "previous declaration here");
         if (critical) return false;
         warned = true;
@@ -130,6 +132,13 @@ bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
 }
 
 bool Analyser::verify_if(IfStatement *if_) {
+    if (if_->condition->type != Type(BOOL, 0)) {
+        if_->condition = new BinaryOperatorExpression(if_->condition->origin,
+                                                      NEQ,
+                                                      if_->condition,
+                                                      new IntExpression(if_->condition->origin, "0"));
+    }
+
     return verify_expression(if_->condition) && verify_scope(if_)
         && (!if_->else_statement || verify_scope(if_->else_statement));
 }
@@ -146,6 +155,14 @@ bool Analyser::verify_return(ReturnStatement *return_) {
 bool Analyser::verify_while(WhileStatement *while_) {
     Statement *old_last_loop = last_loop;
     last_loop = while_;
+
+    if (while_->condition->type != Type(BOOL, 0)) {
+        while_->condition = new BinaryOperatorExpression(while_->condition->origin,
+                                                         NEQ,
+                                                         while_->condition,
+                                                         new IntExpression(while_->condition->origin, "0"));
+    }
+
     bool res = verify_expression(while_->condition) && verify_scope(while_);
     last_loop = old_last_loop;
     return res;
