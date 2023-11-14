@@ -4,12 +4,12 @@
 #define TARIK_SRC_CLI_ARGUMENTS_H_
 
 #include <map>
-#include <utility>
 #include <vector>
 #include <string>
 
 class Option {
     static unsigned int option_count;
+
 public:
     std::string name, description;
     unsigned int option_id;
@@ -18,8 +18,13 @@ public:
     char short_name;
 
     Option(std::string name_, std::string description_, bool has_arg_, std::string argument_name_, char short_name_ = 0)
-        : name(std::move(name_)), description(std::move(description_)), option_id(option_count++), has_arg(has_arg_),
-          argument_name(std::move(argument_name_)), short_name(short_name_) {}
+        : name(std::move(name_)),
+          description(std::move(description_)),
+          option_id(option_count++),
+          has_arg(has_arg_),
+          argument_name(std::move(argument_name_)),
+          short_name(short_name_) {
+    }
 
     Option(const Option &) = delete;
     Option(Option &&) = default;
@@ -28,7 +33,7 @@ public:
 class ParsedOption {
 public:
     Option *option = nullptr;
-    std::string argument{};
+    std::string argument {};
 
     bool operator==(const ParsedOption &other) const {
         return option == other.option && argument == other.argument;
@@ -50,6 +55,7 @@ class ArgumentParser {
 
     std::vector<Option *> options;
     std::vector<std::string> inputs;
+
 protected:
     virtual void help();
 
@@ -63,14 +69,20 @@ public:
         bool made_last = false;
 
         friend bool operator==(iterator &me, iterator &other);
+
     public:
         explicit iterator(ArgumentParser *parser_)
-            : parser(parser_), overriden(false) {}
+            : parser(parser_),
+              overriden(false) {
+        }
         explicit iterator(ParsedOption override_)
-            : override(std::move(override_)), overriden(true) {}
+            : override(std::move(override_)),
+              overriden(true) {
+        }
 
         ParsedOption operator++() {
-            if (overriden) return override;
+            if (overriden)
+                return override;
             if (!made_last) {
                 made_last = true;
                 parser->parse_next_arg();
@@ -79,7 +91,8 @@ public:
         }
 
         ParsedOption operator*() {
-            if (overriden) return override;
+            if (overriden)
+                return override;
             if (!made_last) {
                 made_last = true;
                 last = parser->parse_next_arg();
@@ -91,7 +104,11 @@ public:
     ArgumentParser(int argc, const char *argv[], std::string toolName);
 
     Option *add_option(Option option);
-    Option *add_option(std::string name_, std::string description_, bool has_arg_ = false, std::string argument_name_ = "", char short_name = 0);
+    Option *add_option(std::string name_,
+                       std::string description_,
+                       bool has_arg_ = false,
+                       std::string argument_name_ = "",
+                       char short_name = 0);
 
     ParsedOption parse_next_arg();
 
@@ -107,8 +124,10 @@ public:
 };
 
 inline bool operator==(ArgumentParser::iterator &me, ArgumentParser::iterator &other) {
-    if (me.overriden != other.overriden) return *me == *other;
-    if (me.overriden) return me.override == other.override;
+    if (me.overriden != other.overriden)
+        return *me == *other;
+    if (me.overriden)
+        return me.override == other.override;
     return me.parser == other.parser;
 }
 

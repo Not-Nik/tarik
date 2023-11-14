@@ -20,7 +20,7 @@
 #include <llvm/Support/raw_os_ostream.h>
 
 static llvm::LLVMContext context;
-static llvm::IRBuilder<> builder(context);
+static llvm::IRBuilder builder(context);
 
 LLVM::LLVM(const std::string &name)
     : module(std::make_unique<llvm::Module>(name, context)) {
@@ -142,14 +142,16 @@ void LLVM::generate_function(FuncStatement *func) {
 
     llvm::FunctionType *func_type = make_llvm_function_type(func);
 
-    llvm::Function
-        *llvm_func = llvm::Function::Create(func_type, llvm::Function::ExternalLinkage, func->name, module.get());
+    llvm::Function *llvm_func = llvm::Function::Create(func_type,
+                                                       llvm::Function::ExternalLinkage,
+                                                       func->name,
+                                                       module.get());
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "func_entry", llvm_func);
     builder.SetInsertPoint(entry);
     current_function = llvm_func;
 
     auto it = func->arguments.begin();
-    for (auto &arg: llvm_func->args()) {
+    for (auto &arg : llvm_func->args()) {
         arg.setName("arg_" + (*it)->name);
         auto arg_var = builder.CreateAlloca(arg.getType(), 0u, nullptr, "stack_" + (*it)->name);
         builder.CreateStore(&arg, arg_var);
@@ -179,8 +181,9 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
     llvm::BasicBlock *else_block = nullptr;
     // Todo: this should probably compare to zero instead of casting
-    llvm::Value
-        *condition = generate_cast(generate_expression(if_->condition), llvm::Type::getIntNTy(context, 1), false);
+    llvm::Value *condition = generate_cast(generate_expression(if_->condition),
+                                           llvm::Type::getIntNTy(context, 1),
+                                           false);
 
     if (if_->else_statement) {
         else_block = llvm::BasicBlock::Create(context, "else_block", current_function);
@@ -192,12 +195,14 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     builder.SetInsertPoint(if_block);
 
     generate_scope(if_, false);
-    if (!is_last) builder.CreateBr(endif_block);
+    if (!is_last)
+        builder.CreateBr(endif_block);
 
     if (else_block) {
         builder.SetInsertPoint(else_block);
         generate_scope(if_->else_statement, is_last);
-        if (!is_last) builder.CreateBr(endif_block);
+        if (!is_last)
+            builder.CreateBr(endif_block);
     }
 
     if (!is_last) {
@@ -206,10 +211,13 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     }
 }
 
-void LLVM::generate_else(ElseStatement *) {} // this will never happen
+void LLVM::generate_else(ElseStatement *) {
+    // this will never happen
+}
 
 void LLVM::generate_return(ReturnStatement *return_) {
-    if (!return_type) return;
+    if (!return_type)
+        return;
     builder.CreateRet(generate_cast(generate_expression(return_->value), return_type, return_type_signed_int));
 }
 
@@ -223,9 +231,9 @@ void LLVM::generate_while(WhileStatement *while_, bool is_last) {
     current_function->insert(current_function->end(), while_comp_block);
     builder.SetInsertPoint(while_comp_block);
 
-    // Todo: this should probably compare to zero instead of casting
-    llvm::Value
-        *condition = generate_cast(generate_expression(while_->condition), llvm::Type::getIntNTy(context, 1), false);
+    llvm::Value *condition = generate_cast(generate_expression(while_->condition),
+                                           llvm::Type::getIntNTy(context, 1),
+                                           false);
     builder.CreateCondBr(condition, while_block, is_last ? nullptr : endwhile_block);
 
     current_function->insert(current_function->end(), while_block);
@@ -257,12 +265,12 @@ void LLVM::generate_continue(ContinueStatement *) {
 
 void LLVM::generate_variable(VariableStatement *var) {
     llvm::Type *type = make_llvm_type(var->type);
-    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(type, unsigned(0), nullptr, var->name), type));
+    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(type, 0u, nullptr, var->name), type));
 }
 
 void LLVM::generate_struct(StructStatement *struct_) {
     std::vector<llvm::Type *> members;
-    for (auto member: struct_->members) {
+    for (auto member : struct_->members) {
         members.push_back(make_llvm_type(member->type));
     }
 
@@ -278,10 +286,12 @@ void LLVM::generate_import(ImportStatement *import_, bool is_last) {
 // https://stackoverflow.com/questions/3407012/rounding-up-to-the-nearest-multiple-of-a-number#3407254
 template <std::integral T>
 int roundUp(T numToRound, T multiple) {
-    if (multiple == 0) return numToRound;
+    if (multiple == 0)
+        return numToRound;
 
     T remainder = numToRound % multiple;
-    if (remainder == 0) return numToRound;
+    if (remainder == 0)
+        return numToRound;
 
     return numToRound + multiple - remainder;
 }
@@ -301,7 +311,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
 
             std::vector<llvm::Value *> arg_values;
             size_t arg_i = 0;
-            for (auto arg: ce->arguments) {
+            for (auto arg : ce->arguments) {
                 // Check if we are past the regular, non-variable arguments,
                 // and don't try to cast if we are
                 if (arg_i >= function.getFunctionType()->getNumParams()) {
@@ -313,7 +323,8 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                 }
             }
             const char *name = "";
-            if (!function.getFunctionType()->getReturnType()->isVoidTy()) name = "call_temp";
+            if (!function.getFunctionType()->getReturnType()->isVoidTy())
+                name = "call_temp";
             return builder.CreateCall(function, arg_values, name);
         }
         case DASH_EXPR:
@@ -322,9 +333,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
         case COMP_EXPR: {
             auto ce = (BinaryOperatorExpression *) expression;
             bool fp = false;
-            llvm::Value *left, *right;
-            left = generate_expression(ce->left);
-            right = generate_expression(ce->right);
+            llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
             if (left->getType()->isFloatingPointTy() && !right->getType()->isFloatingPointTy()) {
                 right = generate_cast(right, left->getType(), ce->right->type.is_signed_int());
@@ -340,40 +349,65 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             }
             switch (ce->bin_op_type) {
                 case ADD:
-                    if (fp) return builder.CreateFAdd(left, right, "add_temp");
-                    else return builder.CreateAdd(left, right, "add_temp");
+                    if (fp)
+                        return builder.CreateFAdd(left, right, "add_temp");
+                    else
+                        return builder.CreateAdd(left, right, "add_temp");
                 case SUB:
-                    if (fp) return builder.CreateFSub(left, right, "sub_temp");
-                    else return builder.CreateSub(left, right, "sub_temp");
+                    if (fp)
+                        return builder.CreateFSub(left, right, "sub_temp");
+                    else
+                        return builder.CreateSub(left, right, "sub_temp");
                 case MUL:
-                    if (fp) return builder.CreateFMul(left, right, "mul_temp");
-                    else return builder.CreateMul(left, right, "mul_temp");
+                    if (fp)
+                        return builder.CreateFMul(left, right, "mul_temp");
+                    else
+                        return builder.CreateMul(left, right, "mul_temp");
                 case DIV:
-                    if (fp) return builder.CreateFDiv(left, right, "div_temp");
-                    else if (unsigned_int) return builder.CreateUDiv(left, right, "div_temp");
-                    else return builder.CreateSDiv(left, right);
+                    if (fp)
+                        return builder.CreateFDiv(left, right, "div_temp");
+                    else if (unsigned_int)
+                        return builder.CreateUDiv(left, right, "div_temp");
+                    else
+                        return builder.CreateSDiv(left, right);
                 case EQ:
-                    if (fp) return builder.CreateFCmpOEQ(left, right, "eq_temp");
-                    else return builder.CreateICmpEQ(left, right, "eq_temp");
+                    if (fp)
+                        return builder.CreateFCmpOEQ(left, right, "eq_temp");
+                    else
+                        return builder.CreateICmpEQ(left, right, "eq_temp");
                 case NEQ:
-                    if (fp) return builder.CreateFCmpONE(left, right, "neq_temp");
-                    else return builder.CreateICmpNE(left, right, "neq_temp");
+                    if (fp)
+                        return builder.CreateFCmpONE(left, right, "neq_temp");
+                    else
+                        return builder.CreateICmpNE(left, right, "neq_temp");
                 case SM:
-                    if (fp) return builder.CreateFCmpOLE(left, right, "sm_temp");
-                    else if (unsigned_int) return builder.CreateICmpULT(left, right, "sm_temp");
-                    else return builder.CreateICmpSLT(left, right, "sm_temp");
+                    if (fp)
+                        return builder.CreateFCmpOLE(left, right, "sm_temp");
+                    else if (unsigned_int)
+                        return builder.CreateICmpULT(left, right, "sm_temp");
+                    else
+                        return builder.CreateICmpSLT(left, right, "sm_temp");
                 case GR:
-                    if (fp) return builder.CreateFCmpOGT(left, right, "gr_temp");
-                    else if (unsigned_int) return builder.CreateICmpUGT(left, right, "gr_temp");
-                    else return builder.CreateICmpSGT(left, right, "gr_temp");
+                    if (fp)
+                        return builder.CreateFCmpOGT(left, right, "gr_temp");
+                    else if (unsigned_int)
+                        return builder.CreateICmpUGT(left, right, "gr_temp");
+                    else
+                        return builder.CreateICmpSGT(left, right, "gr_temp");
                 case SME:
-                    if (fp) return builder.CreateFCmpOLE(left, right, "sme_temp");
-                    else if (unsigned_int) return builder.CreateICmpULE(left, right, "sme_temp");
-                    else return builder.CreateICmpSLE(left, right, "sme_temp");
+                    if (fp)
+                        return builder.CreateFCmpOLE(left, right, "sme_temp");
+                    else if (unsigned_int)
+                        return builder.CreateICmpULE(left, right, "sme_temp");
+                    else
+                        return builder.CreateICmpSLE(left, right, "sme_temp");
                 case GRE:
-                    if (fp) return builder.CreateFCmpOGE(left, right, "gre_temp");
-                    else if (unsigned_int) return builder.CreateICmpUGE(left, right, "gre_temp");
-                    else return builder.CreateICmpSGE(left, right, "gre_temp");
+                    if (fp)
+                        return builder.CreateFCmpOGE(left, right, "gre_temp");
+                    else if (unsigned_int)
+                        return builder.CreateICmpUGE(left, right, "gre_temp");
+                    else
+                        return builder.CreateICmpSGE(left, right, "gre_temp");
             }
             break;
         }
@@ -388,7 +422,8 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             if (pe->prefix_type == REF) {
                 if (pe->operand->expression_type == NAME_EXPR) {
                     return variables.at(((NameExpression *) pe->operand)->name).first;
-                } else if (pe->operand->expression_type == MEM_ACC_EXPR) {
+                }
+                if (pe->operand->expression_type == MEM_ACC_EXPR) {
                     return generate_member_access((BinaryOperatorExpression *) expression);
                 }
             }
@@ -400,8 +435,10 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                     throw; // how would you do this in llvm?
                     break;
                 case NEG:
-                    if (val->getType()->isFloatingPointTy()) return builder.CreateFNeg(val, "neg_temp");
-                    else return builder.CreateNeg(val, "neg_temp");
+                    if (val->getType()->isFloatingPointTy())
+                        return builder.CreateFNeg(val, "neg_temp");
+                    else
+                        return builder.CreateNeg(val, "neg_temp");
                 case DEREF:
                     return builder.CreateLoad(make_llvm_type(pe->type), val, "deref_temp");
                 case LOG_NOT:
@@ -417,14 +454,14 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             llvm::Value *dest;
             llvm::Type *dest_type;
             if (ae->left->expression_type == NAME_EXPR) {
-                auto var_on_stack = variables.at(((NameExpression *) ae->left)->name);
-                dest = var_on_stack.first;
-                dest_type = var_on_stack.second;
+                auto [var, type] = variables.at(((NameExpression *) ae->left)->name);
+                dest = var;
+                dest_type = type;
             } else if (ae->left->expression_type == MEM_ACC_EXPR) {
                 dest = generate_member_access((BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
-            } else if (ae->left->expression_type == PREFIX_EXPR
-                && ((PrefixOperatorExpression *) ae->left)->prefix_type == DEREF) {
+            } else if (ae->left->expression_type == PREFIX_EXPR && ((PrefixOperatorExpression *) ae->left)->prefix_type
+                       == DEREF) {
                 auto deref = (PrefixOperatorExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
@@ -436,8 +473,8 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
-            auto var_on_stack = variables.at(ne->name);
-            return builder.CreateLoad(var_on_stack.second, var_on_stack.first, "load_temp");
+            auto [var, type] = variables.at(ne->name);
+            return builder.CreateLoad(type, var, "load_temp");
         }
         case INT_EXPR: {
             auto ie = (IntExpression *) expression;
@@ -463,22 +500,23 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
 }
 
 llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int) {
-    if (val->getType() == type) return val;
+    if (val->getType() == type)
+        return val;
     llvm::Instruction::CastOps co;
     if (type->isFloatingPointTy()) {
-        if (val->getType()->isFloatingPointTy()) {
+        if (val->getType()->isFloatingPointTy())
             return builder.CreateFPCast(val, type, "cast_temp");
-        } else {
-            if (signed_int) co = llvm::Instruction::SIToFP;
-            else co = llvm::Instruction::UIToFP;
-        }
+        if (signed_int)
+            co = llvm::Instruction::SIToFP;
+        else
+            co = llvm::Instruction::UIToFP;
     } else {
-        if (val->getType()->isFloatingPointTy()) {
-            if (signed_int) co = llvm::Instruction::FPToSI;
-            else co = llvm::Instruction::FPToUI;
-        } else {
+        if (!val->getType()->isFloatingPointTy())
             return builder.CreateIntCast(val, type, signed_int, "cast_temp");
-        }
+        if (signed_int)
+            co = llvm::Instruction::FPToSI;
+        else
+            co = llvm::Instruction::FPToUI;
     }
     return builder.CreateCast(co, val, type, "cast_temp");
 }
@@ -529,7 +567,8 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
 llvm::FunctionType *LLVM::make_llvm_function_type(FuncStCommon *func) {
     llvm::Type *rt = make_llvm_type(func->return_type);
     std::vector<llvm::Type *> argument_types;
-    for (auto arg: func->arguments) {
+    argument_types.reserve(func->arguments.size());
+    for (auto arg : func->arguments) {
         argument_types.push_back(make_llvm_type(arg->type));
     }
     llvm::FunctionType *func_type = llvm::FunctionType::get(rt, argument_types, func->var_arg);
@@ -546,9 +585,13 @@ llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
         std::string var_name = ((NameExpression *) mae->left)->name;
         auto var = variables.at(var_name);
 
-        auto it =
-            std::find_if(structures.begin(), structures.end(), [var](auto pair) { return pair.second == var.second; });
-        if (it == structures.end()) {/*jaix*/throw; }
+        auto it = std::find_if(structures.begin(),
+                               structures.end(),
+                               [var](auto pair) { return pair.second == var.second; });
+        if (it == structures.end()) {
+            /*jaix*/
+            throw;
+        }
 
         left = var.first;
         struct_ = it->first;

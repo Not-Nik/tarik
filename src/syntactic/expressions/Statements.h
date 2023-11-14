@@ -4,10 +4,7 @@
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
 
 #include <map>
-#include <utility>
 #include <vector>
-#include <utility>
-#include <algorithm>
 
 #include "Types.h"
 #include "Base.h"

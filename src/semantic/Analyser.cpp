@@ -39,7 +39,7 @@ bool Analyser::verify_statement(Statement *statement) {
 
 bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     bool res = true;
-    for (auto statement: statements) {
+    for (auto statement : statements) {
         // Combining these two lines will cause clang to not call `verify_statement` when res is false, effectively limiting us to a single error
         bool t = verify_statement(statement);
         res = res and t;
@@ -53,8 +53,10 @@ bool Analyser::verify_scope(ScopeStatement *scope) {
 
     bool res = verify_statements(scope->block);
 
-    while (old_var_count < variables.size()) variables.pop_back();
-    while (old_struct_count < structures.size()) structures.pop_back();
+    while (old_var_count < variables.size())
+        variables.pop_back();
+    while (old_struct_count < structures.size())
+        structures.pop_back();
 
     return res;
 }
@@ -63,15 +65,17 @@ bool Analyser::verify_function(FuncStatement *func) {
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
-    for (auto registered: functions) {
-        if (registered->name != func->name) continue;
+    for (auto registered : functions) {
+        if (registered->name != func->name)
+            continue;
         error(func->origin, "redefinition of '%s'", func->name.c_str());
         note(registered->origin, "previous definition here");
         return false;
     }
 
-    for (auto decl: declarations) {
-        if (decl->name != func->name) continue;
+    for (auto decl : declarations) {
+        if (decl->name != func->name)
+            continue;
         if (!decl->definable) {
             error(func->origin, "redefinition of '%s'", func->name.c_str());
             note(decl->origin, "previous definition in imported file '%s'", decl->origin.filename.filename().c_str());
@@ -87,47 +91,52 @@ bool Analyser::verify_function(FuncStatement *func) {
                  "function with return type doesn't always return"))
         return false;
     functions.push_back(func);
-    for (auto arg: func->arguments) {
+    for (auto arg : func->arguments) {
         variables.push_back(arg);
     }
 
-    if (func->var_arg) warning(func->origin, "function uses var args, but they cannot be accessed");
+    if (func->var_arg)
+        warning(func->origin, "function uses var args, but they cannot be accessed");
 
     return verify_scope(func);
 }
 
 bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
     bool warned = false, func_warned = false, decl_warned = false;
-    for (auto registered: functions) {
-        if (registered->name != decl->name) continue;
+    for (auto registered : functions) {
+        if (registered->name != decl->name)
+            continue;
         bool critical = registered->return_type != decl->return_type;
-        if (!critical) {
-            if (!func_warned) warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
-        } else {
+        if (critical) {
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
+        } else if (!func_warned) {
+            warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
         }
         note(registered->origin, "previous definition here");
-        if (critical) return false;
+        if (critical)
+            return false;
         warned = true;
         func_warned = true;
     }
 
-    for (auto d: declarations) {
-        if (d->name != decl->name) continue;
+    for (auto d : declarations) {
+        if (d->name != decl->name)
+            continue;
         bool critical = d->return_type != decl->return_type;
-        if (!critical) {
-            if (!decl_warned)
-                warning(decl->origin, "declaration of already declared function '%s'", decl->name.c_str());
-        } else {
+        if (critical) {
             error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
+        } else if (!decl_warned) {
+            warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
         }
         note(d->origin, "previous declaration here");
-        if (critical) return false;
+        if (critical)
+            return false;
         warned = true;
         decl_warned = true;
     }
 
-    if (!warned) declarations.push_back(decl);
+    if (!warned)
+        declarations.push_back(decl);
     return true;
 }
 
@@ -139,8 +148,8 @@ bool Analyser::verify_if(IfStatement *if_) {
                                                       new IntExpression(if_->condition->origin, "0"));
     }
 
-    return verify_expression(if_->condition) && verify_scope(if_)
-        && (!if_->else_statement || verify_scope(if_->else_statement));
+    return verify_expression(if_->condition) && verify_scope(if_) && (
+               !if_->else_statement || verify_scope(if_->else_statement));
 }
 
 bool Analyser::verify_else(ElseStatement *else_) {
@@ -177,7 +186,7 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
-    for (auto variable: variables) {
+    for (auto variable : variables) {
         if (var->name == variable->name) {
             error(var->origin, "redefinition of '%s'", var->name.c_str());
             note(variable->origin, "previous definition here");
@@ -191,7 +200,7 @@ bool Analyser::verify_variable(VariableStatement *var) {
 bool Analyser::verify_struct(StructStatement *struct_) {
     std::vector<std::string> registered;
 
-    for (auto structure: structures) {
+    for (auto structure : structures) {
         if (struct_->name == structure->name) {
             error(struct_->origin, "redefinition of '%s'", struct_->name.c_str());
             note(structure->origin, "previous definition here");
@@ -205,7 +214,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     auto *instance = new VariableStatement(struct_->origin, struct_->get_type(), "_instance");
     body.push_back(instance);
 
-    for (auto member: struct_->members) {
+    for (auto member : struct_->members) {
         if (!iassert(std::find(registered.begin(), registered.end(), member->name) == registered.end(),
                      member->origin,
                      "duplicate member '%s'",
@@ -265,12 +274,11 @@ bool Analyser::verify_expression(Expression *expression) {
                              "too few arguments, expected %i found %i.",
                              func->arguments.size(),
                              ce->arguments.size()) ||
-
                     !iassert(func->var_arg || ce->arguments.size() <= func->arguments.size(),
-                             ce->callee->origin,
-                             "too many arguments, expected %i found %i.",
-                             func->arguments.size(),
-                             ce->arguments.size()))
+                            ce->callee->origin,
+                            "too many arguments, expected %i found %i.",
+                            func->arguments.size(),
+                            ce->arguments.size()))
                     return false;
 
                 for (size_t i = 0; i < func->arguments.size(); i++) {
@@ -295,16 +303,17 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            if (!verify_expression(ae->left) || !verify_expression(ae->right)
-                || !iassert(ae->left->type.is_compatible(ae->right->type),
-                            ae->origin,
-                            "invalid operands to binary expression"))
+            if (!verify_expression(ae->left) || !verify_expression(ae->right) ||
+                !iassert(ae->left->type.is_compatible(ae->right->type),
+                        ae->origin,
+                        "invalid operands to binary expression"))
                 return false;
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
                 // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
                 //  to the highest bit width of the two operand
-            else ae->assign_type(ae->left->type);
+            else
+                ae->assign_type(ae->left->type);
             break;
         }
         case MEM_ACC_EXPR: {
@@ -312,12 +321,14 @@ bool Analyser::verify_expression(Expression *expression) {
             auto left = mae->left;
             auto right = mae->right;
 
-            if (!verify_expression(left)) return false;
+            if (!verify_expression(left))
+                return false;
 
             if (!iassert(!left->type.is_primitive, left->origin, "'%s' is not a structure", left->type.str().c_str()))
                 return false;
             StructStatement *s = left->type.type.user_type;
-            if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier")) return false;
+            if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
+                return false;
             std::string member_name = ((NameExpression *) right)->name;
 
             if (!iassert(s->has_member(member_name),
@@ -331,7 +342,8 @@ bool Analyser::verify_expression(Expression *expression) {
         }
         case PREFIX_EXPR: {
             auto pe = (PrefixOperatorExpression *) expression;
-            if (!verify_expression(pe->operand)) return false;
+            if (!verify_expression(pe->operand))
+                return false;
 
             bool res = true;
             Type pe_type = pe->operand->type;
@@ -392,12 +404,11 @@ bool Analyser::verify_expression(Expression *expression) {
 }
 
 bool Analyser::does_always_return(ScopeStatement *scope) {
-    for (auto &it: scope->block) {
-        if ((it->statement_type == RETURN_STMT)
-            || (it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it))
-            || (it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement
-                && does_always_return((ScopeStatement *) it)
-                && does_always_return(((IfStatement *) it)->else_statement))
+    for (auto &it : scope->block) {
+        if ((it->statement_type == RETURN_STMT) || (
+                it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it)) || (
+                it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement &&
+                does_always_return((ScopeStatement *) it) && does_always_return(((IfStatement *) it)->else_statement))
             || (it->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) it)))
             return true;
     }
@@ -405,31 +416,33 @@ bool Analyser::does_always_return(ScopeStatement *scope) {
 }
 
 bool Analyser::is_var_declared(const std::string &name) {
-    return std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; })
-        != variables.end();
+    return std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; }) !=
+           variables.end();
 }
 
 bool Analyser::is_func_declared(const std::string &name) {
-    return std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; })
-        != functions.end() || std::find_if(declarations.begin(),
+    return std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; }) !=
+           functions.end() || std::find_if(declarations.begin(),
                                            declarations.end(),
                                            [name](FuncDeclareStatement *v) { return name == v->name; })
-        != declarations.end();
+           != declarations.end();
 }
 
 bool Analyser::is_struct_declared(const std::string &name) {
-    return std::find_if(structures.begin(), structures.end(), [name](StructStatement *s) { return name == s->name; })
-        != structures.end();
+    return std::find_if(structures.begin(), structures.end(), [name](StructStatement *s) { return name == s->name; }) !=
+           structures.end();
 }
 
 FuncStCommon *Analyser::get_func_decl(const std::string &name) {
     auto fun = std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; });
-    if (fun != functions.end()) return *fun;
+    if (fun != functions.end())
+        return *fun;
 
     auto decl = std::find_if(declarations.begin(),
                              declarations.end(),
                              [name](FuncDeclareStatement *v) { return name == v->name; });
-    if (decl != declarations.end()) return *decl;
+    if (decl != declarations.end())
+        return *decl;
     return nullptr;
 }
 

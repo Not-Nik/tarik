@@ -12,7 +12,9 @@ public:
     std::string name;
 
     explicit NameExpression(const LexerPos &lp, std::string n)
-        : Expression(NAME_EXPR, lp), name(std::move(n)) {}
+        : Expression(NAME_EXPR, lp),
+          name(std::move(n)) {
+    }
 
     [[nodiscard]] std::string print() const override {
         return name;
@@ -31,8 +33,10 @@ To smart_cast_from_string(const std::string &n) {
 
 template <>
 inline bool smart_cast_from_string<bool>(const std::string &n) {
-    if (n == "true") return true;
-    if (n == "false") return false;
+    if (n == "true")
+        return true;
+    if (n == "false")
+        return false;
     throw "__unexpected_bool";
 }
 
@@ -55,7 +59,9 @@ public:
     PrimitiveType n;
 
     PrimitiveExpression(LexerPos lp, const std::string &n)
-        : Expression(expr_type, lp), n(smart_cast_from_string<PrimitiveType>(n)) {}
+        : Expression(expr_type, lp),
+          n(smart_cast_from_string<PrimitiveType>(n)) {
+    }
 
     [[nodiscard]] std::string print() const override {
         return smart_cast_to_string(n);
@@ -70,7 +76,8 @@ using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 class NullExpression : public Expression {
 public:
     explicit NullExpression(LexerPos lp)
-        : Expression(NULL_EXPR, lp) {}
+        : Expression(NULL_EXPR, lp) {
+    }
 
     [[nodiscard]] std::string print() const override {
         return "null";
@@ -78,7 +85,11 @@ public:
 };
 
 enum PrefixType {
-    POS, NEG, REF, DEREF, LOG_NOT
+    POS,
+    NEG,
+    REF,
+    DEREF,
+    LOG_NOT
 };
 
 inline std::string to_string(PrefixType pt) {
@@ -102,7 +113,9 @@ public:
     Expression *operand;
 
     explicit PrefixOperatorExpression(const LexerPos &lp, PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR, lp), prefix_type(pt), operand(op) {
+        : Expression(PREFIX_EXPR, lp),
+          prefix_type(pt),
+          operand(op) {
     }
 
     ~PrefixOperatorExpression() override {
@@ -115,7 +128,18 @@ public:
 };
 
 enum BinOpType {
-    ADD, SUB, MUL, DIV, EQ, NEQ, SM, GR, SME, GRE, MEM_ACC, ASSIGN
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+    EQ,
+    NEQ,
+    SM,
+    GR,
+    SME,
+    GRE,
+    MEM_ACC,
+    ASSIGN
 };
 
 constexpr ExprType to_expr_type(BinOpType bot) {
@@ -176,7 +200,10 @@ public:
     Expression *left, *right;
 
     BinaryOperatorExpression(const LexerPos &lp, BinOpType bot, Expression *l, Expression *r)
-        : Expression(to_expr_type(bot), lp), bin_op_type(bot), left(l), right(r) {
+        : Expression(to_expr_type(bot), lp),
+          bin_op_type(bot),
+          left(l),
+          right(r) {
     }
 
     ~BinaryOperatorExpression() override {
@@ -195,11 +222,13 @@ public:
     std::vector<Expression *> arguments;
 
     CallExpression(const LexerPos &lp, Expression *c, std::vector<Expression *> args)
-        : Expression(CALL_EXPR, lp), callee(c), arguments(std::move(args)) {
+        : Expression(CALL_EXPR, lp),
+          callee(c),
+          arguments(std::move(args)) {
     }
 
     ~CallExpression() override {
-        for (auto *arg: arguments) {
+        for (auto *arg : arguments) {
             delete arg;
         }
         delete callee;
@@ -207,7 +236,7 @@ public:
 
     [[nodiscard]] std::string print() const override {
         std::string arg_string;
-        for (auto arg: arguments) {
+        for (auto arg : arguments) {
             arg_string += arg->print() + ", ";
         }
         if (!arg_string.empty()) {

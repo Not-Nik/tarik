@@ -13,7 +13,7 @@ class Lexer {
     std::istream *stream;
     bool allocated = false;
 
-    LexerPos pos{1, 0, ""};
+    LexerPos pos {1, 0, ""};
 
     static bool operator_startswith(char c);
 
@@ -25,7 +25,7 @@ class Lexer {
 
 public:
     explicit Lexer(std::istream *s);
-    explicit Lexer(const std::filesystem::path& f);
+    explicit Lexer(const std::filesystem::path &f);
     ~Lexer();
 
     Token peek(int dist = 0);

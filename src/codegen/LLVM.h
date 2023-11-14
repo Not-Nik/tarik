@@ -23,6 +23,7 @@ class LLVM {
     std::map<std::string, llvm::FunctionType *> functions;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
     std::map<StructStatement *, llvm::StructType *> structures;
+
 public:
     explicit LLVM(const std::string &name);
     static void force_init();
@@ -40,10 +41,12 @@ public:
     }
     static std::vector<std::string> get_available_triples() {
         std::vector<std::string> res;
-        for (auto t: llvm::TargetRegistry::targets()) res.emplace_back(t.getName());
+        for (auto t : llvm::TargetRegistry::targets())
+            res.emplace_back(t.getName());
         std::reverse(res.begin(), res.end());
         return res;
     }
+
 protected:
     void generate_scope(ScopeStatement *scope, bool is_last);
     void generate_function(FuncStatement *func);

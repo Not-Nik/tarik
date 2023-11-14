@@ -50,6 +50,7 @@ bool iassert(bool cond, LexerPos pos, std::string what, ...) {
 }
 
 bool iassert(bool cond, LexerPos pos, std::string what, va_list list) {
-    if (!cond) vcomperr(what.c_str(), ERROR, pos.filename.c_str(), pos.l, pos.p, list);
+    if (!cond)
+        vcomperr(what.c_str(), ERROR, pos.filename.c_str(), pos.l, pos.p, list);
     return cond;
 }

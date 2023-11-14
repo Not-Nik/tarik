@@ -3,6 +3,8 @@
 #include "Testing.h"
 
 #include "syntactic/Parser.h"
+#include "syntactic/expressions/Expression.h"
+
 #include <sstream>
 
 void *operator new(size_t size) {
@@ -25,7 +27,7 @@ std::string to_string(const FuncStatement *f) {
 bool test() {
     using ss = std::stringstream;
     int overhead = allocs;
-    Type integer = Type(TypeUnion{I64}, true, 0);
+    Type integer = Type(TypeUnion {I64}, true, 0);
     BEGIN_TEST
 
     FIRST_TEST(lexer)
@@ -58,29 +60,24 @@ bool test() {
 
     MID_TEST(expression parsing)
 
-        ss c;
-        {
+        ss c; {
             Expression *e = Parser(&(c = ss("3 + 4 * 5"))).parse_expression();
             ASSERT_STR_EQ(e->print(), "(3+(4*5))")
             delete e;
-        }
-        {
+        } {
             Expression *e = Parser(&(c = ss("-3 + -4 * 5"))).parse_expression();
             ASSERT_STR_EQ(e->print(), "(-3+(-4*5))")
             delete e;
-        }
-        {
+        } {
             Parser p(&(c = ss("-name + 4 * -5")));
             Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
             delete e;
-        }
-        {
+        } {
             Expression *e = Parser(&(c = ss("(3 + 4) * 5"))).parse_expression();
             ASSERT_STR_EQ(e->print(), "((3+4)*5)")
             delete e;
-        }
-        {
+        } {
             Parser tmp = Parser(&(c = ss("3 + 4 * 5; 6 + 7 * 8")));
             Expression *e = tmp.parse_expression();
             ASSERT_STR_EQ(e->print(), "(3+(4*5))")
@@ -89,9 +86,7 @@ bool test() {
             e = tmp.parse_expression();
             ASSERT_STR_EQ(e->print(), "(6+(7*8))")
             delete e;
-        }
-
-        {
+        } {
             Parser p = Parser(&(c = ss("func(1, 2, 3, 4)")));
             Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
@@ -154,14 +149,8 @@ bool test() {
 
     MID_TEST(full)
 
-        ss c = ss("fn main() u8 {\n"
-                  "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n"
-                  "  some_int = some_int + 7;\n"
-                  "  if some_int {\n"
-                  "      some_int = 0;\n"
-                  "  }\n"
-                  "  return some_int;\n"
-                  "}");
+        ss c = ss("fn main() u8 {\n" "  i32 some_int = 4 + 5 * 3 / 6 - 2;\n" "  some_int = some_int + 7;\n"
+                  "  if some_int {\n" "      some_int = 0;\n" "  }\n" "  return some_int;\n" "}");
 
         Parser p(&c);
         Statement *s = p.parse_statement();
@@ -206,4 +195,3 @@ bool test() {
 
     END_TEST
 }
-

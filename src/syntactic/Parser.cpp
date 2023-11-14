@@ -39,14 +39,14 @@ Type Parser::type() {
 
     if (peek.id == TYPE) {
         std::string type_name;
-        for (auto c: peek.raw)
+        for (auto c : peek.raw)
             type_name.push_back((char) toupper(c));
         TypeSize size = to_typesize(type_name);
         iassert(size != (TypeSize) -1, "internal: couldn't find enum member for built-in type");
         t.type.size = size;
     } else {
         StructStatement *structure;
-        for (StructStatement *st: structures) {
+        for (StructStatement *st : structures) {
             if (st->name == peek.raw) {
                 structure = st;
                 break;
@@ -105,20 +105,24 @@ void Parser::init_parslets() {
 }
 
 Parser::Parser(std::istream *code, std::vector<std::filesystem::path> paths, bool dry)
-    : lexer(code), search_paths(std::move(paths)), dry_parsing(dry) {
+    : lexer(code),
+      search_paths(std::move(paths)),
+      dry_parsing(dry) {
     init_parslets();
 }
 
 Parser::Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths, bool dry)
-    : lexer(f), search_paths(std::move(paths)), dry_parsing(dry) {
+    : lexer(f),
+      search_paths(std::move(paths)),
+      dry_parsing(dry) {
     imported.push_back(absolute(f));
     init_parslets();
 }
 
 Parser::~Parser() {
-    for (auto pre: prefix_parslets)
+    for (auto pre : prefix_parslets)
         delete pre.second;
-    for (auto in: infix_parslets)
+    for (auto in : infix_parslets)
         delete in.second;
 }
 
@@ -170,14 +174,16 @@ std::filesystem::path Parser::find_import() {
         if (is_peek(PERIOD)) {
             lexer.consume();
             next = expect(NAME);
-        } else break;
+        } else
+            break;
     }
 
     import_.replace_extension(".tk");
 
-    if (exists(import_)) return import_;
+    if (exists(import_))
+        return import_;
 
-    for (const auto &path: search_paths) {
+    for (const auto &path : search_paths) {
         if (exists(path / import_)) {
             return path / import_;
         }
@@ -191,15 +197,17 @@ StructStatement *Parser::register_struct(StructStatement *struct_) {
 }
 
 bool Parser::has_struct_with_name(const std::string &name) {
-    for (auto str: structures) {
-        if (str->name == name) return true;
+    for (auto str : structures) {
+        if (str->name == name)
+            return true;
     }
     return false;
 }
 
 Expression *Parser::parse_expression(int precedence) {
     Token token = lexer.consume();
-    if (token.id == END) return reinterpret_cast<Expression *>(-1);
+    if (token.id == END)
+        return reinterpret_cast<Expression *>(-1);
     if (!iassert(prefix_parslets.count(token.id) > 0, "unexpected token '%s'", token.raw.c_str()))
         return nullptr;
     PrefixParselet *prefix = prefix_parslets[token.id];
@@ -218,7 +226,8 @@ Expression *Parser::parse_expression(int precedence) {
 
 Statement *Parser::parse_statement() {
     Token token = lexer.peek();
-    if (token.id == END) return nullptr;
+    if (token.id == END)
+        return nullptr;
 
     if (token.id == FUNC) {
         lexer.consume();
@@ -228,9 +237,10 @@ Statement *Parser::parse_statement() {
         std::vector<VariableStatement *> args;
         bool var_arg = false;
 
-        if (!check_expect(PAREN_OPEN))
-            while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE) { lexer.consume(); }
-        else
+        if (!check_expect(PAREN_OPEN)) {
+            while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE)
+                lexer.consume();
+        } else {
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE) {
                 if (lexer.peek().id == TRIPLE_PERIOD) {
                     var_arg = true;
@@ -242,10 +252,13 @@ Statement *Parser::parse_statement() {
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
             }
+        }
         expect(PAREN_CLOSE);
         Type t;
-        if (lexer.peek().id == CURLY_OPEN || lexer.peek().id == SEMICOLON) t = Type(VOID);
-        else t = type();
+        if (lexer.peek().id == CURLY_OPEN || lexer.peek().id == SEMICOLON)
+            t = Type(VOID);
+        else
+            t = type();
 
         if (lexer.peek().id == SEMICOLON) {
             lexer.consume();
@@ -254,7 +267,8 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
         if (dry_parsing) {
-            for (auto s: body) delete s;
+            for (auto s : body)
+                delete s;
             return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg, false);
         } else {
             return new FuncStatement(name_tok.where, name, t, args, body, var_arg);

@@ -13,7 +13,8 @@ std::string Type::str() const {
     }
     if (pointer_level != 0) {
         res.push_back(' ');
-        for (int i = 0; i < pointer_level; i++) res += "*";
+        for (int i = 0; i < pointer_level; i++)
+            res += "*";
     }
     return res;
 }

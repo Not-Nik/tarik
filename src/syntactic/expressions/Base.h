@@ -25,8 +25,8 @@ enum StmtType {
 
 class Statement {
 public:
-    StmtType statement_type{};
-    [[maybe_unused]] LexerPos origin{};
+    StmtType statement_type {};
+    [[maybe_unused]] LexerPos origin {};
 
     Statement() = default;
 
@@ -46,7 +46,13 @@ public:
 };
 
 enum Precedence {
-    ASSIGNMENT = 1, EQUALITY, COMPARE, SUM, PRODUCT, PREFIX, CALL
+    ASSIGNMENT = 1,
+    EQUALITY,
+    COMPARE,
+    SUM,
+    PRODUCT,
+    PREFIX,
+    CALL
 };
 
 enum ExprType {
@@ -72,10 +78,11 @@ public:
     Type type = {};
 
     Expression()
-        : Statement(), expression_type(NAME_EXPR) {}
+        : Statement(),
+          expression_type(NAME_EXPR) {
+    }
 
-    explicit Expression(ExprType t, const LexerPos &lp)
-        : Statement(EXPR_STMT, lp) { expression_type = t; }
+    explicit Expression(ExprType t, const LexerPos &lp) : Statement(EXPR_STMT, lp) { expression_type = t; }
 
     void assign_type(Type t) { type = t; }
 };

@@ -8,7 +8,6 @@
 #include <filesystem>
 
 #include "lexical/Lexer.h"
-#include "syntactic/expressions/Expression.h"
 #include "syntactic/expressions/Statements.h"
 
 class PrefixParselet;

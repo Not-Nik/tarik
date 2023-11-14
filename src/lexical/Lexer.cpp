@@ -21,7 +21,8 @@ Lexer::Lexer(const std::filesystem::path &f)
 }
 
 Lexer::~Lexer() {
-    if (allocated) delete stream;
+    if (allocated)
+        delete stream;
 }
 
 bool Lexer::operator_startswith(char c) {
@@ -35,12 +36,14 @@ bool Lexer::operator_startswith(std::string c) {
 }
 
 char Lexer::read_stream() {
-    if (stream->fail()) return -1;
+    if (stream->fail())
+        return -1;
     char c = (char) stream->get();
     if (c == '\n') {
         pos.l++;
         pos.p = 0;
-    } else pos.p++;
+    } else
+        pos.p++;
     return c;
 }
 
@@ -111,7 +114,8 @@ Token Lexer::consume() {
 
     while (!stream->eof()) {
         char c = read_stream();
-        if (c < 0) break;
+        if (c < 0)
+            break;
 
         if (c == '"') {
             if (!tok.empty()) {
@@ -167,10 +171,14 @@ Token Lexer::consume() {
         }
 
         if (c == '#') {
-            while (c != '\n') c = read_stream();
-            while (isspace(peek_stream())) read_stream();
-            if (tok.empty()) continue;
-            else break;
+            while (c != '\n')
+                c = read_stream();
+            while (isspace(peek_stream()))
+                read_stream();
+            if (tok.empty())
+                continue;
+            else
+                break;
         }
 
         // Basically stop the token if we have an operator that is right after another token i.e. `peter*`
@@ -241,7 +249,8 @@ Token Lexer::consume() {
     }
 
     auto actual_pos = pos;
-    while (isspace(peek_stream())) read_stream();
+    while (isspace(peek_stream()))
+        read_stream();
 
     if (stream->eof() && tok.empty()) {
         return Token(END, "", actual_pos);
@@ -269,5 +278,6 @@ LexerPos Lexer::where() {
 }
 
 void Lexer::read_until(std::vector<char> d) {
-    while (std::find(d.begin(), d.end(), peek_stream()) == d.end()) read_stream();
+    while (std::find(d.begin(), d.end(), peek_stream()) == d.end())
+        read_stream();
 }
