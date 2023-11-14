@@ -151,7 +151,7 @@ void LLVM::generate_function(FuncStatement *func) {
     auto it = func->arguments.begin();
     for (auto &arg: llvm_func->args()) {
         arg.setName("arg_" + (*it)->name);
-        auto arg_var = builder.CreateAlloca(arg.getType(), unsigned(0), nullptr, "stack_" + (*it)->name);
+        auto arg_var = builder.CreateAlloca(arg.getType(), 0u, nullptr, "stack_" + (*it)->name);
         builder.CreateStore(&arg, arg_var);
         variables.emplace((*it)->name, std::make_pair(arg_var, arg.getType()));
         it++;
@@ -557,8 +557,13 @@ llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
         struct_ = mae->left->type.type.user_type;
     }
     llvm::Type *struct_type = structures.at(struct_);
+    unsigned int member_index = struct_->get_member_index(member_name);
 
-    int member_index = struct_->get_member_index(member_name);
+    if (!left->getType()->isPointerTy()) {
+        llvm::Value *instance = builder.CreateAlloca(struct_type, 0u, nullptr, "instance_temp");
+        builder.CreateStore(left, instance);
+        left = instance;
+    }
 
     return builder.CreateStructGEP(struct_type, left, member_index, "member_load_temp");
 }

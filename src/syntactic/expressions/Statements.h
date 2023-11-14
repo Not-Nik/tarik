@@ -244,7 +244,7 @@ public:
         return {};
     }
 
-    int get_member_index(const std::string &n) {
+    unsigned int get_member_index(const std::string &n) {
         for (size_t i = 0; i < members.size(); i++) {
             if (members[i]->name == n) return i;
         }

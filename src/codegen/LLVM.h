@@ -5,7 +5,6 @@
 
 #include <map>
 #include <string>
-#include <memory>
 #include <filesystem>
 
 #include <llvm/IR/Module.h>
