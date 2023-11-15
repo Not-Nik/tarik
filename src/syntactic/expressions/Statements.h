@@ -152,12 +152,6 @@ public:
     FuncStCommon(std::string n, Type ret, std::vector<VariableStatement *> args, bool va)
         : name(std::move(n)), return_type(ret), arguments(std::move(args)), var_arg(va) {}
 
-    ~FuncStCommon() {
-        for (auto *arg: arguments) {
-            delete arg;
-        }
-    }
-
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + name + "(";
         for (auto arg: arguments) {
@@ -180,15 +174,12 @@ public:
 
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
-    bool definable;
-
     FuncDeclareStatement(const LexerPos &o,
                          std::string n,
                          Type ret,
                          std::vector<VariableStatement *> args,
-                         bool var_arg,
-                         bool define = true)
-        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg), definable(define) {}
+                         bool var_arg)
+        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg) {}
 
     [[nodiscard]] std::string print() const override {
         return head();
@@ -205,6 +196,12 @@ public:
                   bool var_arg)
         : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args), var_arg) {}
 
+    ~FuncStatement() override {
+        for (auto *arg: arguments) {
+            delete arg;
+        }
+    }
+
     [[nodiscard]] std::string print() const override {
         return head() + " " + ScopeStatement::print();
     }
@@ -214,7 +211,6 @@ class StructStatement : public Statement {
 public:
     std::string name;
     std::vector<VariableStatement *> members;
-    FuncStatement *ctor = nullptr;
 
     StructStatement(const LexerPos &o, std::string n, std::vector<VariableStatement *> m)
         : Statement(STRUCT_STMT, o), name(std::move(n)), members(std::move(m)) {}

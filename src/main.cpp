@@ -121,6 +121,7 @@ int main(int argc, const char *argv[]) {
         if (errorcount() == 0) {
             Analyser analyser;
             analyser.verify_statements(statements);
+            statements = analyser.finish();
         }
 
         if (errorcount() == 0) {

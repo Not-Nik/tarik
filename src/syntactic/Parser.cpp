@@ -259,24 +259,14 @@ Statement *Parser::parse_statement() {
         }
         expect(PAREN_CLOSE);
         Type t;
-        if (lexer.peek().id == CURLY_OPEN || lexer.peek().id == SEMICOLON)
+        if (lexer.peek().id == CURLY_OPEN)
             t = Type(VOID);
         else
             t = type();
 
-        if (lexer.peek().id == SEMICOLON) {
-            lexer.consume();
-            return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg);
-        }
-
         std::vector<Statement *> body = block();
-        if (dry_parsing) {
-            for (auto s : body)
-                delete s;
-            return new FuncDeclareStatement(name_tok.where, name, t, args, var_arg, false);
-        } else {
-            return new FuncStatement(name_tok.where, name, t, args, body, var_arg);
-        }
+
+        return new FuncStatement(name_tok.where, name, t, args, body, var_arg);
     } else if (token.id == RETURN) {
         lexer.consume();
         auto *s = new ReturnStatement(where(), parse_expression());

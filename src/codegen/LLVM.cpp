@@ -144,12 +144,9 @@ void LLVM::generate_scope(ScopeStatement *scope, bool is_last) {
 void LLVM::generate_function(FuncStatement *func) {
     variables.clear();
 
-    llvm::FunctionType *func_type = make_llvm_function_type(func);
+    llvm::FunctionType *func_type = functions.at(func->name);
 
-    llvm::Function *llvm_func = llvm::Function::Create(func_type,
-                                                       llvm::Function::ExternalLinkage,
-                                                       func->name,
-                                                       module.get());
+    llvm::Function *llvm_func = function_bodies.at(func->name);
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "func_entry", llvm_func);
     builder.SetInsertPoint(entry);
     current_function = llvm_func;
@@ -165,7 +162,6 @@ void LLVM::generate_function(FuncStatement *func) {
     return_type = func_type->getReturnType();
     if (return_type->isIntegerTy())
         return_type_signed_int = func->return_type.is_signed_int();
-    functions.emplace(func->name, func_type);
 
     generate_scope(func, true);
 
@@ -174,10 +170,15 @@ void LLVM::generate_function(FuncStatement *func) {
     }
 }
 
-bool LLVM::generate_func_decl(FuncDeclareStatement *decl) {
+void LLVM::generate_func_decl(FuncDeclareStatement *decl) {
     llvm::FunctionType *func_type = make_llvm_function_type(decl);
     functions.emplace(decl->name, func_type);
-    return false;
+
+    llvm::Function *llvm_func = llvm::Function::Create(func_type,
+                                                           llvm::Function::ExternalLinkage,
+                                                           decl->name,
+                                                           module.get());
+    function_bodies.emplace(decl->name, llvm_func);
 }
 
 void LLVM::generate_if(IfStatement *if_, bool is_last) {
@@ -279,8 +280,6 @@ void LLVM::generate_struct(StructStatement *struct_) {
     }
 
     structures.emplace(struct_, llvm::StructType::create(context, members, struct_->name));
-
-    generate_function(struct_->ctor);
 }
 
 void LLVM::generate_import(ImportStatement *import_, bool is_last) {

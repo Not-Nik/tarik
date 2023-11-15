@@ -43,11 +43,35 @@ bool Analyser::verify_statement(Statement *statement) {
 
 bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     bool res = true;
+
+    for (auto statement : statements) {
+        iassert(statement->statement_type != FUNC_DECL_STMT,
+                statement->origin,
+                "internal: premature function declaration: report this as a bug");
+        if (statement->statement_type == FUNC_STMT) {
+            auto func = reinterpret_cast<FuncStatement *>(statement);
+            declarations.push_back(new FuncDeclareStatement(statement->origin,
+                                                            func->name,
+                                                            func->return_type,
+                                                            func->arguments,
+                                                            func->var_arg));
+        }
+    }
+
     for (auto statement : statements) {
         // Combining these two lines will cause clang to not call `verify_statement` when res is false, effectively limiting us to a single error
         bool t = verify_statement(statement);
         res = res and t;
     }
+    return res;
+}
+
+std::vector<Statement *> Analyser::finish() {
+    std::vector<Statement *> res;
+    res.reserve(structures.size() + declarations.size() + functions.size());
+    res.insert(res.end(), structures.begin(), structures.end());
+    res.insert(res.end(), declarations.begin(), declarations.end());
+    res.insert(res.end(), functions.begin(), functions.end());
     return res;
 }
 
@@ -77,19 +101,6 @@ bool Analyser::verify_function(FuncStatement *func) {
         return false;
     }
 
-    for (auto decl : declarations) {
-        if (decl->name != func->name)
-            continue;
-        if (!decl->definable) {
-            error(func->origin, "redefinition of '%s'", func->name.c_str());
-            note(decl->origin, "previous definition in imported file '%s'", decl->origin.filename.filename().c_str());
-        } else if (decl->return_type != func->return_type) {
-            error(func->origin, "definition of '%s' with different type from declaration", decl->name.c_str());
-            note(decl->origin, "declaration here");
-        }
-        return false;
-    }
-
     if (!iassert(func->return_type == Type(VOID) || does_always_return(func),
                  func->origin,
                  "function with return type doesn't always return"))
@@ -106,41 +117,6 @@ bool Analyser::verify_function(FuncStatement *func) {
 }
 
 bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
-    bool warned = false, func_warned = false, decl_warned = false;
-    for (auto registered : functions) {
-        if (registered->name != decl->name)
-            continue;
-        bool critical = registered->return_type != decl->return_type;
-        if (critical) {
-            error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
-        } else if (!func_warned) {
-            warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
-        }
-        note(registered->origin, "previous definition here");
-        if (critical)
-            return false;
-        warned = true;
-        func_warned = true;
-    }
-
-    for (auto d : declarations) {
-        if (d->name != decl->name)
-            continue;
-        bool critical = d->return_type != decl->return_type;
-        if (critical) {
-            error(decl->origin, "redeclaration of '%s' with different type", decl->name.c_str());
-        } else if (!decl_warned) {
-            warning(decl->origin, "declaration of already defined function '%s'", decl->name.c_str());
-        }
-        note(d->origin, "previous declaration here");
-        if (critical)
-            return false;
-        warned = true;
-        decl_warned = true;
-    }
-
-    if (!warned)
-        declarations.push_back(decl);
     return true;
 }
 
@@ -246,9 +222,12 @@ bool Analyser::verify_struct(StructStatement *struct_) {
                                    body,
                                    false);
 
-    struct_->ctor = ctor;
-
     structures.push_back(struct_);
+    declarations.push_back(new FuncDeclareStatement(ctor->origin,
+                                                    ctor->name,
+                                                    ctor->return_type,
+                                                    ctor->arguments,
+                                                    ctor->var_arg));
 
     return verify_function(ctor);
 }

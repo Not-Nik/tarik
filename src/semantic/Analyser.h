@@ -22,6 +22,8 @@ public:
     bool verify_statement(Statement *statement);
     bool verify_statements(const std::vector<Statement *> &statements);
 
+    std::vector<Statement *> finish();
+
 protected:
     bool verify_scope(ScopeStatement *scope);
     bool verify_function(FuncStatement *func);

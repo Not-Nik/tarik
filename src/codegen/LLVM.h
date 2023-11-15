@@ -25,6 +25,7 @@ class LLVM {
     llvm::Function *current_function = nullptr;
     llvm::BasicBlock *last_loop_entry = nullptr, *last_loop_exit = nullptr;
     std::map<std::string, llvm::FunctionType *> functions;
+    std::map<std::string, llvm::Function *> function_bodies;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
     std::map<StructStatement *, llvm::StructType *> structures;
 
@@ -54,7 +55,7 @@ public:
 protected:
     void generate_scope(ScopeStatement *scope, bool is_last);
     void generate_function(FuncStatement *func);
-    bool generate_func_decl(FuncDeclareStatement *decl);
+    void generate_func_decl(FuncDeclareStatement *decl);
     void generate_if(IfStatement *if_, bool is_last);
     void generate_else(ElseStatement *else_);
     void generate_return(ReturnStatement *return_);
