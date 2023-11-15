@@ -1,4 +1,4 @@
-// Matrix (c) Nikolas Wipper 2020
+// Matrix (c) Nikolas Wipper 2020-2023
 
 #ifndef TARIK_SRC_LEXICAL_TOKEN_H_
 #define TARIK_SRC_LEXICAL_TOKEN_H_

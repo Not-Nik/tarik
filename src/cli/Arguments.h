@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020-2023
 
 #ifndef TARIK_SRC_CLI_ARGUMENTS_H_
 #define TARIK_SRC_CLI_ARGUMENTS_H_

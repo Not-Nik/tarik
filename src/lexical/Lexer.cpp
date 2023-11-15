@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020
+// tarik (c) Nikolas Wipper 2020-2023
 
 #include "Lexer.h"
 

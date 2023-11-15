@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021
+// tarik (c) Nikolas Wipper 2021-2023
 
 #ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_BASE_H_
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_BASE_H_

@@ -1,4 +1,4 @@
-// Seno (c) Nikolas Wipper 2020
+// Seno (c) Nikolas Wipper 2020-2023
 
 #ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
