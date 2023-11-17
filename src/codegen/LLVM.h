@@ -27,7 +27,8 @@ class LLVM {
     std::map<std::string, llvm::FunctionType *> functions;
     std::map<std::string, llvm::Function *> function_bodies;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
-    std::map<StructStatement *, llvm::StructType *> structures;
+    std::map<std::string, llvm::StructType *> structures;
+    std::map<std::string, StructStatement *> struct_statements;
 
 public:
     explicit LLVM(const std::string &name);

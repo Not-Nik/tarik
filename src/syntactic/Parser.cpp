@@ -38,7 +38,7 @@ std::vector<Statement *> Parser::block() {
 
 Type Parser::type() {
     auto peek = lexer.peek();
-    iassert(peek.id == TYPE or (peek.id == NAME and has_struct_with_name(peek.raw)), "expected type name");
+    iassert(peek.id == TYPE or peek.id == NAME, "expected type name");
     Type t;
 
     if (peek.id == TYPE) {
@@ -47,22 +47,12 @@ Type Parser::type() {
             type_name.push_back((char) toupper(c));
         TypeSize size = to_typesize(type_name);
         iassert(size != (TypeSize) -1, "internal: couldn't find enum member for built-in type");
-        t.type.size = size;
+        t = Type(size);
     } else {
-        StructStatement *structure;
-        for (StructStatement *st : structures) {
-            if (st->name == peek.raw) {
-                structure = st;
-                break;
-            }
-        }
-        // this is unreachable?
-        iassert(structure, "undefined structure %s", peek.raw.c_str());
-        t.type.user_type = structure;
-        t.is_primitive = false;
+        t = Type(peek.raw);
     }
     lexer.consume();
-    while (lexer.peek().id != END && lexer.peek().id == ASTERISK) {
+    while (lexer.peek().id == ASTERISK) {
         t.pointer_level++;
         lexer.consume();
     }
@@ -108,17 +98,15 @@ void Parser::init_parslets() {
     infix_parslets.emplace(EQUAL, new AssignParselet());
 }
 
-Parser::Parser(std::istream *code, std::vector<std::filesystem::path> paths, bool dry)
+Parser::Parser(std::istream *code, std::vector<std::filesystem::path> paths)
     : lexer(code),
-      search_paths(std::move(paths)),
-      dry_parsing(dry) {
+      search_paths(std::move(paths)) {
     init_parslets();
 }
 
-Parser::Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths, bool dry)
+Parser::Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths)
     : lexer(f),
-      search_paths(std::move(paths)),
-      dry_parsing(dry) {
+      search_paths(std::move(paths)) {
     imported.push_back(absolute(f));
     init_parslets();
 }
@@ -325,7 +313,7 @@ Statement *Parser::parse_statement() {
         if (exists(import)) {
             if (std::find(imported.begin(), imported.end(), absolute(import)) == imported.end()) {
                 imported.push_back(absolute(import));
-                Parser p(import, search_paths, true);
+                Parser p(import, search_paths);
                 do {
                     statements.push_back(p.parse_statement());
                 } while (statements.back());
@@ -337,7 +325,8 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
 
         return new ImportStatement(token.where, statements);
-    } else if (token.id == TYPE or (token.id == NAME and has_struct_with_name(token.raw))) {
+    } else if (Token far = lexer.peek(1); (token.id == TYPE or token.id == NAME) and far.id == NAME or far.id ==
+                                          ASTERISK) {
         Type t = type();
 
         iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());

@@ -10,10 +10,10 @@
 
 std::string Type::str() const {
     std::string res;
-    if (is_primitive) {
-        res = to_string(type.size);
+    if (type.index() == 0) {
+        res = to_string(std::get<TypeSize>(type));
     } else {
-        res = type.user_type->name;
+        res = std::get<std::string>(type);
     }
     if (pointer_level != 0) {
         res.push_back(' ');

@@ -46,6 +46,7 @@ protected:
 
     FuncStCommon *get_func_decl(const std::string &name);
     VariableStatement *get_variable(const std::string &name);
+    StructStatement *get_struct(const std::string &name);
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_

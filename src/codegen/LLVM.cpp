@@ -279,7 +279,8 @@ void LLVM::generate_struct(StructStatement *struct_) {
         members.push_back(make_llvm_type(member->type));
     }
 
-    structures.emplace(struct_, llvm::StructType::create(context, members, struct_->name));
+    structures.emplace(struct_->name, llvm::StructType::create(context, members, struct_->name));
+    struct_statements.emplace(struct_->name, struct_);
 }
 
 void LLVM::generate_import(ImportStatement *import_, bool is_last) {
@@ -526,8 +527,8 @@ llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed
 
 llvm::Type *LLVM::make_llvm_type(const Type &t) {
     llvm::Type *res;
-    if (t.is_primitive) {
-        switch (t.type.size) {
+    if (t.is_primitive()) {
+        switch (std::get<TypeSize>(t.type)) {
             case U8:
             case I8:
                 res = llvm::Type::getInt8Ty(context);
@@ -557,7 +558,7 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
                 res = llvm::Type::getVoidTy(context);
         }
     } else {
-        res = structures.at(t.type.user_type);
+        res = structures.at(std::get<std::string>(t.type));
     }
 
     for (int i = 0; i < t.pointer_level; i++) {
@@ -582,7 +583,7 @@ llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
     std::string member_name = ((NameExpression *) mae->right)->name;
 
     llvm::Value *left;
-    StructStatement *struct_;
+    std::string struct_;
 
     if (mae->left->expression_type == NAME_EXPR) {
         std::string var_name = ((NameExpression *) mae->left)->name;
@@ -600,10 +601,10 @@ llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
         struct_ = it->first;
     } else {
         left = generate_expression(mae->left);
-        struct_ = mae->left->type.type.user_type;
+        struct_ = std::get<std::string>(mae->left->type.type);
     }
     llvm::Type *struct_type = structures.at(struct_);
-    unsigned int member_index = struct_->get_member_index(member_name);
+    unsigned int member_index = struct_statements.at(struct_)->get_member_index(member_name);
 
     if (!left->getType()->isPointerTy()) {
         llvm::Value *instance = builder.CreateAlloca(struct_type, 0u, nullptr, "instance_temp");

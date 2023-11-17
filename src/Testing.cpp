@@ -7,6 +7,7 @@
 #include "Testing.h"
 
 #include "syntactic/Parser.h"
+#include "syntactic/expressions/Types.h"
 #include "syntactic/expressions/Expression.h"
 
 #include <sstream>
@@ -22,16 +23,20 @@ void operator delete(void *p) noexcept {
     allocs--;
 }
 
+// this is disgusting
 namespace std {
 std::string to_string(const FuncStatement *f) {
     return f->head();
+}
+
+inline std::string to_string(const Type &t) {
+    return t.str();
 }
 }
 
 bool test() {
     using ss = std::stringstream;
     int overhead = allocs;
-    Type integer = Type(TypeUnion {I64}, true, 0);
     BEGIN_TEST
 
     FIRST_TEST(lexer)
@@ -115,10 +120,10 @@ bool test() {
             ASSERT_STR_EQ(func->name, "test_func")
             ASSERT_TRUE(func->return_type == Type(I8))
             ASSERT_STR_EQ(func->arguments[0]->name, "arg1")
-            ASSERT_EQ(func->arguments[0]->type.type.size, I32)
+            ASSERT_EQ(func->arguments[0]->type, Type(I32))
             ASSERT_STR_EQ(func->arguments[1]->name, "arg2")
-            ASSERT_EQ(func->arguments[1]->type.type.size, F64)
-            ASSERT_EQ(func->return_type.type.size, I8)
+            ASSERT_EQ(func->arguments[1]->type, Type(F64))
+            ASSERT_EQ(func->return_type, Type(I8))
 
             auto call = (CallExpression *) p.parse_statement();
             ASSERT_STR_EQ(call->callee->print(), "test_func")
@@ -132,9 +137,9 @@ bool test() {
         auto *var = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(var->statement_type, VARIABLE_STMT)
         ASSERT_STR_EQ(var->name, "test_var")
-        ASSERT_TRUE(var->type.is_primitive)
+        ASSERT_TRUE(var->type.is_primitive())
         ASSERT_EQ(var->type.pointer_level, 0)
-        ASSERT_EQ(var->type.type.size, U8)
+        ASSERT_EQ(var->type, Type(U8))
 
         auto *first = (Expression *) p.parse_statement(), *second = (Expression *) p.parse_statement();
         ASSERT_EQ(first->expression_type, ASSIGN_EXPR)
@@ -146,9 +151,9 @@ bool test() {
         auto *ptr = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(ptr->statement_type, VARIABLE_STMT)
         ASSERT_STR_EQ(ptr->name, "test_ptr")
-        ASSERT_TRUE(ptr->type.is_primitive)
+        ASSERT_TRUE(ptr->type.is_primitive())
         ASSERT_EQ(ptr->type.pointer_level, 1)
-        ASSERT_EQ(ptr->type.type.size, U32)
+        ASSERT_EQ(ptr->type, Type(U32))
         delete ptr;//
 
     MID_TEST(full)

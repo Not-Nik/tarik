@@ -230,7 +230,7 @@ public:
     }
 
     Type get_type() {
-        return Type(TypeUnion{.user_type = this}, false, 0);
+        return Type(this->name, 0);
     }
 
     Type get_member_type(const std::string &n) {

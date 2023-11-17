@@ -32,8 +32,6 @@ class Parser {
 
     std::vector<std::filesystem::path> search_paths;
 
-    bool dry_parsing;
-
     Precedence get_precedence();
 
     std::vector<Statement *> block();
@@ -43,8 +41,8 @@ class Parser {
     void init_parslets();
 
 public:
-    explicit Parser(std::istream *code, std::vector<std::filesystem::path> paths = {}, bool dry = false);
-    explicit Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths = {}, bool dry = false);
+    explicit Parser(std::istream *code, std::vector<std::filesystem::path> paths = {});
+    explicit Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths = {});
 
     ~Parser();
 

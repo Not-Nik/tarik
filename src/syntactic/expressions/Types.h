@@ -8,6 +8,7 @@
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
 
 #include <string>
+#include <variant>
 
 class StructStatement;
 
@@ -80,33 +81,28 @@ inline std::string to_string(const TypeSize &ts) {
     return "";
 }
 
-union TypeUnion {
-    TypeSize size;
-    StructStatement *user_type;
-};
-
 class Type {
 public:
-    bool is_primitive;
     int pointer_level;
-    TypeUnion type;
+    std::variant<TypeSize, std::string> type;
 
     Type()
-        : type(TypeUnion {VOID}) {
-        is_primitive = true;
+        : type(VOID) {
         pointer_level = 0;
     };
 
     explicit Type(TypeSize ts, int pl = 0)
-        : is_primitive(true),
-          pointer_level(pl),
-          type(TypeUnion {ts}) {
+        : pointer_level(pl),
+          type(ts) {
     }
 
-    Type(TypeUnion t, bool prim, int p)
-        : is_primitive(prim),
-          pointer_level(p),
-          type(t) {
+    explicit Type(std::string t, int pl = 0)
+        : pointer_level(pl),
+          type(std::move(t)) {
+    }
+
+    [[nodiscard]] bool is_primitive() const {
+        return type.index() == 0;
     }
 
     [[nodiscard]] bool is_compatible(const Type &t) const {
@@ -116,47 +112,48 @@ public:
             return false;
         if (pointer_level > 0 && t.pointer_level > 0)
             return true;
-        if (is_primitive != t.is_primitive)
+        if (type.index() != t.type.index())
             return false;
-        if (is_primitive)
+        if (is_primitive())
             return true;
-        return type.user_type == t.type.user_type;
+        return type == t.type;
     }
 
     [[nodiscard]] bool is_signed_int() const {
-        return is_primitive && (type.size >= I8 && type.size <= I64);
+        return is_primitive() && (std::get<TypeSize>(type) >= I8 && std::get<TypeSize>(type) <= I64);
     }
 
     [[nodiscard]] bool is_unsigned_int() const {
-        return is_primitive && (type.size >= U8 && type.size <= U64);
+        return is_primitive() && (std::get<TypeSize>(type) >= U8 && std::get<TypeSize>(type) <= U64);
     }
 
     [[nodiscard]] size_t get_integer_bitwidth() const {
-        if (!is_primitive || type.size == F32 || type.size == F64 || type.size == VOID)
+        if (!is_primitive())
             return 0;
-        if (type.size == I8 || type.size == U8)
+
+        auto size = std::get<TypeSize>(type);
+
+        if (size == F32 || size == F64 || size == VOID)
+            return 0;
+        if (size == I8 || size == U8)
             return 8;
-        if (type.size == I16 || type.size == U16)
+        if (size == I16 || size == U16)
             return 16;
-        if (type.size == I32 || type.size == U32)
+        if (size == I32 || size == U32)
             return 32;
-        if (type.size == I64 || type.size == U64)
+        if (size == I64 || size == U64)
             return 64;
-        if (type.size == BOOL)
+        if (size == BOOL)
             return 1;
         return 0;
     }
 
     bool operator==(const Type &other) const {
-        return is_primitive == other.is_primitive && pointer_level == other.pointer_level && (is_primitive
-                   ? type.size == other.type.size
-                   : type.user_type == other.type.user_type);
+        return type.index() == other.type.index() && pointer_level == other.pointer_level && type == other.type;
     }
 
     bool operator!=(const Type &other) const {
-        return is_primitive != other.is_primitive || pointer_level != other.pointer_level || (is_primitive
-                   ? type.size != other.type.size
-                   : type.user_type != other.type.user_type);
+        return type.index() != other.type.index() || pointer_level != other.pointer_level || type != other.type;
     }
 
     [[nodiscard]] std::string str() const;

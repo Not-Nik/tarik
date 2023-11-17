@@ -307,9 +307,15 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!verify_expression(left))
                 return false;
 
-            if (!iassert(!left->type.is_primitive, left->origin, "'%s' is not a structure", left->type.str().c_str()))
+            if (!iassert(!left->type.is_primitive(), left->origin, "'%s' is not a structure", left->type.str().c_str()))
                 return false;
-            StructStatement *s = left->type.type.user_type;
+            auto struct_name = std::get<std::string>(left->type.type);
+            if (!iassert(is_struct_declared(struct_name),
+                         left->origin,
+                         "undefined structure '%s'",
+                         struct_name.c_str()))
+                return false;
+            StructStatement *s = get_struct(struct_name);
             if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
                 return false;
             std::string member_name = ((NameExpression *) right)->name;
@@ -335,7 +341,7 @@ bool Analyser::verify_expression(Expression *expression) {
                 case POS:
                 case NEG:
                 case LOG_NOT:
-                    res = iassert(pe_type.is_primitive || pe_type.pointer_level > 0,
+                    res = iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
                                   pe->origin,
                                   "invalid operand to unary expression");
                     break;
@@ -388,7 +394,7 @@ bool Analyser::verify_expression(Expression *expression) {
 
 bool Analyser::does_always_return(ScopeStatement *scope) {
     for (auto &it : scope->block) {
-        if ((it->statement_type == RETURN_STMT) || (
+        if (it->statement_type == RETURN_STMT || (
                 it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it)) || (
                 it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement &&
                 does_always_return((ScopeStatement *) it) && does_always_return(((IfStatement *) it)->else_statement))
@@ -431,4 +437,8 @@ FuncStCommon *Analyser::get_func_decl(const std::string &name) {
 
 VariableStatement *Analyser::get_variable(const std::string &name) {
     return *std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; });
+}
+
+StructStatement *Analyser::get_struct(const std::string &name) {
+    return *std::find_if(structures.begin(), structures.end(), [name](StructStatement *s) { return name == s->name; });
 }
