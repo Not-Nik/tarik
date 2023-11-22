@@ -9,6 +9,7 @@
 #include <utility>
 #include <sstream>
 #include <iostream>
+#include <algorithm>
 
 unsigned int Option::option_count = 0;
 

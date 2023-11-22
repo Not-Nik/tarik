@@ -9,6 +9,7 @@
 
 #include <map>
 #include <vector>
+#include <optional>
 #include <filesystem>
 
 #include "lexical/Lexer.h"
@@ -28,15 +29,13 @@ class Parser {
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
 
-    std::vector<StructStatement *> structures;
-
     std::vector<std::filesystem::path> search_paths;
 
     Precedence get_precedence();
 
     std::vector<Statement *> block();
 
-    Type type();
+    std::optional<Type> type();
 
     void init_parslets();
 
@@ -47,7 +46,6 @@ public:
     ~Parser();
 
     bool iassert(bool cond, std::string what, ...);
-    void warn(std::string what, ...);
 
     LexerPos where();
 
@@ -56,9 +54,6 @@ public:
     bool is_peek(TokenType raw);
 
     std::filesystem::path find_import();
-
-    StructStatement *register_struct(StructStatement *struct_);
-    [[nodiscard]] bool has_struct_with_name(const std::string &name);
 
     Expression *parse_expression(int precedence = 0);
 

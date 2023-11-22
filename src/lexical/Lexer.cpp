@@ -6,7 +6,7 @@
 
 #include "Lexer.h"
 
-#include <utility>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <algorithm>
@@ -282,6 +282,10 @@ LexerPos Lexer::where() {
 }
 
 void Lexer::read_until(std::vector<char> d) {
-    while (std::find(d.begin(), d.end(), peek_stream()) == d.end())
+    char p = peek_stream();
+    while (std::find(d.begin(), d.end(), p) == d.end()) {
         read_stream();
+        p = peek_stream();
+    }
+    p = peek_stream();
 }

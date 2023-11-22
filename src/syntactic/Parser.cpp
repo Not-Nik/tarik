@@ -11,7 +11,7 @@
 
 #include <comperr.h>
 
-#include <utility>
+#include <algorithm>
 
 std::vector<std::filesystem::path> Parser::imported;
 
@@ -36,9 +36,12 @@ std::vector<Statement *> Parser::block() {
     return res;
 }
 
-Type Parser::type() {
-    auto peek = lexer.peek();
-    iassert(peek.id == TYPE or peek.id == NAME, "expected type name");
+std::optional<Type> Parser::type() {
+    int peek_distance = 0;
+
+    auto peek = lexer.peek(peek_distance++);
+    if (peek.id != TYPE && peek.id != NAME)
+        return {};
     Type t;
 
     if (peek.id == TYPE) {
@@ -49,13 +52,29 @@ Type Parser::type() {
         iassert(size != (TypeSize) -1, "internal: couldn't find enum member for built-in type");
         t = Type(size);
     } else {
-        t = Type(peek.raw);
+        std::vector path = {peek.raw};
+
+        while (lexer.peek(peek_distance++).id == DOUBLE_COLON) {
+            Token part = lexer.peek(peek_distance++);
+            if (part.id == NAME)
+                path.push_back(part.raw);
+            else
+                peek_distance--;
+        }
+
+        peek_distance--;
+
+        t = Type(path);
     }
-    lexer.consume();
-    while (lexer.peek().id == ASTERISK) {
+    while (lexer.peek(peek_distance++).id == ASTERISK) {
         t.pointer_level++;
-        lexer.consume();
     }
+
+    peek_distance--;
+
+    for (int _ = 0; _ < peek_distance; _++)
+        lexer.consume();
+
     return t;
 }
 
@@ -128,13 +147,6 @@ bool Parser::iassert(bool cond, std::string what, ...) {
     return cond;
 }
 
-void Parser::warn(std::string what, ...) {
-    va_list args;
-    va_start(args, what);
-    ::warning_v(where(), what, args);
-    va_end(args);
-}
-
 LexerPos Parser::where() {
     return lexer.where();
 }
@@ -183,25 +195,13 @@ std::filesystem::path Parser::find_import() {
     return import_;
 }
 
-StructStatement *Parser::register_struct(StructStatement *struct_) {
-    structures.push_back(struct_);
-    return struct_;
-}
-
-bool Parser::has_struct_with_name(const std::string &name) {
-    for (auto str : structures) {
-        if (str->name == name)
-            return true;
-    }
-    return false;
-}
-
 Expression *Parser::parse_expression(int precedence) {
-    Token token = lexer.consume();
+    Token token = lexer.peek();
     if (token.id == END)
         return reinterpret_cast<Expression *>(-1);
-    if (!iassert(prefix_parslets.count(token.id) > 0, "unexpected token '%s'", token.raw.c_str()))
+    if (prefix_parslets.count(token.id) == 0)
         return nullptr;
+    lexer.consume();
     PrefixParselet *prefix = prefix_parslets[token.id];
 
     Expression *left = prefix->parse(this, token);
@@ -239,7 +239,10 @@ Statement *Parser::parse_statement() {
                     lexer.consume();
                     break;
                 }
-                args.push_back(new VariableStatement(where(), type(), expect(NAME).raw));
+                std::optional<Type> ty = type();
+                iassert(ty.has_value(), "exepcted type name");
+
+                args.push_back(new VariableStatement(where(), ty.value_or(Type()), expect(NAME).raw));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -249,8 +252,11 @@ Statement *Parser::parse_statement() {
         Type t;
         if (lexer.peek().id == CURLY_OPEN)
             t = Type(VOID);
-        else
-            t = type();
+        else {
+            std::optional<Type> ty = type();
+            iassert(ty.has_value(), "exepcted type name");
+            t = ty.value_or(Type());
+        }
 
         std::vector<Statement *> body = block();
 
@@ -295,57 +301,70 @@ Statement *Parser::parse_statement() {
         std::vector<VariableStatement *> members;
 
         while (lexer.peek().id != CURLY_CLOSE) {
-            Type member_type = type();
+            std::optional<Type> member_type = type();
+
+            iassert(member_type.has_value(), "expected type name");
 
             std::string member_name = expect(NAME).raw;
 
-            members.push_back(new VariableStatement(where(), member_type, member_name));
+            members.push_back(new VariableStatement(where(), member_type.value_or(Type()), member_name));
             expect(SEMICOLON);
         }
         lexer.consume();
 
-        return register_struct(new StructStatement(token.where, name, members));
+        return new StructStatement(token.where, name, members);
     } else if (token.id == IMPORT) {
         lexer.consume();
 
-        auto import = find_import();
+        auto import_path = find_import();
         std::vector<Statement *> statements;
-        if (exists(import)) {
-            if (std::find(imported.begin(), imported.end(), absolute(import)) == imported.end()) {
-                imported.push_back(absolute(import));
-                Parser p(import, search_paths);
+        if (exists(import_path)) {
+            if (std::find(imported.begin(), imported.end(), absolute(import_path)) == imported.end()) {
+                imported.push_back(absolute(import_path));
+                Parser p(import_path, search_paths);
                 do {
                     statements.push_back(p.parse_statement());
                 } while (statements.back());
                 statements.pop_back();
             }
         } else {
-            iassert(false, "tried to import '%s', but file can't be found", import.string().c_str());
+            iassert(false, "tried to import '%s', but file can't be found", import_path.string().c_str());
         }
         expect(SEMICOLON);
 
-        return new ImportStatement(token.where, statements);
-    } else if (Token far = lexer.peek(1); (token.id == TYPE or token.id == NAME) and far.id == NAME or far.id ==
-                                          ASTERISK) {
-        Type t = type();
+        ImportStatement *res;
+        for (auto part = --import_path.end(); ; part--) {
+            res = new ImportStatement(token.where, *part, statements);
+            statements = {res};
 
-        iassert(is_peek(NAME), "expected an identifier found '%s' instead", lexer.peek().raw.c_str());
-        std::string name = lexer.peek().raw;
-
-        if (lexer.peek(1).id != EQUAL) {
-            lexer.consume();
-            expect(SEMICOLON);
+            if (part == import_path.begin())
+                break;
         }
+        return res;
+    } else if (lexer.peek(1).id != EQUAL) {
+        if (std::optional<Type> ty = type(); ty.has_value()) {
+            Type t = ty.value();
 
-        return new VariableStatement(where(), t, name);
+            iassert(is_peek(NAME), "expected a name found '%s' instead", lexer.peek().raw.c_str());
+            std::string name = lexer.peek().raw;
+
+            if (lexer.peek(1).id != EQUAL) {
+                lexer.consume();
+                expect(SEMICOLON);
+            }
+
+            return new VariableStatement(where(), t, name);
+        }
     }
+
     Expression *e = parse_expression();
     if (e == reinterpret_cast<Expression *>(-1)) {
         return nullptr;
-    } else if (e == nullptr) {
-        return parse_statement();
-    } else {
+    } else if (e != nullptr) {
         expect(SEMICOLON);
         return e;
+    } else {
+        iassert(false, "unexpected token '%s'", token.raw.c_str());
+        return parse_statement();
     }
 }

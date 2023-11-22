@@ -528,7 +528,7 @@ llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed
 llvm::Type *LLVM::make_llvm_type(const Type &t) {
     llvm::Type *res;
     if (t.is_primitive()) {
-        switch (std::get<TypeSize>(t.type)) {
+        switch (t.get_primitive()) {
             case U8:
             case I8:
                 res = llvm::Type::getInt8Ty(context);
@@ -558,7 +558,7 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
                 res = llvm::Type::getVoidTy(context);
         }
     } else {
-        res = structures.at(std::get<std::string>(t.type));
+        res = structures.at(t.base());
     }
 
     for (int i = 0; i < t.pointer_level; i++) {
@@ -601,7 +601,7 @@ llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
         struct_ = it->first;
     } else {
         left = generate_expression(mae->left);
-        struct_ = std::get<std::string>(mae->left->type.type);
+        struct_ = mae->left->type.base();
     }
     llvm::Type *struct_type = structures.at(struct_);
     unsigned int member_index = struct_statements.at(struct_)->get_member_index(member_name);

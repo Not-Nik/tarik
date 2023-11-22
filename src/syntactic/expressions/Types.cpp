@@ -6,19 +6,27 @@
 
 #include "Types.h"
 
+#include <numeric>
+
 #include "Statements.h"
 
 std::string Type::str() const {
-    std::string res;
-    if (type.index() == 0) {
-        res = to_string(std::get<TypeSize>(type));
-    } else {
-        res = std::get<std::string>(type);
-    }
+    std::string res = base();
     if (pointer_level != 0) {
         res.push_back(' ');
         for (int i = 0; i < pointer_level; i++)
             res += "*";
+    }
+    return res;
+}
+
+std::string Type::base() const {
+    std::string res;
+    if (type.index() == 0) {
+        res = to_string(std::get<TypeSize>(type));
+    } else {
+        auto path = std::get<std::vector<std::string>>(type);
+        res = std::accumulate(path.begin(), path.end(), std::string("::"));
     }
     return res;
 }

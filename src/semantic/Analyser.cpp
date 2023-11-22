@@ -6,8 +6,49 @@
 
 #include "Analyser.h"
 
+#include <algorithm>
+
 #include "util/Util.h"
 #include "syntactic/expressions/Expression.h"
+
+std::vector<std::string> Analyser::get_local_path(const std::string &name) const {
+    auto local = path;
+    local.push_back(name);
+    return local;
+}
+
+std::string Analyser::flatten_path(const std::string &name) const {
+    return flatten_path(path, name);
+}
+
+std::string Analyser::flatten_path(const std::vector<std::string> &path) {
+    std::string res = "::";
+    for (auto it = path.begin(); it != path.end();) {
+        res += *it;
+        if (++it != path.end()) {
+            res += "::";
+        }
+    }
+    return res;
+}
+
+std::string Analyser::flatten_path(const std::vector<std::string> &path, const std::string &name) {
+    auto copy = path;
+    copy.push_back(name);
+    return flatten_path(copy);
+}
+
+Analyser::Analyser() {
+    LexerPos lp;
+    std::vector<Statement *> body;
+    body.push_back(new ReturnStatement(lp, new CallExpression(lp, new NameExpression(lp, "::main"), {})));
+
+    auto *func = new FuncStatement(lp, "main", Type(U32), {}, body, false);
+    auto *decl = new FuncDeclareStatement(lp, "main", Type(I32), {}, false);
+
+    functions.emplace(std::vector<std::string>(), func);
+    declarations.emplace(std::vector<std::string>(), decl);
+}
 
 bool Analyser::verify_statement(Statement *statement) {
     switch (statement->statement_type) {
@@ -50,11 +91,13 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
                 "internal: premature function declaration: report this as a bug");
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
-            declarations.push_back(new FuncDeclareStatement(statement->origin,
-                                                            func->name,
-                                                            func->return_type,
-                                                            func->arguments,
-                                                            func->var_arg));
+            std::vector<std::string> name = get_local_path(func->name);
+            declarations.emplace(name,
+                                 new FuncDeclareStatement(statement->origin,
+                                                          flatten_path(name),
+                                                          func->return_type,
+                                                          func->arguments,
+                                                          func->var_arg));
         }
     }
 
@@ -69,22 +112,26 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
 std::vector<Statement *> Analyser::finish() {
     std::vector<Statement *> res;
     res.reserve(structures.size() + declarations.size() + functions.size());
-    res.insert(res.end(), structures.begin(), structures.end());
-    res.insert(res.end(), declarations.begin(), declarations.end());
-    res.insert(res.end(), functions.begin(), functions.end());
+    for (auto [_, st] : structures)
+        res.push_back(st);
+    for (auto [_, dc] : declarations)
+        res.push_back(dc);
+    for (auto [_, fn] : functions)
+        res.push_back(fn);
     return res;
 }
 
-bool Analyser::verify_scope(ScopeStatement *scope) {
+bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
     size_t old_var_count = variables.size();
-    size_t old_struct_count = structures.size();
+
+    path.push_back(name);
 
     bool res = verify_statements(scope->block);
 
     while (old_var_count < variables.size())
         variables.pop_back();
-    while (old_struct_count < structures.size())
-        structures.pop_back();
+
+    path.pop_back();
 
     return res;
 }
@@ -93,8 +140,11 @@ bool Analyser::verify_function(FuncStatement *func) {
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
-    for (auto registered : functions) {
-        if (registered->name != func->name)
+    std::vector<std::string> func_path = get_local_path(func->name);
+
+    for (auto [path, registered] : functions) {
+        // the first part is only for optimisation
+        if (registered->name != func->name || path != func_path)
             continue;
         error(func->origin, "redefinition of '%s'", func->name.c_str());
         note(registered->origin, "previous definition here");
@@ -105,7 +155,7 @@ bool Analyser::verify_function(FuncStatement *func) {
                  func->origin,
                  "function with return type doesn't always return"))
         return false;
-    functions.push_back(func);
+    functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
         variables.push_back(arg);
     }
@@ -113,7 +163,9 @@ bool Analyser::verify_function(FuncStatement *func) {
     if (func->var_arg)
         warning(func->origin, "function uses var args, but they cannot be accessed");
 
-    return verify_scope(func);
+    func->name = flatten_path(func->name);
+
+    return verify_scope(func, func->name);
 }
 
 bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
@@ -179,19 +231,20 @@ bool Analyser::verify_variable(VariableStatement *var) {
 
 bool Analyser::verify_struct(StructStatement *struct_) {
     std::vector<std::string> registered;
+    std::vector<std::string> struct_path = get_local_path(struct_->name);
 
-    for (auto structure : structures) {
-        if (struct_->name == structure->name) {
-            error(struct_->origin, "redefinition of '%s'", struct_->name.c_str());
-            note(structure->origin, "previous definition here");
-            return false;
-        }
+    for (auto [path, registered] : structures) {
+        if (struct_->name != registered->name || path != struct_path)
+            continue;
+        error(struct_->origin, "redefinition of '%s'", struct_->name.c_str());
+        note(registered->origin, "previous definition here");
+        return false;
     }
 
     std::vector<VariableStatement *> ctor_args;
     std::vector<Statement *> body;
 
-    auto *instance = new VariableStatement(struct_->origin, struct_->get_type(), "_instance");
+    auto *instance = new VariableStatement(struct_->origin, struct_->get_type(path), "_instance");
     body.push_back(instance);
 
     for (auto member : struct_->members) {
@@ -216,68 +269,83 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     body.push_back(new ReturnStatement(struct_->origin, new NameExpression(struct_->origin, "_instance")));
 
     auto *ctor = new FuncStatement(struct_->origin,
-                                   "$__" + struct_->name + "_ctor",
-                                   struct_->get_type(),
+                                   struct_->name + "::$constructor",
+                                   struct_->get_type(path),
                                    ctor_args,
                                    body,
                                    false);
 
-    structures.push_back(struct_);
-    declarations.push_back(new FuncDeclareStatement(ctor->origin,
-                                                    ctor->name,
-                                                    ctor->return_type,
-                                                    ctor->arguments,
-                                                    ctor->var_arg));
+    structures.emplace(struct_path, struct_);
 
-    return verify_function(ctor);
+    bool res = verify_function(ctor);
+
+    struct_path.push_back("$constructor");
+
+    declarations.emplace(struct_path,
+                         new FuncDeclareStatement(ctor->origin,
+                                                  ctor->name,
+                                                  ctor->return_type,
+                                                  ctor->arguments,
+                                                  ctor->var_arg));
+
+    struct_->name = flatten_path(struct_->name);
+
+    return res;
 }
 
 bool Analyser::verify_import(ImportStatement *import_) {
-    return verify_statements(import_->block);
+    return verify_scope(import_, import_->name);
 }
 
 bool Analyser::verify_expression(Expression *expression) {
     switch (expression->expression_type) {
         case CALL_EXPR: {
             auto ce = (CallExpression *) expression;
+
+            std::vector<std::string> func_path;
             if (ce->callee->expression_type == NAME_EXPR) {
                 auto *ne = (NameExpression *) ce->callee;
-                std::string func_name = ne->name;
+                func_path = {ne->name};
 
-                if (is_struct_declared(func_name)) {
-                    ne->name = func_name = "$__" + func_name + "_ctor";
+                if (is_struct_declared({ne->name})) {
+                    func_path.push_back("$constructor");
                     // TODO: check if there exists a function with the same name
                 }
 
-                if (!iassert(is_func_declared(func_name), ce->origin, "undefined function '%s'", func_name.c_str()))
-                    return false;
-                FuncStCommon *func = get_func_decl(func_name);
-                if (!iassert(ce->arguments.size() >= func->arguments.size(),
-                             ce->callee->origin,
-                             "too few arguments, expected %i found %i.",
-                             func->arguments.size(),
-                             ce->arguments.size()) ||
-                    !iassert(func->var_arg || ce->arguments.size() <= func->arguments.size(),
-                            ce->callee->origin,
-                            "too many arguments, expected %i found %i.",
-                            func->arguments.size(),
-                            ce->arguments.size()))
-                    return false;
-
-                for (size_t i = 0; i < func->arguments.size(); i++) {
-                    VariableStatement *arg_var = func->arguments[i];
-                    Expression *arg = ce->arguments[i];
-                    if (!verify_expression(arg) || !iassert(arg_var->type.is_compatible(arg->type),
-                                                            arg->origin,
-                                                            "passing value of type '%s' to argument of type '%s'",
-                                                            arg->type.str().c_str(),
-                                                            arg_var->type.str().c_str()) || !verify_expression(arg))
-                        return false;
-                }
-                ce->assign_type(func->return_type);
+                ne->name = flatten_path(func_path);
             } else {
                 return iassert(false, ce->origin, "calling of expressions is unimplemented");
             }
+
+            if (!iassert(is_func_declared(func_path),
+                         ce->origin,
+                         "undefined function '%s'",
+                         flatten_path(func_path).c_str()))
+                return false;
+            FuncStCommon *func = get_func_decl(func_path);
+            if (!iassert(ce->arguments.size() >= func->arguments.size(),
+                         ce->callee->origin,
+                         "too few arguments, expected %i found %i.",
+                         func->arguments.size(),
+                         ce->arguments.size()) || !iassert(func->var_arg || ce->arguments.size() <= func->arguments.
+                                                           size(),
+                                                           ce->callee->origin,
+                                                           "too many arguments, expected %i found %i.",
+                                                           func->arguments.size(),
+                                                           ce->arguments.size()))
+                return false;
+
+            for (size_t i = 0; i < func->arguments.size(); i++) {
+                VariableStatement *arg_var = func->arguments[i];
+                Expression *arg = ce->arguments[i];
+                if (!verify_expression(arg) || !iassert(arg_var->type.is_compatible(arg->type),
+                                                        arg->origin,
+                                                        "passing value of type '%s' to argument of type '%s'",
+                                                        arg->type.str().c_str(),
+                                                        arg_var->type.str().c_str()) || !verify_expression(arg))
+                    return false;
+            }
+            ce->assign_type(func->return_type);
             break;
         }
         case DASH_EXPR:
@@ -286,10 +354,12 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            if (!verify_expression(ae->left) || !verify_expression(ae->right) ||
-                !iassert(ae->left->type.is_compatible(ae->right->type),
+            if (!verify_expression(ae->left) || !verify_expression(ae->right) || !
+                iassert(ae->left->type.is_compatible(ae->right->type),
                         ae->origin,
-                        "invalid operands to binary expression"))
+                        "invalid operands to binary expression (%s and %s)",
+                        ae->left->type.str().c_str(),
+                        ae->right->type.str().c_str()))
                 return false;
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
@@ -309,13 +379,13 @@ bool Analyser::verify_expression(Expression *expression) {
 
             if (!iassert(!left->type.is_primitive(), left->origin, "'%s' is not a structure", left->type.str().c_str()))
                 return false;
-            auto struct_name = std::get<std::string>(left->type.type);
-            if (!iassert(is_struct_declared(struct_name),
+            auto struct_name = left->type.get_user();
+            if (!iassert(is_struct_declared({struct_name}),
                          left->origin,
                          "undefined structure '%s'",
-                         struct_name.c_str()))
+                         left->type.str().c_str()))
                 return false;
-            StructStatement *s = get_struct(struct_name);
+            StructStatement *s = get_struct({struct_name});
             if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
                 return false;
             std::string member_name = ((NameExpression *) right)->name;
@@ -409,36 +479,44 @@ bool Analyser::is_var_declared(const std::string &name) {
            variables.end();
 }
 
-bool Analyser::is_func_declared(const std::string &name) {
-    return std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; }) !=
-           functions.end() || std::find_if(declarations.begin(),
-                                           declarations.end(),
-                                           [name](FuncDeclareStatement *v) { return name == v->name; })
-           != declarations.end();
+bool Analyser::is_func_declared(const std::vector<std::string> &name) {
+    auto global = name;
+    auto local = path;
+    local.insert(local.end(), name.begin(), name.end());
+
+    return declarations.contains(global) || declarations.contains(local);
 }
 
-bool Analyser::is_struct_declared(const std::string &name) {
-    return std::find_if(structures.begin(), structures.end(), [name](StructStatement *s) { return name == s->name; }) !=
-           structures.end();
-}
+bool Analyser::is_struct_declared(const std::vector<std::string> &name) {
+    auto global = name;
+    auto local = path;
+    local.insert(local.end(), name.begin(), name.end());
 
-FuncStCommon *Analyser::get_func_decl(const std::string &name) {
-    auto fun = std::find_if(functions.begin(), functions.end(), [name](FuncStatement *v) { return name == v->name; });
-    if (fun != functions.end())
-        return *fun;
-
-    auto decl = std::find_if(declarations.begin(),
-                             declarations.end(),
-                             [name](FuncDeclareStatement *v) { return name == v->name; });
-    if (decl != declarations.end())
-        return *decl;
-    return nullptr;
+    return structures.contains(global) || structures.contains(local);
 }
 
 VariableStatement *Analyser::get_variable(const std::string &name) {
     return *std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; });
 }
 
-StructStatement *Analyser::get_struct(const std::string &name) {
-    return *std::find_if(structures.begin(), structures.end(), [name](StructStatement *s) { return name == s->name; });
+FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {
+    auto global = name;
+    auto local = path;
+    local.insert(local.end(), name.begin(), name.end());
+
+    if (declarations.contains(local))
+        return declarations[local];
+
+    return declarations[global];
+}
+
+StructStatement *Analyser::get_struct(const std::vector<std::string> &name) {
+    auto global = name;
+    auto local = path;
+    local.insert(local.end(), name.begin(), name.end());
+
+    if (structures.contains(local))
+        return structures[local];
+
+    return structures[global];
 }

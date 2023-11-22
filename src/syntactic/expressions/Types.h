@@ -8,7 +8,9 @@
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
 
 #include <string>
+#include <vector>
 #include <variant>
+#include <cstdint>
 
 class StructStatement;
 
@@ -82,9 +84,10 @@ inline std::string to_string(const TypeSize &ts) {
 }
 
 class Type {
+    std::variant<TypeSize, std::vector<std::string>> type;
+
 public:
     int pointer_level;
-    std::variant<TypeSize, std::string> type;
 
     Type()
         : type(VOID) {
@@ -92,13 +95,21 @@ public:
     };
 
     explicit Type(TypeSize ts, int pl = 0)
-        : pointer_level(pl),
-          type(ts) {
+        : type(ts),
+          pointer_level(pl) {
     }
 
-    explicit Type(std::string t, int pl = 0)
-        : pointer_level(pl),
-          type(std::move(t)) {
+    explicit Type(std::vector<std::string> t, int pl = 0)
+        : type(std::move(t)),
+          pointer_level(pl) {
+    }
+
+    [[nodiscard]] TypeSize get_primitive() const {
+        return std::get<TypeSize>(type);
+    }
+
+    [[nodiscard]] std::vector<std::string> get_user() const {
+        return std::get<std::vector<std::string>>(type);
     }
 
     [[nodiscard]] bool is_primitive() const {
@@ -157,6 +168,7 @@ public:
     }
 
     [[nodiscard]] std::string str() const;
+    [[nodiscard]] std::string base() const;
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_

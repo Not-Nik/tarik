@@ -229,8 +229,9 @@ public:
         return false;
     }
 
-    Type get_type() {
-        return Type(this->name, 0);
+    Type get_type(std::vector<std::string> path = {}) {
+        path.push_back(this->name);
+        return Type(path, 0);
     }
 
     Type get_member_type(const std::string &n) {
@@ -259,8 +260,10 @@ public:
 
 class ImportStatement : public ScopeStatement {
 public:
-    ImportStatement(const LexerPos &o, std::vector<Statement *> s)
-        : ScopeStatement(IMPORT_STMT, o, std::move(s)) {}
+    std::string name;
+
+    ImportStatement(const LexerPos &o, std::string n, std::vector<Statement *> s)
+        : ScopeStatement(IMPORT_STMT, o, std::move(s)), name(std::move(n)) {}
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
