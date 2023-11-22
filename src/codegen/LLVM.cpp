@@ -165,7 +165,7 @@ void LLVM::generate_function(FuncStatement *func) {
 
     generate_scope(func, true);
 
-    if (func->return_type == Type(VOID)) {
+    if (func->return_type == Type(VOID) && func->block.back()->statement_type != RETURN_STMT) {
         builder.CreateRetVoid();
     }
 }
@@ -223,7 +223,10 @@ void LLVM::generate_else(ElseStatement *) {
 void LLVM::generate_return(ReturnStatement *return_) {
     if (!return_type)
         return;
-    builder.CreateRet(generate_cast(generate_expression(return_->value), return_type, return_type_signed_int));
+    if (return_->value)
+        builder.CreateRet(generate_cast(generate_expression(return_->value), return_type, return_type_signed_int));
+    else
+        builder.CreateRetVoid();
 }
 
 void LLVM::generate_while(WhileStatement *while_, bool is_last) {

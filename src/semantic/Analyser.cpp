@@ -190,7 +190,9 @@ bool Analyser::verify_else(ElseStatement *else_) {
 }
 
 bool Analyser::verify_return(ReturnStatement *return_) {
-    return verify_expression(return_->value);
+    if (return_->value)
+        return verify_expression(return_->value);
+    return true;
 }
 
 bool Analyser::verify_while(WhileStatement *while_) {
