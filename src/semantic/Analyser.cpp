@@ -51,6 +51,32 @@ Analyser::Analyser() {
 }
 
 bool Analyser::verify_statement(Statement *statement) {
+    bool allowed = true;
+
+    switch (statement->statement_type) {
+        case STRUCT_STMT:
+        case IMPORT_STMT:
+        case FUNC_STMT:
+            allowed = iassert(level == 0, statement->origin, "declaration not allowed here");
+            break;
+        case IF_STMT:
+        case ELSE_STMT:
+        case RETURN_STMT:
+        case WHILE_STMT:
+        case BREAK_STMT:
+        case CONTINUE_STMT:
+        case VARIABLE_STMT:
+        case EXPR_STMT:
+        case SCOPE_STMT:
+            allowed = iassert(level > 0, statement->origin, "expected declaration");
+            [[fallthrough]];
+        default:
+            break;
+    }
+
+    if (!allowed)
+        return false;
+
     switch (statement->statement_type) {
         case SCOPE_STMT:
             return verify_scope((ScopeStatement *) statement);
@@ -126,7 +152,11 @@ bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
 
     path.push_back(name);
 
+    level++;
+
     bool res = verify_statements(scope->block);
+
+    level--;
 
     while (old_var_count < variables.size())
         variables.pop_back();

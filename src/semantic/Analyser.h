@@ -20,6 +20,7 @@ class Analyser {
 
     std::vector<VariableStatement *> variables;
     Statement *last_loop = nullptr;
+    unsigned int level = 0;
 
     [[nodiscard]] std::vector<std::string> get_local_path(const std::string& name) const;
     [[nodiscard]] std::string flatten_path(const std::string& name = "") const;
