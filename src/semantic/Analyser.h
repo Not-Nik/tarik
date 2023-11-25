@@ -23,6 +23,7 @@ class Analyser {
     unsigned int level = 0;
 
     [[nodiscard]] std::vector<std::string> get_local_path(const std::string& name) const;
+    [[nodiscard]] std::vector<std::string> get_local_path(const std::vector<std::string>& name) const;
     [[nodiscard]] std::string flatten_path(const std::string& name = "") const;
     [[nodiscard]] static std::string flatten_path(const std::vector<std::string>& path);
     [[nodiscard]] static std::string flatten_path(const std::vector<std::string>& path, const std::string& name);

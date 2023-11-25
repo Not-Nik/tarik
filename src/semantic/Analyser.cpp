@@ -17,6 +17,12 @@ std::vector<std::string> Analyser::get_local_path(const std::string &name) const
     return local;
 }
 
+std::vector<std::string> Analyser::get_local_path(const std::vector<std::string> &name) const {
+    auto local = path;
+    local.insert(local.begin(), name.begin(), name.end());
+    return local;
+}
+
 std::string Analyser::flatten_path(const std::string &name) const {
     return flatten_path(path, name);
 }
@@ -326,7 +332,28 @@ bool Analyser::verify_struct(StructStatement *struct_) {
 }
 
 bool Analyser::verify_import(ImportStatement *import_) {
-    return verify_scope(import_, import_->name);
+    Analyser import_analyser;
+    const bool res = import_analyser.verify_statements(import_->block);
+
+    for (auto [local_path, struct_] : import_analyser.structures) {
+        auto global_path = get_local_path(local_path);
+        struct_->name = flatten_path(global_path);
+        structures.emplace(global_path, struct_);
+    }
+
+    for (auto [local_path, decl] : import_analyser.declarations) {
+        auto global_path = get_local_path(local_path);
+        decl->name = flatten_path(global_path);
+        declarations.emplace(global_path, decl);
+    }
+
+    for (auto [local_path, func] : import_analyser.functions) {
+        auto global_path = get_local_path(local_path);
+        func->name = flatten_path(global_path);
+        functions.emplace(global_path, func);
+    }
+
+    return res;
 }
 
 bool Analyser::verify_expression(Expression *expression) {
