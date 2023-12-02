@@ -8,6 +8,7 @@
 
 #include <algorithm>
 
+#include "Path.h"
 #include "util/Util.h"
 #include "syntactic/expressions/Expression.h"
 
@@ -19,7 +20,7 @@ std::vector<std::string> Analyser::get_local_path(const std::string &name) const
 
 std::vector<std::string> Analyser::get_local_path(const std::vector<std::string> &name) const {
     auto local = path;
-    local.insert(local.begin(), name.begin(), name.end());
+    local.insert(local.end(), name.begin(), name.end());
     return local;
 }
 
@@ -332,8 +333,10 @@ bool Analyser::verify_struct(StructStatement *struct_) {
 }
 
 bool Analyser::verify_import(ImportStatement *import_) {
-    Analyser import_analyser;
+    Analyser import_analyser(__no_auto_main{});
     const bool res = import_analyser.verify_statements(import_->block);
+
+    path.push_back(import_->name);
 
     for (auto [local_path, struct_] : import_analyser.structures) {
         auto global_path = get_local_path(local_path);
@@ -353,6 +356,8 @@ bool Analyser::verify_import(ImportStatement *import_) {
         functions.emplace(global_path, func);
     }
 
+    path.pop_back();
+
     return res;
 }
 
@@ -362,16 +367,21 @@ bool Analyser::verify_expression(Expression *expression) {
             auto ce = (CallExpression *) expression;
 
             std::vector<std::string> func_path;
-            if (ce->callee->expression_type == NAME_EXPR) {
-                auto *ne = (NameExpression *) ce->callee;
-                func_path = {ne->name};
+            if (ce->callee->expression_type == NAME_EXPR || ce->callee->expression_type == PATH_EXPR) {
+                func_path = ::flatten_path(ce->callee);
 
-                if (is_struct_declared({ne->name})) {
+                if (is_struct_declared(func_path)) {
                     func_path.push_back("$constructor");
                     // TODO: check if there exists a function with the same name
                 }
 
-                ne->name = flatten_path(func_path);
+                if (ce->callee->expression_type == NAME_EXPR) {
+                    ((NameExpression *)ce->callee)->name = flatten_path(func_path);
+                } else {
+                    auto *name = new NameExpression(ce->callee->origin, flatten_path(func_path));
+                    delete ce->callee;
+                    ce->callee = name;
+                }
             } else {
                 return iassert(false, ce->origin, "calling of expressions is unimplemented");
             }

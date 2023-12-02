@@ -93,7 +93,8 @@ enum PrefixType {
     NEG,
     REF,
     DEREF,
-    LOG_NOT
+    LOG_NOT,
+    GLOBAL
 };
 
 inline std::string to_string(PrefixType pt) {
@@ -132,6 +133,7 @@ public:
 };
 
 enum BinOpType {
+    PATH,
     ADD,
     SUB,
     MUL,
@@ -148,6 +150,8 @@ enum BinOpType {
 
 constexpr ExprType to_expr_type(BinOpType bot) {
     switch (bot) {
+        case PATH:
+            return PATH_EXPR;
         case ADD:
         case SUB:
             return DASH_EXPR;

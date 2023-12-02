@@ -56,7 +56,8 @@ enum Precedence {
     SUM,
     PRODUCT,
     PREFIX,
-    CALL
+    CALL,
+    NAME_CONCAT,
 };
 
 enum ExprType {
@@ -73,7 +74,8 @@ enum ExprType {
     BOOL_EXPR,
     REAL_EXPR,
     STR_EXPR,
-    NULL_EXPR
+    NULL_EXPR,
+    PATH_EXPR,
 };
 
 class Expression : public Statement {

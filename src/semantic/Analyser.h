@@ -27,6 +27,10 @@ class Analyser {
     [[nodiscard]] std::string flatten_path(const std::string& name = "") const;
     [[nodiscard]] static std::string flatten_path(const std::vector<std::string>& path);
     [[nodiscard]] static std::string flatten_path(const std::vector<std::string>& path, const std::string& name);
+
+    struct __no_auto_main {};
+
+    Analyser(__no_auto_main _) {}
 public:
     Analyser();
 

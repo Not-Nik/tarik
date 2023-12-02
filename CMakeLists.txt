@@ -25,6 +25,8 @@ add_executable(tarik
         src/lexical/Token.h
         src/semantic/Analyser.cpp
         src/semantic/Analyser.h
+        src/semantic/Path.cpp
+        src/semantic/Path.h
         src/syntactic/Parser.cpp
         src/syntactic/Parser.h
         src/syntactic/expressions/Base.h

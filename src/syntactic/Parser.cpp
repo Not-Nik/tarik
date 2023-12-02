@@ -95,9 +95,11 @@ void Parser::init_parslets() {
     prefix_parslets.emplace(AMPERSAND, new RefParselet());
     prefix_parslets.emplace(ASTERISK, new DerefParselet());
     prefix_parslets.emplace(NOT, new NotParselet());
+    prefix_parslets.emplace(DOUBLE_COLON, new GlobalParselet());
     prefix_parslets.emplace(PAREN_OPEN, new GroupParselet());
 
     // Binary expressions
+    infix_parslets.emplace(DOUBLE_COLON, new PathParselet());
     infix_parslets.emplace(PLUS, new AddParselet());
     infix_parslets.emplace(MINUS, new SubParselet());
     infix_parslets.emplace(ASTERISK, new MulParselet());
@@ -334,7 +336,7 @@ Statement *Parser::parse_statement() {
 
         ImportStatement *res;
         for (auto part = --import_path.end(); ; part--) {
-            res = new ImportStatement(token.where, *part, statements);
+            res = new ImportStatement(token.where, part->stem(), statements);
             statements = {res};
 
             if (part == import_path.begin())

@@ -65,6 +65,7 @@ using NegParselet = PrefixOperatorParselet<NEG>;
 using RefParselet = PrefixOperatorParselet<REF>;
 using DerefParselet = PrefixOperatorParselet<DEREF>;
 using NotParselet = PrefixOperatorParselet<LOG_NOT>;
+using GlobalParselet = PrefixOperatorParselet<GLOBAL>;
 
 template <BinOpType bot, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
@@ -79,6 +80,7 @@ class BinaryOperatorParselet : public InfixParselet {
     }
 };
 
+using PathParselet = BinaryOperatorParselet<PATH, NAME_CONCAT>;
 using AddParselet = BinaryOperatorParselet<ADD, SUM>;
 using SubParselet = BinaryOperatorParselet<SUB, SUM>;
 using MulParselet = BinaryOperatorParselet<MUL, PRODUCT>;
