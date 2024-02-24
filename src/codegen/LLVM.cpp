@@ -175,9 +175,9 @@ void LLVM::generate_func_decl(FuncDeclareStatement *decl) {
     functions.emplace(decl->name, func_type);
 
     llvm::Function *llvm_func = llvm::Function::Create(func_type,
-                                                           llvm::Function::ExternalLinkage,
-                                                           decl->name,
-                                                           module.get());
+                                                       llvm::Function::ExternalLinkage,
+                                                       decl->name,
+                                                       module.get());
     function_bodies.emplace(decl->name, llvm_func);
 }
 
@@ -185,7 +185,7 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     llvm::BasicBlock *if_block = llvm::BasicBlock::Create(context, "if_block", current_function);
     llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
     llvm::BasicBlock *else_block = nullptr;
-    // Todo: this should probably compare to zero instead of casting
+
     llvm::Value *condition = generate_cast(generate_expression(if_->condition),
                                            llvm::Type::getIntNTy(context, 1),
                                            false);
