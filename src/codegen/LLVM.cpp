@@ -144,9 +144,9 @@ void LLVM::generate_scope(ScopeStatement *scope, bool is_last) {
 void LLVM::generate_function(FuncStatement *func) {
     variables.clear();
 
-    llvm::FunctionType *func_type = functions.at(func->name);
+    llvm::FunctionType *func_type = functions.at(func->name.raw);
 
-    llvm::Function *llvm_func = function_bodies.at(func->name);
+    llvm::Function *llvm_func = function_bodies.at(func->name.raw);
     llvm::BasicBlock *entry = llvm::BasicBlock::Create(context, "func_entry", llvm_func);
     builder.SetInsertPoint(entry);
     current_function = llvm_func;
@@ -172,13 +172,13 @@ void LLVM::generate_function(FuncStatement *func) {
 
 void LLVM::generate_func_decl(FuncDeclareStatement *decl) {
     llvm::FunctionType *func_type = make_llvm_function_type(decl);
-    functions.emplace(decl->name, func_type);
+    functions.emplace(decl->name.raw, func_type);
 
     llvm::Function *llvm_func = llvm::Function::Create(func_type,
                                                        llvm::Function::ExternalLinkage,
-                                                       decl->name,
+                                                       decl->name.raw,
                                                        module.get());
-    function_bodies.emplace(decl->name, llvm_func);
+    function_bodies.emplace(decl->name.raw, llvm_func);
 }
 
 void LLVM::generate_if(IfStatement *if_, bool is_last) {

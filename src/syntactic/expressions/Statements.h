@@ -144,16 +144,16 @@ public:
 
 class FuncStCommon {
 public:
-    std::string name;
+    Token name;
     Type return_type;
     std::vector<VariableStatement *> arguments;
     bool var_arg;
 
-    FuncStCommon(std::string n, Type ret, std::vector<VariableStatement *> args, bool va)
+    FuncStCommon(Token n, Type ret, std::vector<VariableStatement *> args, bool va)
         : name(std::move(n)), return_type(ret), arguments(std::move(args)), var_arg(va) {}
 
     [[nodiscard]] std::string head() const {
-        std::string res = "fn " + name + "(";
+        std::string res = "fn " + name.raw + "(";
         for (auto arg: arguments) {
             res += arg->type.str() + " " + arg->name + ", ";
         }
@@ -175,7 +175,7 @@ public:
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
     FuncDeclareStatement(const LexerPos &o,
-                         std::string n,
+                         Token n,
                          Type ret,
                          std::vector<VariableStatement *> args,
                          bool var_arg)
@@ -189,7 +189,7 @@ public:
 class FuncStatement : public ScopeStatement, public FuncStCommon {
 public:
     FuncStatement(const LexerPos &o,
-                  std::string n,
+                  Token n,
                   Type ret,
                   std::vector<VariableStatement *> args,
                   std::vector<Statement *> b,

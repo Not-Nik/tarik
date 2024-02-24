@@ -158,6 +158,10 @@ public:
           where(std::move(lp)) {
     }
 
+    static Token name(std::string s, LexerPos lp = {}) {
+        return Token(NAME, s, lp);
+    }
+
     TokenType id;
     std::string raw;
     LexerPos where;

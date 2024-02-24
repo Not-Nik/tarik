@@ -225,8 +225,7 @@ Statement *Parser::parse_statement() {
 
     if (token.id == FUNC) {
         lexer.consume();
-        Token name_tok = expect(NAME);
-        std::string name = name_tok.raw;
+        Token name = expect(NAME);
 
         std::vector<VariableStatement *> args;
         bool var_arg = false;

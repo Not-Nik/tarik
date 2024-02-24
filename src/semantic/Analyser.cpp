@@ -50,8 +50,8 @@ Analyser::Analyser() {
     std::vector<Statement *> body;
     body.push_back(new ReturnStatement(lp, new CallExpression(lp, new NameExpression(lp, "::main"), {})));
 
-    auto *func = new FuncStatement(lp, "main", Type(U32), {}, body, false);
-    auto *decl = new FuncDeclareStatement(lp, "main", Type(I32), {}, false);
+    auto *func = new FuncStatement(lp, Token::name("main"), Type(U32), {}, body, false);
+    auto *decl = new FuncDeclareStatement(lp, Token::name("main"), Type(I32), {}, false);
 
     functions.emplace(std::vector<std::string>(), func);
     declarations.emplace(std::vector<std::string>(), decl);
@@ -124,10 +124,10 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
                 "internal: premature function declaration: report this as a bug");
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
-            std::vector<std::string> name = get_local_path(func->name);
+            std::vector<std::string> name = get_local_path(func->name.raw);
             declarations.emplace(name,
                                  new FuncDeclareStatement(statement->origin,
-                                                          flatten_path(name),
+                                                          Token::name(flatten_path(name), func->name.where),
                                                           func->return_type,
                                                           func->arguments,
                                                           func->var_arg));
@@ -177,13 +177,13 @@ bool Analyser::verify_function(FuncStatement *func) {
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
-    std::vector<std::string> func_path = get_local_path(func->name);
+    std::vector<std::string> func_path = get_local_path(func->name.raw);
 
     for (auto [path, registered] : functions) {
         if (path != func_path)
             continue;
-        error(func->origin, "redefinition of '%s'", func->name.c_str());
-        note(registered->origin, "previous definition here");
+        error(func->name.where, "redefinition of '%s'", func->name.raw.c_str());
+        note(registered->name.where, "previous definition here");
         return false;
     }
 
@@ -199,9 +199,9 @@ bool Analyser::verify_function(FuncStatement *func) {
     if (func->var_arg)
         warning(func->origin, "function uses var args, but they cannot be accessed");
 
-    func->name = flatten_path(func->name);
+    func->name.raw = flatten_path(func->name.raw);
 
-    return verify_scope(func, func->name);
+    return verify_scope(func, func->name.raw);
 }
 
 bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
@@ -313,7 +313,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     body.push_back(new ReturnStatement(struct_->origin, new NameExpression(struct_->origin, "_instance")));
 
     auto *ctor = new FuncStatement(struct_->origin,
-                                   struct_->name.raw + "::$constructor",
+                                   Token::name(struct_->name.raw + "::$constructor", struct_->origin),
                                    struct_->get_type(path),
                                    ctor_args,
                                    body,
@@ -351,13 +351,13 @@ bool Analyser::verify_import(ImportStatement *import_) {
 
     for (auto [local_path, decl] : import_analyser.declarations) {
         auto global_path = get_local_path(local_path);
-        decl->name = flatten_path(global_path);
+        decl->name.raw = flatten_path(global_path);
         declarations.emplace(global_path, decl);
     }
 
     for (auto [local_path, func] : import_analyser.functions) {
         auto global_path = get_local_path(local_path);
-        func->name = flatten_path(global_path);
+        func->name.raw = flatten_path(global_path);
         functions.emplace(global_path, func);
     }
 

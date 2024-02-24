@@ -117,7 +117,7 @@ bool test() {
             Parser p(&(c = ss("fn test_func(i32 arg1, f64 arg2) i8 {} test_func(1, 2.3);")));
             auto func = (FuncStatement *) p.parse_statement();
             ASSERT_EQ(func->statement_type, FUNC_STMT)
-            ASSERT_STR_EQ(func->name, "test_func")
+            ASSERT_STR_EQ(func->name.raw, "test_func")
             ASSERT_TRUE(func->return_type == Type(I8))
             ASSERT_STR_EQ(func->arguments[0]->name, "arg1")
             ASSERT_EQ(func->arguments[0]->type, Type(I32))
@@ -168,7 +168,7 @@ bool test() {
 
         auto *f = (FuncStatement *) s;
 
-        ASSERT_STR_EQ(f->name, "main")
+        ASSERT_STR_EQ(f->name.raw, "main")
         ASSERT_TRUE(f->return_type == Type(U8))
 
         ASSERT_TRUE(f->arguments.empty())
