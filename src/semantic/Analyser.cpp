@@ -7,6 +7,7 @@
 #include "Analyser.h"
 
 #include <algorithm>
+#include <iostream>
 
 #include "Path.h"
 #include "util/Util.h"
@@ -179,8 +180,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     std::vector<std::string> func_path = get_local_path(func->name);
 
     for (auto [path, registered] : functions) {
-        // the first part is only for optimisation
-        if (registered->name != func->name || path != func_path)
+        if (path != func_path)
             continue;
         error(func->origin, "redefinition of '%s'", func->name.c_str());
         note(registered->origin, "previous definition here");
@@ -278,7 +278,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     std::vector<std::string> struct_path = get_local_path(struct_->name);
 
     for (auto [path, registered] : structures) {
-        if (struct_->name != registered->name || path != struct_path)
+        if (path != struct_path)
             continue;
         error(struct_->origin, "redefinition of '%s'", struct_->name.c_str());
         note(registered->origin, "previous definition here");
