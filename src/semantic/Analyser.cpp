@@ -257,9 +257,9 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 
 bool Analyser::verify_variable(VariableStatement *var) {
     if (!var->type.is_primitive() && !iassert(is_struct_declared(var->type.get_user()),
-                var->origin,
-                "undefied type '%s'",
-                flatten_path(var->type.get_user()).c_str()))
+                                              var->origin,
+                                              "undefied type '%s'",
+                                              flatten_path(var->type.get_user()).c_str()))
         return false;
 
     for (auto variable : variables) {
@@ -388,22 +388,22 @@ bool Analyser::verify_expression(Expression *expression) {
                     ce->callee = name;
                 }
             } else {
-                return iassert(false, ce->origin, "calling of expressions is unimplemented");
+                return iassert(false, ce->callee->origin, "calling of expressions is unimplemented");
             }
 
             if (!iassert(is_func_declared(func_path),
-                         ce->origin,
+                         ce->callee->origin,
                          "undefined function '%s'",
                          flatten_path(func_path).c_str()))
                 return false;
             FuncStCommon *func = get_func_decl(func_path);
             if (!iassert(ce->arguments.size() >= func->arguments.size(),
-                         ce->callee->origin,
+                         ce->origin,
                          "too few arguments, expected %i found %i.",
                          func->arguments.size(),
                          ce->arguments.size()) || !iassert(func->var_arg || ce->arguments.size() <= func->arguments.
                                                            size(),
-                                                           ce->callee->origin,
+                                                           ce->origin,
                                                            "too many arguments, expected %i found %i.",
                                                            func->arguments.size(),
                                                            ce->arguments.size()))
@@ -428,12 +428,12 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            if (!verify_expression(ae->left) || !verify_expression(ae->right) || !
-                iassert(ae->left->type.is_compatible(ae->right->type),
-                        ae->origin,
-                        "invalid operands to binary expression (%s and %s)",
-                        ae->left->type.str().c_str(),
-                        ae->right->type.str().c_str()))
+            if (!verify_expression(ae->left) || !verify_expression(ae->right) || !iassert(ae->left->type.
+                    is_compatible(ae->right->type),
+                    ae->right->origin,
+                    "can't assign to type '%s' from '%s'",
+                    ae->left->type.str().c_str(),
+                    ae->right->type.str().c_str()))
                 return false;
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
@@ -486,14 +486,14 @@ bool Analyser::verify_expression(Expression *expression) {
                 case NEG:
                 case LOG_NOT:
                     res = iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
-                                  pe->origin,
+                                  pe->operand->origin,
                                   "invalid operand to unary expression");
                     break;
                 case REF: {
                     pe_type.pointer_level++;
                     ExprType etype = pe->operand->expression_type;
                     res = iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR,
-                                  pe->origin,
+                                  pe->operand->origin,
                                   "cannot take reference of temporary value");
                     if (!res)
                         note(pe->operand->origin, "'%s' produces a temporary value", pe->operand->print().c_str());
@@ -501,7 +501,7 @@ bool Analyser::verify_expression(Expression *expression) {
                 }
                 case DEREF:
                     res = iassert(pe_type.pointer_level > 0,
-                                  pe->origin,
+                                  pe->operand->origin,
                                   "cannot dereference non-pointer type '%s'",
                                   pe->operand->type.str().c_str());
                     pe_type.pointer_level--;
