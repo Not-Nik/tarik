@@ -261,15 +261,15 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
 
-        return new FuncStatement(token.where, name, t, args, body, var_arg);
+        return new FuncStatement(token.origin, name, t, args, body, var_arg);
     } else if (token.id == RETURN) {
         lexer.consume();
-        auto *s = new ReturnStatement(token.where, parse_expression());
+        auto *s = new ReturnStatement(token.origin, parse_expression());
         expect(SEMICOLON);
         return s;
     } else if (token.id == IF) {
         lexer.consume();
-        auto is = new IfStatement(token.where, parse_expression(), block());
+        auto is = new IfStatement(token.origin, parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             auto es = parse_statement();
             iassert(es->statement_type == ELSE_STMT,
@@ -279,20 +279,20 @@ Statement *Parser::parse_statement() {
         return is;
     } else if (token.id == ELSE) {
         lexer.consume();
-        return new ElseStatement(token.where, block());
+        return new ElseStatement(token.origin, block());
     } else if (token.id == WHILE) {
         lexer.consume();
-        return new WhileStatement(token.where, parse_expression(), block());
+        return new WhileStatement(token.origin, parse_expression(), block());
     } else if (token.id == BREAK) {
         lexer.consume();
         expect(SEMICOLON);
-        return new BreakStatement(token.where);
+        return new BreakStatement(token.origin);
     } else if (token.id == CONTINUE) {
         lexer.consume();
         expect(SEMICOLON);
-        return new ContinueStatement(token.where);
+        return new ContinueStatement(token.origin);
     } else if (token.id == CURLY_OPEN) {
-        return new ScopeStatement(SCOPE_STMT, token.where, block());
+        return new ScopeStatement(SCOPE_STMT, token.origin, block());
     } else if (token.id == STRUCT) {
         lexer.consume();
 
@@ -313,7 +313,7 @@ Statement *Parser::parse_statement() {
         }
         lexer.consume();
 
-        return new StructStatement(token.where, name, members);
+        return new StructStatement(token.origin, name, members);
     } else if (token.id == IMPORT) {
         lexer.consume();
 
@@ -335,7 +335,7 @@ Statement *Parser::parse_statement() {
 
         ImportStatement *res;
         for (auto part = --import_path.end(); ; part--) {
-            res = new ImportStatement(token.where, part->stem(), statements);
+            res = new ImportStatement(token.origin, part->stem(), statements);
             statements = {res};
 
             if (part == import_path.begin())

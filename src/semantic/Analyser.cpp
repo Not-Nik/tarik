@@ -127,7 +127,7 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
             std::vector<std::string> name = get_local_path(func->name.raw);
             declarations.emplace(name,
                                  new FuncDeclareStatement(statement->origin,
-                                                          Token::name(flatten_path(name), func->name.where),
+                                                          Token::name(flatten_path(name), func->name.origin),
                                                           func->return_type,
                                                           func->arguments,
                                                           func->var_arg));
@@ -182,8 +182,8 @@ bool Analyser::verify_function(FuncStatement *func) {
     for (auto [path, registered] : functions) {
         if (path != func_path)
             continue;
-        error(func->name.where, "redefinition of '%s'", func->name.raw.c_str());
-        note(registered->name.where, "previous definition here");
+        error(func->name.origin, "redefinition of '%s'", func->name.raw.c_str());
+        note(registered->name.origin, "previous definition here");
         return false;
     }
 
@@ -280,8 +280,8 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     for (auto [path, registered] : structures) {
         if (path != struct_path)
             continue;
-        error(struct_->name.where, "redefinition of '%s'", struct_->name.raw.c_str());
-        note(registered->name.where, "previous definition here");
+        error(struct_->name.origin, "redefinition of '%s'", struct_->name.raw.c_str());
+        note(registered->name.origin, "previous definition here");
         return false;
     }
 

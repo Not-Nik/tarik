@@ -28,14 +28,14 @@ public:
 
 class NullParselet : public PrefixParselet {
     Expression *parse(Parser *, const Token &token) override {
-        return new NullExpression(token.where);
+        return new NullExpression(token.origin);
     }
 };
 
 template <class SimpleExpression>
 class SimpleParselet : public PrefixParselet {
     Expression *parse(Parser *, const Token &token) override {
-        return (Expression *) new SimpleExpression(token.where, token.raw);
+        return (Expression *) new SimpleExpression(token.origin, token.raw);
     }
 };
 
@@ -46,7 +46,7 @@ using StringParselet = SimpleParselet<StringExpression>;
 
 class NameParselet : public PrefixParselet {
     Expression *parse(Parser *, const Token &token) override {
-        return new NameExpression(token.where, token.raw);
+        return new NameExpression(token.origin, token.raw);
     }
 };
 
@@ -55,7 +55,7 @@ class PrefixOperatorParselet : public PrefixParselet {
     Expression *parse(Parser *parser, const Token &token) override {
         Expression *right = parser->parse_expression(PREFIX);
 
-        return new PrefixOperatorExpression(token.where, prefix_type, right);
+        return new PrefixOperatorExpression(token.origin, prefix_type, right);
     }
 };
 
@@ -71,7 +71,7 @@ class BinaryOperatorParselet : public InfixParselet {
     Expression *parse(Parser *parser, const Token &token, Expression *left) override {
         Expression *right = parser->parse_expression(prec);
 
-        return new BinaryOperatorExpression(token.where, bot, left, right);
+        return new BinaryOperatorExpression(token.origin, bot, left, right);
     }
 
     Precedence get_type() override {
@@ -104,7 +104,7 @@ class AssignParselet : public InfixParselet {
     Expression *parse(Parser *parser, const Token &token, Expression *left) override {
         Expression *right = parser->parse_expression(ASSIGNMENT - 1);
 
-        return new BinaryOperatorExpression(token.where, ASSIGN, left, right);
+        return new BinaryOperatorExpression(token.origin, ASSIGN, left, right);
     }
 
     Precedence get_type() override {
@@ -124,7 +124,7 @@ class CallParselet : public InfixParselet {
         }
         parser->lexer.consume();
 
-        return new CallExpression(token.where, left, args);
+        return new CallExpression(token.origin, left, args);
     }
 
     Precedence get_type() override {

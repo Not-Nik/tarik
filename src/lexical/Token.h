@@ -155,7 +155,7 @@ public:
     explicit Token(TokenType id, std::string s, LexerPos lp)
         : id(id),
           raw(std::move(s)),
-          where(std::move(lp)) {
+          origin(std::move(lp)) {
     }
 
     static Token name(std::string s, LexerPos lp = {}) {
@@ -164,7 +164,7 @@ public:
 
     TokenType id;
     std::string raw;
-    LexerPos where;
+    LexerPos origin;
 };
 
 #endif //TARIK_SRC_LEXICAL_TOKEN_H_
