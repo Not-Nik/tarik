@@ -39,10 +39,9 @@ std::string Analyser::flatten_path(const std::vector<std::string> &path) {
     return res;
 }
 
-std::string Analyser::flatten_path(const std::vector<std::string> &path, const std::string &name) {
-    auto copy = path;
-    copy.push_back(name);
-    return flatten_path(copy);
+std::string Analyser::flatten_path(std::vector<std::string> path, const std::string &name) {
+    path.push_back(name);
+    return flatten_path(path);
 }
 
 Analyser::Analyser() {
@@ -257,6 +256,12 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
+    if (!var->type.is_primitive() && !iassert(is_struct_declared(var->type.get_user()),
+                var->origin,
+                "undefied type '%s'",
+                flatten_path(var->type.get_user()).c_str()))
+        return false;
+
     for (auto variable : variables) {
         if (var->name == variable->name) {
             error(var->origin, "redefinition of '%s'", var->name.c_str());
@@ -333,7 +338,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
 }
 
 bool Analyser::verify_import(ImportStatement *import_) {
-    Analyser import_analyser(__no_auto_main{});
+    Analyser import_analyser(__no_auto_main {});
     const bool res = import_analyser.verify_statements(import_->block);
 
     path.push_back(import_->name);
@@ -376,7 +381,7 @@ bool Analyser::verify_expression(Expression *expression) {
                 }
 
                 if (ce->callee->expression_type == NAME_EXPR) {
-                    ((NameExpression *)ce->callee)->name = flatten_path(func_path);
+                    ((NameExpression *) ce->callee)->name = flatten_path(func_path);
                 } else {
                     auto *name = new NameExpression(ce->callee->origin, flatten_path(func_path));
                     delete ce->callee;
