@@ -46,8 +46,7 @@ using StringParselet = SimpleParselet<StringExpression>;
 
 class NameParselet : public PrefixParselet {
     Expression *parse(Parser *, const Token &token) override {
-        LexerPos where = token.where;
-        return new NameExpression(--where, token.raw);
+        return new NameExpression(token.where, token.raw);
     }
 };
 

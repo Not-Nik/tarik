@@ -45,7 +45,7 @@ char Lexer::read_stream() {
     char c = (char) stream->get();
     if (c == '\n') {
         pos.l++;
-        pos.p = 0;
+        pos.p = 1;
     } else
         pos.p++;
     return c;
@@ -115,6 +115,7 @@ std::string post_process_string(std::string s) {
 Token Lexer::consume() {
     std::string tok;
     bool num = false, real = false, op = false, string = false;
+    LexerPos actual_pos = pos;
 
     while (!stream->eof()) {
         char c = read_stream();
@@ -252,7 +253,6 @@ Token Lexer::consume() {
         }
     }
 
-    auto actual_pos = pos;
     while (isspace(peek_stream()))
         read_stream();
 

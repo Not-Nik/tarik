@@ -138,12 +138,12 @@ struct LexerPos {
     std::filesystem::path filename;
 
     LexerPos &operator--() {
-        if (p > 0)
+        if (p > 1)
             p--;
         else {
             // ugh, ill accept the inaccuracy for now
             // todo: make this accurate
-            p = 0;
+            p = 1;
             l--;
         }
         return *this;

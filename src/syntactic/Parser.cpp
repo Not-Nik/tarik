@@ -350,12 +350,14 @@ Statement *Parser::parse_statement() {
             iassert(is_peek(NAME), "expected a name found '%s' instead", lexer.peek().raw.c_str());
             std::string name = lexer.peek().raw;
 
+            LexerPos pos = lexer.where();
+
             if (lexer.peek(1).id != EQUAL) {
                 lexer.consume();
                 expect(SEMICOLON);
             }
 
-            return new VariableStatement(where(), t, name);
+            return new VariableStatement(pos, t, name);
         }
     }
 
