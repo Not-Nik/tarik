@@ -262,15 +262,15 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
 
-        return new FuncStatement(name_tok.where, name, t, args, body, var_arg);
+        return new FuncStatement(token.where, name, t, args, body, var_arg);
     } else if (token.id == RETURN) {
         lexer.consume();
-        auto *s = new ReturnStatement(where(), parse_expression());
+        auto *s = new ReturnStatement(token.where, parse_expression());
         expect(SEMICOLON);
         return s;
     } else if (token.id == IF) {
         lexer.consume();
-        auto is = new IfStatement(where(), parse_expression(), block());
+        auto is = new IfStatement(token.where, parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             auto es = parse_statement();
             iassert(es->statement_type == ELSE_STMT,
@@ -280,10 +280,10 @@ Statement *Parser::parse_statement() {
         return is;
     } else if (token.id == ELSE) {
         lexer.consume();
-        return new ElseStatement(where(), block());
+        return new ElseStatement(token.where, block());
     } else if (token.id == WHILE) {
         lexer.consume();
-        return new WhileStatement(where(), parse_expression(), block());
+        return new WhileStatement(token.where, parse_expression(), block());
     } else if (token.id == BREAK) {
         lexer.consume();
         expect(SEMICOLON);
@@ -293,7 +293,7 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
         return new ContinueStatement(token.where);
     } else if (token.id == CURLY_OPEN) {
-        return new ScopeStatement(SCOPE_STMT, where(), block());
+        return new ScopeStatement(SCOPE_STMT, token.where, block());
     } else if (token.id == STRUCT) {
         lexer.consume();
 
