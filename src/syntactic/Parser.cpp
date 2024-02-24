@@ -297,7 +297,7 @@ Statement *Parser::parse_statement() {
     } else if (token.id == STRUCT) {
         lexer.consume();
 
-        std::string name = expect(NAME).raw;
+        Token name = expect(NAME);
         expect(CURLY_OPEN);
 
         std::vector<VariableStatement *> members;

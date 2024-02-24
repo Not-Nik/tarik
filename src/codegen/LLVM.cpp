@@ -282,8 +282,8 @@ void LLVM::generate_struct(StructStatement *struct_) {
         members.push_back(make_llvm_type(member->type));
     }
 
-    structures.emplace(struct_->name, llvm::StructType::create(context, members, struct_->name));
-    struct_statements.emplace(struct_->name, struct_);
+    structures.emplace(struct_->name.raw, llvm::StructType::create(context, members, struct_->name.raw));
+    struct_statements.emplace(struct_->name.raw, struct_);
 }
 
 void LLVM::generate_import(ImportStatement *import_, bool is_last) {

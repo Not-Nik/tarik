@@ -209,10 +209,10 @@ public:
 
 class StructStatement : public Statement {
 public:
-    std::string name;
+    Token name;
     std::vector<VariableStatement *> members;
 
-    StructStatement(const LexerPos &o, std::string n, std::vector<VariableStatement *> m)
+    StructStatement(const LexerPos &o, Token n, std::vector<VariableStatement *> m)
         : Statement(STRUCT_STMT, o), name(std::move(n)), members(std::move(m)) {}
 
     ~StructStatement() override {
@@ -230,7 +230,7 @@ public:
     }
 
     Type get_type(std::vector<std::string> path = {}) {
-        path.push_back(this->name);
+        path.push_back(this->name.raw);
         return Type(path, 0);
     }
 
@@ -250,7 +250,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string res = "struct " + name + " {\n";
+        std::string res = "struct " + name.raw + " {\n";
         for (auto *mem: members) {
             res += mem->print() + "\n";
         }

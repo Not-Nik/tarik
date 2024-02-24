@@ -275,13 +275,13 @@ bool Analyser::verify_variable(VariableStatement *var) {
 
 bool Analyser::verify_struct(StructStatement *struct_) {
     std::vector<std::string> registered;
-    std::vector<std::string> struct_path = get_local_path(struct_->name);
+    std::vector<std::string> struct_path = get_local_path(struct_->name.raw);
 
     for (auto [path, registered] : structures) {
         if (path != struct_path)
             continue;
-        error(struct_->origin, "redefinition of '%s'", struct_->name.c_str());
-        note(registered->origin, "previous definition here");
+        error(struct_->name.where, "redefinition of '%s'", struct_->name.raw.c_str());
+        note(registered->name.where, "previous definition here");
         return false;
     }
 
@@ -313,7 +313,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     body.push_back(new ReturnStatement(struct_->origin, new NameExpression(struct_->origin, "_instance")));
 
     auto *ctor = new FuncStatement(struct_->origin,
-                                   struct_->name + "::$constructor",
+                                   struct_->name.raw + "::$constructor",
                                    struct_->get_type(path),
                                    ctor_args,
                                    body,
@@ -332,7 +332,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
                                                   ctor->arguments,
                                                   ctor->var_arg));
 
-    struct_->name = flatten_path(struct_->name);
+    struct_->name.raw = flatten_path(struct_->name.raw);
 
     return res;
 }
@@ -345,7 +345,7 @@ bool Analyser::verify_import(ImportStatement *import_) {
 
     for (auto [local_path, struct_] : import_analyser.structures) {
         auto global_path = get_local_path(local_path);
-        struct_->name = flatten_path(global_path);
+        struct_->name.raw = flatten_path(global_path);
         structures.emplace(global_path, struct_);
     }
 
