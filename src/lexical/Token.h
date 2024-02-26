@@ -134,6 +134,8 @@ struct LexerPos {
 
 struct LexerRange : LexerPos {
     int length = 0;
+
+    LexerRange operator+(LexerRange other);
 };
 
 class Token {

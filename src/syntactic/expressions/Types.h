@@ -12,6 +12,8 @@
 #include <variant>
 #include <cstdint>
 
+#include "lexical/Token.h"
+
 class StructStatement;
 
 enum TypeSize : std::uint8_t {
@@ -88,6 +90,7 @@ class Type {
 
 public:
     int pointer_level;
+    LexerRange origin;
 
     Type()
         : type(VOID) {

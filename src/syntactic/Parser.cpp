@@ -72,6 +72,9 @@ std::optional<Type> Parser::type() {
 
     peek_distance--;
 
+    // fixme: this is incredibly inefficient
+    t.origin = lexer.peek().origin + lexer.peek(peek_distance).origin;
+
     for (int _ = 0; _ < peek_distance; _++)
         lexer.consume();
 
@@ -240,11 +243,12 @@ Statement *Parser::parse_statement() {
                     lexer.consume();
                     break;
                 }
-                std::optional<Type> ty = type();
-                iassert(ty.has_value(), "exepcted type name");
+                std::optional<Type> maybe_type = type();
+                iassert(maybe_type.has_value(), "exepcted type name");
 
-                // todo: origin at type
-                args.push_back(new VariableStatement(token.origin, ty.value_or(Type()), expect(NAME).raw));
+                Type arg_type = maybe_type.value_or(Type());
+
+                args.push_back(new VariableStatement(arg_type.origin, arg_type, expect(NAME).raw));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -303,14 +307,15 @@ Statement *Parser::parse_statement() {
         std::vector<VariableStatement *> members;
 
         while (lexer.peek().id != CURLY_CLOSE) {
-            std::optional<Type> member_type = type();
+            std::optional<Type> maybe_type = type();
 
-            iassert(member_type.has_value(), "expected type name");
+            iassert(maybe_type.has_value(), "expected type name");
+
+            Type member_type = maybe_type.value_or(Type());
 
             std::string member_name = expect(NAME).raw;
 
-            // todo: origin at type
-            members.push_back(new VariableStatement(token.origin, member_type.value_or(Type()), member_name));
+            members.push_back(new VariableStatement(member_type.origin, member_type, member_name));
             expect(SEMICOLON);
         }
         lexer.consume();
