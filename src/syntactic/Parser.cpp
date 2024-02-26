@@ -6,12 +6,8 @@
 
 #include "Parser.h"
 
-#include "util/Util.h"
 #include "expressions/Parslets.h"
 
-#include <comperr.h>
-
-#include <algorithm>
 
 std::vector<std::filesystem::path> Parser::imported;
 
@@ -142,29 +138,19 @@ Parser::~Parser() {
         delete in.second;
 }
 
-bool Parser::iassert(bool cond, std::string what, ...) {
-    va_list args;
-    va_start(args, what);
-    ::iassert(cond, where().as_zero_range(), what, args);
-    va_end(args);
-    if (!cond)
-        lexer.read_until({';', '}'});
-    return cond;
-}
-
 LexerPos Parser::where() {
     return lexer.where();
 }
 
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
-    iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    iassert(lexer.peek().id == raw, "expected a {} found '{}' instead", s.c_str(), lexer.peek().raw.c_str());
     return lexer.consume();
 }
 
 bool Parser::check_expect(TokenType raw) {
     std::string s = to_string(raw);
-    bool r = iassert(lexer.peek().id == raw, "expected a %s found '%s' instead", s.c_str(), lexer.peek().raw.c_str());
+    bool r = iassert(lexer.peek().id == raw, "expected a {} found '{}' instead", s.c_str(), lexer.peek().raw.c_str());
     lexer.consume();
     return r;
 }
@@ -336,7 +322,7 @@ Statement *Parser::parse_statement() {
                 statements.pop_back();
             }
         } else {
-            iassert(false, "tried to import '%s', but file can't be found", import_path.string().c_str());
+            iassert(false, "tried to import '{}', but file can't be found", import_path.string().c_str());
         }
         expect(SEMICOLON);
 
@@ -353,7 +339,7 @@ Statement *Parser::parse_statement() {
         if (std::optional<Type> ty = type(); ty.has_value()) {
             Type t = ty.value();
 
-            iassert(is_peek(NAME), "expected a name found '%s' instead", lexer.peek().raw.c_str());
+            iassert(is_peek(NAME), "expected a name found '{}' instead", lexer.peek().raw.c_str());
             Token name = lexer.peek();
 
             if (lexer.peek(1).id != EQUAL) {
@@ -372,7 +358,7 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
         return e;
     } else {
-        iassert(false, "unexpected token '%s'", token.raw.c_str());
+        iassert(false, "unexpected token '{}'", token.raw.c_str());
         return parse_statement();
     }
 }

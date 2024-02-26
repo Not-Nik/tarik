@@ -20,8 +20,11 @@ add_executable(tarik
         src/cli/Arguments.h
         src/codegen/LLVM.cpp
         src/codegen/LLVM.h
+        src/error/Error.cpp
+        src/error/Error.h
         src/lexical/Lexer.cpp
         src/lexical/Lexer.h
+        src/lexical/Token.cpp
         src/lexical/Token.h
         src/semantic/Analyser.cpp
         src/semantic/Analyser.h
@@ -33,11 +36,8 @@ add_executable(tarik
         src/syntactic/expressions/Expression.h
         src/syntactic/expressions/Parslets.h
         src/syntactic/expressions/Statements.h
-        src/syntactic/expressions/Types.h
         src/syntactic/expressions/Types.cpp
-        src/util/Util.cpp
-        src/util/Util.h
-        src/lexical/Token.cpp)
+        src/syntactic/expressions/Types.h)
 
 set(LLVM_LINK_COMPONENTS
         AArch64

@@ -12,6 +12,7 @@
 #include <optional>
 #include <filesystem>
 
+#include "error/Error.h"
 #include "lexical/Lexer.h"
 #include "syntactic/expressions/Statements.h"
 
@@ -45,7 +46,14 @@ public:
 
     ~Parser();
 
-    bool iassert(bool cond, std::string what, ...);
+    template <class... Args>
+    bool iassert(bool cond, std::format_string<Args...> what, Args &&... args) {
+        std::string str = std::vformat(what.get(), std::make_format_args(args...));
+        viassert(cond, where().as_zero_range(), str);
+        if (!cond)
+            lexer.read_until({';', '}'});
+        return cond;
+    }
 
     LexerPos where();
 

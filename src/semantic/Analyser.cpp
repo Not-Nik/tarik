@@ -10,7 +10,7 @@
 #include <iostream>
 
 #include "Path.h"
-#include "util/Util.h"
+#include "error/Error.h"
 #include "syntactic/expressions/Expression.h"
 
 std::vector<std::string> Analyser::get_local_path(const std::string &name) const {
@@ -182,7 +182,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     for (auto [path, registered] : functions) {
         if (path != func_path)
             continue;
-        error(func->name.origin, "redefinition of '%s'", func->name.raw.c_str());
+        error(func->name.origin, "redefinition of '{}'", func->name.raw.c_str());
         note(registered->name.origin, "previous definition here");
         return false;
     }
@@ -258,13 +258,13 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 bool Analyser::verify_variable(VariableStatement *var) {
     if (!var->type.is_primitive() && !iassert(is_struct_declared(var->type.get_user()),
                                               var->origin,
-                                              "undefied type '%s'",
+                                              "undefied type '{}'",
                                               flatten_path(var->type.get_user()).c_str()))
         return false;
 
     for (auto variable : variables) {
         if (var->name.raw == variable->name.raw) {
-            error(var->name.origin, "redefinition of '%s'", var->name.raw.c_str());
+            error(var->name.origin, "redefinition of '{}'", var->name.raw.c_str());
             note(variable->name.origin, "previous definition here");
             return false;
         }
@@ -280,7 +280,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     for (auto [path, registered] : structures) {
         if (path != struct_path)
             continue;
-        error(struct_->name.origin, "redefinition of '%s'", struct_->name.raw.c_str());
+        error(struct_->name.origin, "redefinition of '{}'", struct_->name.raw.c_str());
         note(registered->name.origin, "previous definition here");
         return false;
     }
@@ -294,7 +294,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     for (auto member : struct_->members) {
         if (!iassert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
                      member->name.origin,
-                     "duplicate member '%s'",
+                     "duplicate member '{}'",
                      member->name.raw.c_str()))
             return false;
         registered.push_back(member->name.raw);
@@ -393,18 +393,18 @@ bool Analyser::verify_expression(Expression *expression) {
 
             if (!iassert(is_func_declared(func_path),
                          ce->callee->origin,
-                         "undefined function '%s'",
+                         "undefined function '{}'",
                          flatten_path(func_path).c_str()))
                 return false;
             FuncStCommon *func = get_func_decl(func_path);
             if (!iassert(ce->arguments.size() >= func->arguments.size(),
                          ce->origin,
-                         "too few arguments, expected %i found %i.",
+                         "too few arguments, expected {} found {}.",
                          func->arguments.size(),
                          ce->arguments.size()) || !iassert(func->var_arg || ce->arguments.size() <= func->arguments.
                                                            size(),
                                                            ce->origin,
-                                                           "too many arguments, expected %i found %i.",
+                                                           "too many arguments, expected {} found {}.",
                                                            func->arguments.size(),
                                                            ce->arguments.size()))
                 return false;
@@ -414,7 +414,7 @@ bool Analyser::verify_expression(Expression *expression) {
                 Expression *arg = ce->arguments[i];
                 if (!verify_expression(arg) || !iassert(arg_var->type.is_compatible(arg->type),
                                                         arg->origin,
-                                                        "passing value of type '%s' to argument of type '%s'",
+                                                        "passing value of type '{}' to argument of type '{}'",
                                                         arg->type.str().c_str(),
                                                         arg_var->type.str().c_str()) || !verify_expression(arg))
                     return false;
@@ -431,7 +431,7 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!verify_expression(ae->left) || !verify_expression(ae->right) || !iassert(ae->left->type.
                     is_compatible(ae->right->type),
                     ae->right->origin,
-                    "can't assign to type '%s' from '%s'",
+                    "can't assign to type '{}' from '{}'",
                     ae->left->type.str().c_str(),
                     ae->right->type.str().c_str()))
                 return false;
@@ -451,12 +451,12 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!verify_expression(left))
                 return false;
 
-            if (!iassert(!left->type.is_primitive(), left->origin, "'%s' is not a structure", left->type.str().c_str()))
+            if (!iassert(!left->type.is_primitive(), left->origin, "'{}' is not a structure", left->type.str().c_str()))
                 return false;
             auto struct_name = left->type.get_user();
             if (!iassert(is_struct_declared({struct_name}),
                          left->origin,
-                         "undefined structure '%s'",
+                         "undefined structure '{}'",
                          left->type.str().c_str()))
                 return false;
             StructStatement *s = get_struct({struct_name});
@@ -466,7 +466,7 @@ bool Analyser::verify_expression(Expression *expression) {
 
             if (!iassert(s->has_member(member_name),
                          right->origin,
-                         "no member named '%s' in '%s'",
+                         "no member named '{}' in '{}'",
                          member_name.c_str(),
                          left->type.str().c_str()))
                 return false;
@@ -496,13 +496,13 @@ bool Analyser::verify_expression(Expression *expression) {
                                   pe->operand->origin,
                                   "cannot take reference of temporary value");
                     if (!res)
-                        note(pe->operand->origin, "'%s' produces a temporary value", pe->operand->print().c_str());
+                        note(pe->operand->origin, "'{}' produces a temporary value", pe->operand->print().c_str());
                     break;
                 }
                 case DEREF:
                     res = iassert(pe_type.pointer_level > 0,
                                   pe->operand->origin,
-                                  "cannot dereference non-pointer type '%s'",
+                                  "cannot dereference non-pointer type '{}'",
                                   pe->operand->type.str().c_str());
                     pe_type.pointer_level--;
             }
@@ -512,7 +512,7 @@ bool Analyser::verify_expression(Expression *expression) {
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
-            if (!iassert(is_var_declared(ne->name), expression->origin, "undefined variable '%s'", ne->name.c_str()))
+            if (!iassert(is_var_declared(ne->name), expression->origin, "undefined variable '{}'", ne->name.c_str()))
                 return false;
             ne->assign_type(get_variable(ne->name)->type);
             break;
