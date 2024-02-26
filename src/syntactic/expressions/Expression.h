@@ -15,7 +15,7 @@ class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(const LexerPos &lp, std::string n)
+    explicit NameExpression(const LexerRange &lp, std::string n)
         : Expression(NAME_EXPR, lp),
           name(std::move(n)) {
     }
@@ -62,7 +62,7 @@ class PrimitiveExpression : public Expression {
 public:
     PrimitiveType n;
 
-    PrimitiveExpression(LexerPos lp, const std::string &n)
+    PrimitiveExpression(LexerRange lp, const std::string &n)
         : Expression(expr_type, lp),
           n(smart_cast_from_string<PrimitiveType>(n)) {
     }
@@ -79,7 +79,7 @@ using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 
 class NullExpression : public Expression {
 public:
-    explicit NullExpression(LexerPos lp)
+    explicit NullExpression(LexerRange lp)
         : Expression(NULL_EXPR, lp) {
     }
 
@@ -117,7 +117,7 @@ public:
     PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixOperatorExpression(const LexerPos &lp, PrefixType pt, Expression *op)
+    explicit PrefixOperatorExpression(const LexerRange &lp, PrefixType pt, Expression *op)
         : Expression(PREFIX_EXPR, lp),
           prefix_type(pt),
           operand(op) {
@@ -207,7 +207,7 @@ public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryOperatorExpression(const LexerPos &lp, BinOpType bot, Expression *l, Expression *r)
+    BinaryOperatorExpression(const LexerRange &lp, BinOpType bot, Expression *l, Expression *r)
         : Expression(to_expr_type(bot), lp),
           bin_op_type(bot),
           left(l),
@@ -229,7 +229,7 @@ public:
     Expression *callee;
     std::vector<Expression *> arguments;
 
-    CallExpression(const LexerPos &lp, Expression *c, std::vector<Expression *> args)
+    CallExpression(const LexerRange &lp, Expression *c, std::vector<Expression *> args)
         : Expression(CALL_EXPR, lp),
           callee(c),
           arguments(std::move(args)) {

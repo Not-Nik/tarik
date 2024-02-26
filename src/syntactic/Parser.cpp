@@ -142,7 +142,7 @@ Parser::~Parser() {
 bool Parser::iassert(bool cond, std::string what, ...) {
     va_list args;
     va_start(args, what);
-    ::iassert(cond, where(), what, args);
+    ::iassert(cond, where().as_zero_range(), what, args);
     va_end(args);
     if (!cond)
         lexer.read_until({';', '}'});
@@ -243,7 +243,8 @@ Statement *Parser::parse_statement() {
                 std::optional<Type> ty = type();
                 iassert(ty.has_value(), "exepcted type name");
 
-                args.push_back(new VariableStatement(where(), ty.value_or(Type()), expect(NAME).raw));
+                // todo: origin at type
+                args.push_back(new VariableStatement(token.origin, ty.value_or(Type()), expect(NAME).raw));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -308,7 +309,8 @@ Statement *Parser::parse_statement() {
 
             std::string member_name = expect(NAME).raw;
 
-            members.push_back(new VariableStatement(where(), member_type.value_or(Type()), member_name));
+            // todo: origin at type
+            members.push_back(new VariableStatement(token.origin, member_type.value_or(Type()), member_name));
             expect(SEMICOLON);
         }
         lexer.consume();
@@ -349,14 +351,12 @@ Statement *Parser::parse_statement() {
             iassert(is_peek(NAME), "expected a name found '%s' instead", lexer.peek().raw.c_str());
             std::string name = lexer.peek().raw;
 
-            LexerPos pos = lexer.where();
-
             if (lexer.peek(1).id != EQUAL) {
                 lexer.consume();
                 expect(SEMICOLON);
             }
 
-            return new VariableStatement(pos, t, name);
+            return new VariableStatement(token.origin, t, name);
         }
     }
 

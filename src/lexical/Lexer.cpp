@@ -253,11 +253,13 @@ Token Lexer::consume() {
         }
     }
 
+    LexerRange range = actual_pos - where();
+
     while (isspace(peek_stream()))
         read_stream();
 
     if (stream->eof() && tok.empty()) {
-        return Token(END, "", actual_pos);
+        return Token(END, "", range);
     }
 
     TokenType type;
@@ -274,7 +276,7 @@ Token Lexer::consume() {
     } else {
         type = NAME;
     }
-    return Token(type, tok, actual_pos);
+    return Token(type, tok, range);
 }
 
 LexerPos Lexer::where() {

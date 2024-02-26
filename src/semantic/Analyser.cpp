@@ -46,12 +46,12 @@ std::string Analyser::flatten_path(std::vector<std::string> path, const std::str
 }
 
 Analyser::Analyser() {
-    LexerPos lp;
+    LexerRange lr;
     std::vector<Statement *> body;
-    body.push_back(new ReturnStatement(lp, new CallExpression(lp, new NameExpression(lp, "::main"), {})));
+    body.push_back(new ReturnStatement(lr, new CallExpression(lr, new NameExpression(lr, "::main"), {})));
 
-    auto *func = new FuncStatement(lp, Token::name("main"), Type(U32), {}, body, false);
-    auto *decl = new FuncDeclareStatement(lp, Token::name("main"), Type(I32), {}, false);
+    auto *func = new FuncStatement(lr, Token::name("main"), Type(U32), {}, body, false);
+    auto *decl = new FuncDeclareStatement(lr, Token::name("main"), Type(I32), {}, false);
 
     functions.emplace(std::vector<std::string>(), func);
     declarations.emplace(std::vector<std::string>(), decl);

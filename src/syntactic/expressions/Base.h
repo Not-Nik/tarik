@@ -30,7 +30,7 @@ enum StmtType {
 class Statement {
 public:
     StmtType statement_type {};
-    [[maybe_unused]] LexerPos origin {};
+    [[maybe_unused]] LexerRange origin {};
 
     Statement() = default;
 
@@ -38,7 +38,7 @@ public:
 
     Statement(const Statement &&) = delete;
 
-    explicit Statement(StmtType t, const LexerPos &o)
+    explicit Statement(StmtType t, const LexerRange &o)
         : origin(o) {
         statement_type = t;
         origin = o;
@@ -88,7 +88,7 @@ public:
           expression_type(NAME_EXPR) {
     }
 
-    explicit Expression(ExprType t, const LexerPos &lp) : Statement(EXPR_STMT, lp) { expression_type = t; }
+    explicit Expression(ExprType t, const LexerRange &lp) : Statement(EXPR_STMT, lp) { expression_type = t; }
 
     void assign_type(Type t) { type = t; }
 };

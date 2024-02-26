@@ -36,7 +36,8 @@ add_executable(tarik
         src/syntactic/expressions/Types.h
         src/syntactic/expressions/Types.cpp
         src/util/Util.cpp
-        src/util/Util.h)
+        src/util/Util.h
+        src/lexical/Token.cpp)
 
 set(LLVM_LINK_COMPONENTS
         AArch64

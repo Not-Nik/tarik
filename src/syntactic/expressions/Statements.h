@@ -17,7 +17,7 @@ class ScopeStatement : public Statement {
 public:
     std::vector<Statement *> block;
 
-    ScopeStatement(StmtType t, const LexerPos &o, std::vector<Statement *> b)
+    ScopeStatement(StmtType t, const LexerRange &o, std::vector<Statement *> b)
         : Statement(t, o), block(std::move(b)) {}
 
     ~ScopeStatement() override {
@@ -42,7 +42,7 @@ public:
 
 class ElseStatement : public ScopeStatement {
 public:
-    explicit ElseStatement(const LexerPos &o, std::vector<Statement *> block)
+    explicit ElseStatement(const LexerRange &o, std::vector<Statement *> block)
         : ScopeStatement(ELSE_STMT, o, std::move(block)) {
     }
 
@@ -57,7 +57,7 @@ public:
     Expression *condition;
     ElseStatement *else_statement = nullptr;
 
-    IfStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
+    IfStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
         : ScopeStatement(IF_STMT, o, std::move(block)), condition(cond) {
     }
 
@@ -77,7 +77,7 @@ public:
     // Statement, instead of expression, so we can print it
     Expression *value;
 
-    explicit ReturnStatement(const LexerPos &o, Expression *val)
+    explicit ReturnStatement(const LexerRange &o, Expression *val)
         : Statement(RETURN_STMT, o), value(val) {
     }
 
@@ -95,7 +95,7 @@ public:
     // Statement, instead of expression, so we can print it
     Expression *condition;
 
-    explicit WhileStatement(const LexerPos &o, Expression *cond, std::vector<Statement *> block)
+    explicit WhileStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
         : ScopeStatement(WHILE_STMT, o, block), condition(cond) {
     }
 
@@ -111,7 +111,7 @@ public:
 
 class BreakStatement : public Statement {
 public:
-    explicit BreakStatement(const LexerPos &o)
+    explicit BreakStatement(const LexerRange &o)
         : Statement(BREAK_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
@@ -121,7 +121,7 @@ public:
 
 class ContinueStatement : public Statement {
 public:
-    explicit ContinueStatement(const LexerPos &o)
+    explicit ContinueStatement(const LexerRange &o)
         : Statement(CONTINUE_STMT, o) {}
 
     [[nodiscard]] std::string print() const override {
@@ -134,7 +134,7 @@ public:
     Type type;
     std::string name;
 
-    VariableStatement(const LexerPos &o, Type t, std::string n)
+    VariableStatement(const LexerRange &o, Type t, std::string n)
         : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
@@ -174,7 +174,7 @@ public:
 
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
-    FuncDeclareStatement(const LexerPos &o,
+    FuncDeclareStatement(const LexerRange &o,
                          Token n,
                          Type ret,
                          std::vector<VariableStatement *> args,
@@ -188,7 +188,7 @@ public:
 
 class FuncStatement : public ScopeStatement, public FuncStCommon {
 public:
-    FuncStatement(const LexerPos &o,
+    FuncStatement(const LexerRange &o,
                   Token n,
                   Type ret,
                   std::vector<VariableStatement *> args,
@@ -212,7 +212,7 @@ public:
     Token name;
     std::vector<VariableStatement *> members;
 
-    StructStatement(const LexerPos &o, Token n, std::vector<VariableStatement *> m)
+    StructStatement(const LexerRange &o, Token n, std::vector<VariableStatement *> m)
         : Statement(STRUCT_STMT, o), name(std::move(n)), members(std::move(m)) {}
 
     ~StructStatement() override {
@@ -262,7 +262,7 @@ class ImportStatement : public ScopeStatement {
 public:
     std::string name;
 
-    ImportStatement(const LexerPos &o, std::string n, std::vector<Statement *> s)
+    ImportStatement(const LexerRange &o, std::string n, std::vector<Statement *> s)
         : ScopeStatement(IMPORT_STMT, o, std::move(s)), name(std::move(n)) {}
 };
 

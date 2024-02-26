@@ -117,54 +117,40 @@ inline std::map<std::string, TokenType> keywords = {
     {"bool", TYPE}
 };
 
-inline std::string to_string(const TokenType &tt) {
-    for (const auto &op : operators)
-        if (op.second == tt)
-            return "'" + op.first + "'";
-    for (const auto &key : keywords)
-        if (key.second == tt)
-            return "'" + key.first + "'";
-    if (tt == NAME)
-        return "name";
-    if (tt == STRING)
-        return "string";
-    if (tt == INTEGER || tt == REAL)
-        return "number";
-    return "";
-}
+std::string to_string(const TokenType &tt);
+
+struct LexerRange;
 
 struct LexerPos {
-    int l, p;
+    int l = 0, p = 0;
     std::filesystem::path filename;
 
-    LexerPos &operator--() {
-        if (p > 1)
-            p--;
-        else {
-            // ugh, ill accept the inaccuracy for now
-            // todo: make this accurate
-            p = 1;
-            l--;
-        }
-        return *this;
-    }
+    LexerRange as_zero_range() const;
+
+    LexerPos &operator--();
+    // range from pos1 to pos2
+    LexerRange operator-(LexerPos other);
+};
+
+struct LexerRange : LexerPos {
+    int length = 0;
 };
 
 class Token {
 public:
-    explicit Token(TokenType id, std::string s, LexerPos lp)
+    explicit Token(TokenType id, std::string s, LexerRange lp)
         : id(id),
           raw(std::move(s)),
           origin(std::move(lp)) {
     }
 
-    static Token name(std::string s, LexerPos lp = {}) {
+    static Token name(std::string s, LexerRange lp = {}) {
         return Token(NAME, s, lp);
     }
 
     TokenType id;
     std::string raw;
-    LexerPos origin;
+    LexerRange origin;
 };
 
 #endif //TARIK_SRC_LEXICAL_TOKEN_H_
