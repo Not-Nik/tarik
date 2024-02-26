@@ -153,10 +153,10 @@ void LLVM::generate_function(FuncStatement *func) {
 
     auto it = func->arguments.begin();
     for (auto &arg : llvm_func->args()) {
-        arg.setName("arg_" + (*it)->name);
-        auto arg_var = builder.CreateAlloca(arg.getType(), 0u, nullptr, "stack_" + (*it)->name);
+        arg.setName("arg_" + (*it)->name.raw);
+        auto arg_var = builder.CreateAlloca(arg.getType(), 0u, nullptr, "stack_" + (*it)->name.raw);
         builder.CreateStore(&arg, arg_var);
-        variables.emplace((*it)->name, std::make_pair(arg_var, arg.getType()));
+        variables.emplace((*it)->name.raw, std::make_pair(arg_var, arg.getType()));
         it++;
     }
     return_type = func_type->getReturnType();
@@ -273,7 +273,7 @@ void LLVM::generate_continue(ContinueStatement *) {
 
 void LLVM::generate_variable(VariableStatement *var) {
     llvm::Type *type = make_llvm_type(var->type);
-    variables.emplace(var->name, std::make_pair(builder.CreateAlloca(type, 0u, nullptr, var->name), type));
+    variables.emplace(var->name.raw, std::make_pair(builder.CreateAlloca(type, 0u, nullptr, var->name.raw), type));
 }
 
 void LLVM::generate_struct(StructStatement *struct_) {

@@ -248,7 +248,7 @@ Statement *Parser::parse_statement() {
 
                 Type arg_type = maybe_type.value_or(Type());
 
-                args.push_back(new VariableStatement(arg_type.origin, arg_type, expect(NAME).raw));
+                args.push_back(new VariableStatement(arg_type.origin, arg_type, expect(NAME)));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -313,7 +313,7 @@ Statement *Parser::parse_statement() {
 
             Type member_type = maybe_type.value_or(Type());
 
-            std::string member_name = expect(NAME).raw;
+            Token member_name = expect(NAME);
 
             members.push_back(new VariableStatement(member_type.origin, member_type, member_name));
             expect(SEMICOLON);
@@ -354,7 +354,7 @@ Statement *Parser::parse_statement() {
             Type t = ty.value();
 
             iassert(is_peek(NAME), "expected a name found '%s' instead", lexer.peek().raw.c_str());
-            std::string name = lexer.peek().raw;
+            Token name = lexer.peek();
 
             if (lexer.peek(1).id != EQUAL) {
                 lexer.consume();

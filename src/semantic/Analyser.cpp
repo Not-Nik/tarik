@@ -263,9 +263,9 @@ bool Analyser::verify_variable(VariableStatement *var) {
         return false;
 
     for (auto variable : variables) {
-        if (var->name == variable->name) {
-            error(var->origin, "redefinition of '%s'", var->name.c_str());
-            note(variable->origin, "previous definition here");
+        if (var->name.raw == variable->name.raw) {
+            error(var->name.origin, "redefinition of '%s'", var->name.raw.c_str());
+            note(variable->name.origin, "previous definition here");
             return false;
         }
     }
@@ -288,27 +288,27 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     std::vector<VariableStatement *> ctor_args;
     std::vector<Statement *> body;
 
-    auto *instance = new VariableStatement(struct_->origin, struct_->get_type(path), "_instance");
+    auto *instance = new VariableStatement(struct_->origin, struct_->get_type(path), Token::name("_instance"));
     body.push_back(instance);
 
     for (auto member : struct_->members) {
-        if (!iassert(std::find(registered.begin(), registered.end(), member->name) == registered.end(),
-                     member->origin,
+        if (!iassert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
+                     member->name.origin,
                      "duplicate member '%s'",
-                     member->name.c_str()))
+                     member->name.raw.c_str()))
             return false;
-        registered.push_back(member->name);
+        registered.push_back(member->name.raw);
         ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
 
         auto *member_access = new BinaryOperatorExpression(struct_->origin,
                                                            MEM_ACC,
                                                            new NameExpression(struct_->origin, "_instance"),
-                                                           new NameExpression(struct_->origin, member->name));
+                                                           new NameExpression(struct_->origin, member->name.raw));
 
         body.push_back(new BinaryOperatorExpression(struct_->origin,
                                                     ASSIGN,
                                                     member_access,
-                                                    new NameExpression(struct_->origin, member->name)));
+                                                    new NameExpression(struct_->origin, member->name.raw)));
     }
     body.push_back(new ReturnStatement(struct_->origin, new NameExpression(struct_->origin, "_instance")));
 
@@ -549,8 +549,11 @@ bool Analyser::does_always_return(ScopeStatement *scope) {
 }
 
 bool Analyser::is_var_declared(const std::string &name) {
-    return std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; }) !=
-           variables.end();
+    return std::find_if(variables.begin(),
+                        variables.end(),
+                        [name](VariableStatement *v) {
+                            return name == v->name.raw;
+                        }) != variables.end();
 }
 
 bool Analyser::is_func_declared(const std::vector<std::string> &name) {
@@ -570,7 +573,11 @@ bool Analyser::is_struct_declared(const std::vector<std::string> &name) {
 }
 
 VariableStatement *Analyser::get_variable(const std::string &name) {
-    return *std::find_if(variables.begin(), variables.end(), [name](VariableStatement *v) { return name == v->name; });
+    return *std::find_if(variables.begin(),
+                         variables.end(),
+                         [name](VariableStatement *v) {
+                             return name == v->name.raw;
+                         });
 }
 
 FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {

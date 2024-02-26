@@ -119,9 +119,9 @@ bool test() {
             ASSERT_EQ(func->statement_type, FUNC_STMT)
             ASSERT_STR_EQ(func->name.raw, "test_func")
             ASSERT_TRUE(func->return_type == Type(I8))
-            ASSERT_STR_EQ(func->arguments[0]->name, "arg1")
+            ASSERT_STR_EQ(func->arguments[0]->name.raw, "arg1")
             ASSERT_EQ(func->arguments[0]->type, Type(I32))
-            ASSERT_STR_EQ(func->arguments[1]->name, "arg2")
+            ASSERT_STR_EQ(func->arguments[1]->name.raw, "arg2")
             ASSERT_EQ(func->arguments[1]->type, Type(F64))
             ASSERT_EQ(func->return_type, Type(I8))
 
@@ -136,7 +136,7 @@ bool test() {
         Parser p(&(c = ss("u8 test_var = 4; test_var = 5; u32 *test_ptr;")));
         auto *var = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(var->statement_type, VARIABLE_STMT)
-        ASSERT_STR_EQ(var->name, "test_var")
+        ASSERT_STR_EQ(var->name.raw, "test_var")
         ASSERT_TRUE(var->type.is_primitive())
         ASSERT_EQ(var->type.pointer_level, 0)
         ASSERT_EQ(var->type, Type(U8))
@@ -150,7 +150,7 @@ bool test() {
 
         auto *ptr = (VariableStatement *) p.parse_statement();
         ASSERT_EQ(ptr->statement_type, VARIABLE_STMT)
-        ASSERT_STR_EQ(ptr->name, "test_ptr")
+        ASSERT_STR_EQ(ptr->name.raw, "test_ptr")
         ASSERT_TRUE(ptr->type.is_primitive())
         ASSERT_EQ(ptr->type.pointer_level, 1)
         ASSERT_EQ(ptr->type, Type(U32))

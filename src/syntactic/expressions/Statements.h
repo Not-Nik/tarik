@@ -132,13 +132,13 @@ public:
 class VariableStatement : public Statement {
 public:
     Type type;
-    std::string name;
+    Token name;
 
-    VariableStatement(const LexerRange &o, Type t, std::string n)
+    VariableStatement(const LexerRange &o, Type t, Token n)
         : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
-        return type.str() + " " + name + ";";
+        return type.str() + " " + name.raw + ";";
     }
 };
 
@@ -155,7 +155,7 @@ public:
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + name.raw + "(";
         for (auto arg: arguments) {
-            res += arg->type.str() + " " + arg->name + ", ";
+            res += arg->type.str() + " " + arg->name.raw + ", ";
         }
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
@@ -223,7 +223,7 @@ public:
 
     bool has_member(const std::string &n) {
         for (auto mem: members) {
-            if (mem->name == n)
+            if (mem->name.raw == n)
                 return true;
         }
         return false;
@@ -236,7 +236,7 @@ public:
 
     Type get_member_type(const std::string &n) {
         for (auto mem: members) {
-            if (mem->name == n)
+            if (mem->name.raw == n)
                 return mem->type;
         }
         return {};
@@ -244,7 +244,7 @@ public:
 
     unsigned int get_member_index(const std::string &n) {
         for (size_t i = 0; i < members.size(); i++) {
-            if (members[i]->name == n) return i;
+            if (members[i]->name.raw == n) return i;
         }
         return -1;
     }
