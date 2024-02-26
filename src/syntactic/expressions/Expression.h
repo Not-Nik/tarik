@@ -208,7 +208,7 @@ public:
     Expression *left, *right;
 
     BinaryOperatorExpression(const LexerRange &lp, BinOpType bot, Expression *l, Expression *r)
-        : Expression(to_expr_type(bot), lp),
+        : Expression(to_expr_type(bot), l->origin + r->origin),
           bin_op_type(bot),
           left(l),
           right(r) {
