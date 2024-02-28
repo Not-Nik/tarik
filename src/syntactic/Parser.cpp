@@ -140,10 +140,6 @@ Parser::~Parser() {
         delete in.second;
 }
 
-LexerPos Parser::where() {
-    return lexer.where();
-}
-
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
     Token peek = lexer.peek();

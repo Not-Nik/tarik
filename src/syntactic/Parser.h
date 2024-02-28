@@ -48,8 +48,6 @@ public:
 
     ~Parser();
 
-    LexerPos where();
-
     Token expect(TokenType raw);
     bool check_expect(TokenType raw);
     bool is_peek(TokenType raw);

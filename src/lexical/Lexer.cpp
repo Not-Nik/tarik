@@ -253,7 +253,7 @@ Token Lexer::consume() {
         }
     }
 
-    LexerRange range = actual_pos - where();
+    LexerRange range = actual_pos - pos;
 
     while (isspace(peek_stream()))
         read_stream();
@@ -277,10 +277,6 @@ Token Lexer::consume() {
         type = NAME;
     }
     return Token(type, tok, range);
-}
-
-LexerPos Lexer::where() {
-    return this->pos;
 }
 
 void Lexer::read_until(std::vector<char> d) {

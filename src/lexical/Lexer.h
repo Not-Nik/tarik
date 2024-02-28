@@ -36,8 +36,6 @@ public:
 
     Token consume();
 
-    LexerPos where();
-
     void read_until(std::vector<char> d);
 };
 
