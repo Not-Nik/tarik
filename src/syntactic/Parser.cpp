@@ -89,7 +89,6 @@ void Parser::init_parslets() {
     prefix_parslets.emplace(FALSE, new BoolParselet());
 
     // Prefix expressions
-    prefix_parslets.emplace(PLUS, new PosParselet());
     prefix_parslets.emplace(MINUS, new NegParselet());
     prefix_parslets.emplace(AMPERSAND, new RefParselet());
     prefix_parslets.emplace(ASTERISK, new DerefParselet());
@@ -352,7 +351,10 @@ Statement *Parser::parse_statement() {
             Type t = ty.value();
 
             Token peek = lexer.peek();
-            bucket->iassert(peek.id == NAME, peek.origin, "expected a name found '{}' instead", lexer.peek().raw.c_str());
+            bucket->iassert(peek.id == NAME,
+                            peek.origin,
+                            "expected a name found '{}' instead",
+                            lexer.peek().raw.c_str());
             Token name = lexer.peek();
 
             if (lexer.peek(1).id != EQUAL) {

@@ -438,9 +438,6 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             llvm::Value *val = generate_expression(pe->operand);
 
             switch (pe->prefix_type) {
-                case POS:
-                    throw; // how would you do this in llvm?
-                    break;
                 case NEG:
                     if (val->getType()->isFloatingPointTy())
                         return builder.CreateFNeg(val, "neg_temp");

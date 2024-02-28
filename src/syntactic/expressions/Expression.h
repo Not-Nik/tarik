@@ -89,7 +89,6 @@ public:
 };
 
 enum PrefixType {
-    POS,
     NEG,
     REF,
     DEREF,
@@ -99,8 +98,6 @@ enum PrefixType {
 
 inline std::string to_string(PrefixType pt) {
     switch (pt) {
-        case POS:
-            return "+";
         case NEG:
             return "-";
         case REF:

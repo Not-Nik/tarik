@@ -487,7 +487,6 @@ bool Analyser::verify_expression(Expression *expression) {
             Type pe_type = pe->operand->type;
 
             switch (pe->prefix_type) {
-                case POS:
                 case NEG:
                 case LOG_NOT:
                     res = bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
