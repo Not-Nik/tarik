@@ -193,8 +193,11 @@ Expression *Parser::parse_expression(int precedence) {
     Token token = lexer.peek();
     if (token.id == END)
         return reinterpret_cast<Expression *>(-1);
-    if (prefix_parslets.count(token.id) == 0)
-        return nullptr;
+    if (!bucket->iassert(prefix_parslets.contains(token.id),
+                         token.origin,
+                         "Expected expression, found '{}'",
+                         token.raw))
+        return new EmptyExpression(token.origin);
     lexer.consume();
     PrefixParselet *prefix = prefix_parslets[token.id];
 
@@ -261,7 +264,10 @@ Statement *Parser::parse_statement() {
         return new FuncStatement(token.origin, name, t, args, body, var_arg);
     } else if (token.id == RETURN) {
         lexer.consume();
-        auto *s = new ReturnStatement(token.origin, parse_expression());
+        Expression *val = nullptr;
+        if (lexer.peek().id != SEMICOLON)
+            val = parse_expression();
+        auto *s = new ReturnStatement(token.origin, val);
         expect(SEMICOLON);
         return s;
     } else if (token.id == IF) {

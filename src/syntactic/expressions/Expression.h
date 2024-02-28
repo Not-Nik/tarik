@@ -17,8 +17,7 @@ public:
 
     explicit NameExpression(const LexerRange &lp, std::string n)
         : Expression(NAME_EXPR, lp),
-          name(std::move(n)) {
-    }
+          name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return name;
@@ -64,8 +63,7 @@ public:
 
     PrimitiveExpression(LexerRange lp, const std::string &n)
         : Expression(expr_type, lp),
-          n(smart_cast_from_string<PrimitiveType>(n)) {
-    }
+          n(smart_cast_from_string<PrimitiveType>(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return smart_cast_to_string(n);
@@ -80,8 +78,7 @@ using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 class NullExpression : public Expression {
 public:
     explicit NullExpression(LexerRange lp)
-        : Expression(NULL_EXPR, lp) {
-    }
+        : Expression(NULL_EXPR, lp) {}
 
     [[nodiscard]] std::string print() const override {
         return "null";
@@ -119,8 +116,7 @@ public:
     explicit PrefixOperatorExpression(const LexerRange &lp, PrefixType pt, Expression *op)
         : Expression(PREFIX_EXPR, lp),
           prefix_type(pt),
-          operand(op) {
-    }
+          operand(op) {}
 
     ~PrefixOperatorExpression() override {
         delete operand;
@@ -212,8 +208,7 @@ public:
         : Expression(to_expr_type(bot), l->origin + r->origin),
           bin_op_type(bot),
           left(l),
-          right(r) {
-    }
+          right(r) {}
 
     ~BinaryOperatorExpression() override {
         delete left;
@@ -233,8 +228,7 @@ public:
     CallExpression(const LexerRange &lp, Expression *c, std::vector<Expression *> args)
         : Expression(CALL_EXPR, lp),
           callee(c),
-          arguments(std::move(args)) {
-    }
+          arguments(std::move(args)) {}
 
     ~CallExpression() override {
         for (auto *arg : arguments) {
@@ -253,6 +247,16 @@ public:
             arg_string.pop_back();
         }
         return callee->print() + "(" + arg_string + ")";
+    }
+};
+
+class EmptyExpression : public Expression {
+public:
+    EmptyExpression(const LexerRange &lp)
+        : Expression(EMPTY_EXPR, lp) {}
+
+    [[nodiscard]] std::string print() const override {
+        return "empty";
     }
 };
 

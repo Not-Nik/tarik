@@ -76,6 +76,7 @@ enum ExprType {
     STR_EXPR,
     NULL_EXPR,
     PATH_EXPR,
+    EMPTY_EXPR,
 };
 
 class Expression : public Statement {
