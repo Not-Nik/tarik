@@ -166,7 +166,7 @@ bool test() {
         ASSERT_STR_EQ(ptr->name.raw, "test_ptr")
         ASSERT_TRUE(ptr->type.is_primitive())
         ASSERT_EQ(ptr->type.pointer_level, 1)
-        ASSERT_EQ(ptr->type, Type(U32))
+        ASSERT_EQ(ptr->type, Type(U32, 1))
         delete ptr;//
 
     MID_TEST(full)
