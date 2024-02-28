@@ -351,7 +351,7 @@ Statement *Parser::parse_statement() {
                 break;
         }
         return res;
-    } else if (lexer.peek(1).id != EQUAL) {
+    } else if (Token peek = lexer.peek(1); peek.id == NAME || peek.id == ASTERISK) {
         if (std::optional<Type> ty = type(); ty.has_value()) {
             Type t = ty.value();
 
