@@ -183,7 +183,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     for (auto [path, registered] : functions) {
         if (path != func_path)
             continue;
-        bucket->error(func->name.origin, "redefinition of '{}'", func->name.raw.c_str());
+        bucket->error(func->name.origin, "redefinition of '{}'", func->name.raw);
         bucket->note(registered->name.origin, "previous definition here");
         return false;
     }
@@ -268,12 +268,12 @@ bool Analyser::verify_variable(VariableStatement *var) {
     if (!var->type.is_primitive() && !bucket->iassert(is_struct_declared(var->type.get_user()),
                                                       var->origin,
                                                       "undefied type '{}'",
-                                                      flatten_path(var->type.get_user()).c_str()))
+                                                      flatten_path(var->type.get_user())))
         return false;
 
     for (auto variable : variables) {
         if (var->name.raw == variable->name.raw) {
-            bucket->error(var->name.origin, "redefinition of '{}'", var->name.raw.c_str());
+            bucket->error(var->name.origin, "redefinition of '{}'", var->name.raw);
             bucket->note(variable->name.origin, "previous definition here");
             return false;
         }
@@ -289,7 +289,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     for (auto [path, registered] : structures) {
         if (path != struct_path)
             continue;
-        bucket->error(struct_->name.origin, "redefinition of '{}'", struct_->name.raw.c_str());
+        bucket->error(struct_->name.origin, "redefinition of '{}'", struct_->name.raw);
         bucket->note(registered->name.origin, "previous definition here");
         return false;
     }
@@ -304,7 +304,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
         if (!bucket->iassert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
                              member->name.origin,
                              "duplicate member '{}'",
-                             member->name.raw.c_str()))
+                             member->name.raw))
             return false;
         registered.push_back(member->name.raw);
         ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
@@ -403,7 +403,7 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!bucket->iassert(is_func_declared(func_path),
                                  ce->callee->origin,
                                  "undefined function '{}'",
-                                 flatten_path(func_path).c_str()))
+                                 flatten_path(func_path)))
                 return false;
             FuncStCommon *func = get_func_decl(func_path);
             if (!bucket->iassert(ce->arguments.size() >= func->arguments.size(),
@@ -425,8 +425,8 @@ bool Analyser::verify_expression(Expression *expression) {
                 if (!verify_expression(arg) || !bucket->iassert(arg_var->type.is_compatible(arg->type),
                                                                 arg->origin,
                                                                 "passing value of type '{}' to argument of type '{}'",
-                                                                arg->type.str().c_str(),
-                                                                arg_var->type.str().c_str()) || !verify_expression(arg))
+                                                                arg->type.str(),
+                                                                arg_var->type.str()) || !verify_expression(arg))
                     return false;
             }
             ce->assign_type(func->return_type);
@@ -442,8 +442,8 @@ bool Analyser::verify_expression(Expression *expression) {
                 is_compatible(ae->right->type),
                 ae->right->origin,
                 "can't assign to type '{}' from '{}'",
-                ae->left->type.str().c_str(),
-                ae->right->type.str().c_str()))
+                ae->left->type.str(),
+                ae->right->type.str()))
                 return false;
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
@@ -464,13 +464,13 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!bucket->iassert(!left->type.is_primitive(),
                                  left->origin,
                                  "'{}' is not a structure",
-                                 left->type.str().c_str()))
+                                 left->type.str()))
                 return false;
             auto struct_name = left->type.get_user();
             if (!bucket->iassert(is_struct_declared({struct_name}),
                                  left->origin,
                                  "undefined structure '{}'",
-                                 left->type.str().c_str()))
+                                 left->type.str()))
                 return false;
             StructStatement *s = get_struct({struct_name});
             if (!bucket->iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
@@ -480,8 +480,8 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!bucket->iassert(s->has_member(member_name),
                                  right->origin,
                                  "no member named '{}' in '{}'",
-                                 member_name.c_str(),
-                                 left->type.str().c_str()))
+                                 member_name,
+                                 left->type.str()))
                 return false;
             mae->assign_type(s->get_member_type(member_name));
             break;
@@ -510,14 +510,14 @@ bool Analyser::verify_expression(Expression *expression) {
                     if (!res)
                         bucket->note(pe->operand->origin,
                                      "'{}' produces a temporary value",
-                                     pe->operand->print().c_str());
+                                     pe->operand->print());
                     break;
                 }
                 case DEREF:
                     res = bucket->iassert(pe_type.pointer_level > 0,
                                           pe->operand->origin,
                                           "cannot dereference non-pointer type '{}'",
-                                          pe->operand->type.str().c_str());
+                                          pe->operand->type.str());
                     pe_type.pointer_level--;
             }
 
@@ -529,7 +529,7 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!bucket->iassert(is_var_declared(ne->name),
                                  expression->origin,
                                  "undefined variable '{}'",
-                                 ne->name.c_str()))
+                                 ne->name))
                 return false;
             ne->assign_type(get_variable(ne->name)->type);
             break;

@@ -142,7 +142,7 @@ Parser::~Parser() {
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
     Token peek = lexer.peek();
-    bucket->iassert(peek.id == raw, peek.origin, "expected a {} found '{}' instead", s.c_str(), peek.raw.c_str());
+    bucket->iassert(peek.id == raw, peek.origin, "expected a {} found '{}' instead", s, peek.raw);
     return lexer.consume();
 }
 
@@ -152,8 +152,8 @@ bool Parser::check_expect(TokenType raw) {
     bool r = bucket->iassert(peek.id == raw,
                              peek.origin,
                              "expected a {} found '{}' instead",
-                             s.c_str(),
-                             peek.raw.c_str());
+                             s,
+                             peek.raw);
     lexer.consume();
     return r;
 }
@@ -338,8 +338,7 @@ Statement *Parser::parse_statement() {
             bucket->iassert(false,
                             token.origin,
                             "tried to import '{}', but file can't be found",
-                            import_path.string().c_str
-                            ());
+                            import_path.string());
         }
         expect(SEMICOLON);
 
@@ -360,7 +359,7 @@ Statement *Parser::parse_statement() {
             bucket->iassert(peek.id == NAME,
                             peek.origin,
                             "expected a name found '{}' instead",
-                            lexer.peek().raw.c_str());
+                            lexer.peek().raw);
             Token name = lexer.peek();
 
             if (lexer.peek(1).id != EQUAL) {
@@ -379,7 +378,7 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
         return e;
     } else {
-        bucket->iassert(false, token.origin, "unexpected token '{}'", token.raw.c_str());
+        bucket->iassert(false, token.origin, "unexpected token '{}'", token.raw);
         lexer.consume();
         return parse_statement();
     }
