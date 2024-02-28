@@ -20,6 +20,8 @@ add_executable(tarik
         src/cli/Arguments.h
         src/codegen/LLVM.cpp
         src/codegen/LLVM.h
+        src/error/Bucket.cpp
+        src/error/Bucket.h
         src/error/Error.cpp
         src/error/Error.h
         src/lexical/Lexer.cpp

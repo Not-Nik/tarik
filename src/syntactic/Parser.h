@@ -12,6 +12,7 @@
 #include <optional>
 #include <filesystem>
 
+#include "error/Bucket.h"
 #include "error/Error.h"
 #include "lexical/Lexer.h"
 #include "syntactic/expressions/Statements.h"
@@ -26,6 +27,7 @@ class Parser {
     static std::vector<std::filesystem::path> imported;
 
     Lexer lexer;
+    Bucket *bucket;
 
     std::map<TokenType, PrefixParselet *> prefix_parslets;
     std::map<TokenType, InfixParselet *> infix_parslets;
@@ -41,19 +43,10 @@ class Parser {
     void init_parslets();
 
 public:
-    explicit Parser(std::istream *code, std::vector<std::filesystem::path> paths = {});
-    explicit Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths = {});
+    explicit Parser(std::istream *code, Bucket *bucket, std::vector<std::filesystem::path> paths = {});
+    explicit Parser(const std::filesystem::path &f, Bucket *bucket, std::vector<std::filesystem::path> paths = {});
 
     ~Parser();
-
-    template <class... Args>
-    bool iassert(bool cond, std::format_string<Args...> what, Args &&... args) {
-        std::string str = std::vformat(what.get(), std::make_format_args(args...));
-        viassert(cond, where().as_zero_range(), str);
-        if (!cond)
-            lexer.read_until({';', '}'});
-        return cond;
-    }
 
     LexerPos where();
 

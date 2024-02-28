@@ -45,7 +45,8 @@ std::string Analyser::flatten_path(std::vector<std::string> path, const std::str
     return flatten_path(path);
 }
 
-Analyser::Analyser() {
+Analyser::Analyser(Bucket *bucket)
+    : bucket(bucket) {
     LexerRange lr;
     std::vector<Statement *> body;
     body.push_back(new ReturnStatement(lr, new CallExpression(lr, new NameExpression(lr, "::main"), {})));
@@ -64,7 +65,7 @@ bool Analyser::verify_statement(Statement *statement) {
         case STRUCT_STMT:
         case IMPORT_STMT:
         case FUNC_STMT:
-            allowed = iassert(level == 0, statement->origin, "declaration not allowed here");
+            allowed = bucket->iassert(level == 0, statement->origin, "declaration not allowed here");
             break;
         case IF_STMT:
         case ELSE_STMT:
@@ -75,7 +76,7 @@ bool Analyser::verify_statement(Statement *statement) {
         case VARIABLE_STMT:
         case EXPR_STMT:
         case SCOPE_STMT:
-            allowed = iassert(level > 0, statement->origin, "expected declaration");
+            allowed = bucket->iassert(level > 0, statement->origin, "expected declaration");
             [[fallthrough]];
         default:
             break;
@@ -119,9 +120,9 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     bool res = true;
 
     for (auto statement : statements) {
-        iassert(statement->statement_type != FUNC_DECL_STMT,
-                statement->origin,
-                "internal: premature function declaration: report this as a bug");
+        bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
+                        statement->origin,
+                        "internal: premature function declaration: report this as a bug");
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
             std::vector<std::string> name = get_local_path(func->name.raw);
@@ -182,14 +183,14 @@ bool Analyser::verify_function(FuncStatement *func) {
     for (auto [path, registered] : functions) {
         if (path != func_path)
             continue;
-        error(func->name.origin, "redefinition of '{}'", func->name.raw.c_str());
-        note(registered->name.origin, "previous definition here");
+        bucket->error(func->name.origin, "redefinition of '{}'", func->name.raw.c_str());
+        bucket->note(registered->name.origin, "previous definition here");
         return false;
     }
 
-    if (!iassert(func->return_type == Type(VOID) || does_always_return(func),
-                 func->origin,
-                 "function with return type doesn't always return"))
+    if (!bucket->iassert(func->return_type == Type(VOID) || does_always_return(func),
+                         func->origin,
+                         "function with return type doesn't always return"))
         return false;
     functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
@@ -197,7 +198,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     }
 
     if (func->var_arg)
-        warning(func->origin, "function uses var args, but they cannot be accessed");
+        bucket->warning(func->origin, "function uses var args, but they cannot be accessed");
 
     func->name.raw = flatten_path(func->name.raw);
 
@@ -217,11 +218,11 @@ bool Analyser::verify_if(IfStatement *if_) {
     }
 
     return verify_expression(if_->condition) && verify_scope(if_) && (
-               !if_->else_statement || verify_scope(if_->else_statement));
+        !if_->else_statement || verify_scope(if_->else_statement));
 }
 
 bool Analyser::verify_else(ElseStatement *else_) {
-    error(else_->origin, "Else, but no preceding if");
+    bucket->error(else_->origin, "Else, but no preceding if");
     return false;
 }
 
@@ -248,24 +249,24 @@ bool Analyser::verify_while(WhileStatement *while_) {
 }
 
 bool Analyser::verify_break(BreakStatement *break_) {
-    return iassert(last_loop, break_->origin, "break outside of loop");
+    return bucket->iassert(last_loop, break_->origin, "break outside of loop");
 }
 
 bool Analyser::verify_continue(ContinueStatement *continue_) {
-    return iassert(last_loop, continue_->origin, "continue outside of loop");
+    return bucket->iassert(last_loop, continue_->origin, "continue outside of loop");
 }
 
 bool Analyser::verify_variable(VariableStatement *var) {
-    if (!var->type.is_primitive() && !iassert(is_struct_declared(var->type.get_user()),
-                                              var->origin,
-                                              "undefied type '{}'",
-                                              flatten_path(var->type.get_user()).c_str()))
+    if (!var->type.is_primitive() && !bucket->iassert(is_struct_declared(var->type.get_user()),
+                                                      var->origin,
+                                                      "undefied type '{}'",
+                                                      flatten_path(var->type.get_user()).c_str()))
         return false;
 
     for (auto variable : variables) {
         if (var->name.raw == variable->name.raw) {
-            error(var->name.origin, "redefinition of '{}'", var->name.raw.c_str());
-            note(variable->name.origin, "previous definition here");
+            bucket->error(var->name.origin, "redefinition of '{}'", var->name.raw.c_str());
+            bucket->note(variable->name.origin, "previous definition here");
             return false;
         }
     }
@@ -280,8 +281,8 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     for (auto [path, registered] : structures) {
         if (path != struct_path)
             continue;
-        error(struct_->name.origin, "redefinition of '{}'", struct_->name.raw.c_str());
-        note(registered->name.origin, "previous definition here");
+        bucket->error(struct_->name.origin, "redefinition of '{}'", struct_->name.raw.c_str());
+        bucket->note(registered->name.origin, "previous definition here");
         return false;
     }
 
@@ -292,10 +293,10 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     body.push_back(instance);
 
     for (auto member : struct_->members) {
-        if (!iassert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
-                     member->name.origin,
-                     "duplicate member '{}'",
-                     member->name.raw.c_str()))
+        if (!bucket->iassert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
+                             member->name.origin,
+                             "duplicate member '{}'",
+                             member->name.raw.c_str()))
             return false;
         registered.push_back(member->name.raw);
         ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
@@ -338,7 +339,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
 }
 
 bool Analyser::verify_import(ImportStatement *import_) {
-    Analyser import_analyser(__no_auto_main {});
+    Analyser import_analyser(bucket, __no_auto_main {});
     const bool res = import_analyser.verify_statements(import_->block);
 
     path.push_back(import_->name);
@@ -388,35 +389,36 @@ bool Analyser::verify_expression(Expression *expression) {
                     ce->callee = name;
                 }
             } else {
-                return iassert(false, ce->callee->origin, "calling of expressions is unimplemented");
+                return bucket->iassert(false, ce->callee->origin, "calling of expressions is unimplemented");
             }
 
-            if (!iassert(is_func_declared(func_path),
-                         ce->callee->origin,
-                         "undefined function '{}'",
-                         flatten_path(func_path).c_str()))
+            if (!bucket->iassert(is_func_declared(func_path),
+                                 ce->callee->origin,
+                                 "undefined function '{}'",
+                                 flatten_path(func_path).c_str()))
                 return false;
             FuncStCommon *func = get_func_decl(func_path);
-            if (!iassert(ce->arguments.size() >= func->arguments.size(),
-                         ce->origin,
-                         "too few arguments, expected {} found {}.",
-                         func->arguments.size(),
-                         ce->arguments.size()) || !iassert(func->var_arg || ce->arguments.size() <= func->arguments.
-                                                           size(),
-                                                           ce->origin,
-                                                           "too many arguments, expected {} found {}.",
-                                                           func->arguments.size(),
-                                                           ce->arguments.size()))
+            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size(),
+                                 ce->origin,
+                                 "too few arguments, expected {} found {}.",
+                                 func->arguments.size(),
+                                 ce->arguments.size()) || !bucket->iassert(
+                func->var_arg || ce->arguments.size() <= func->arguments.
+                                                               size(),
+                ce->origin,
+                "too many arguments, expected {} found {}.",
+                func->arguments.size(),
+                ce->arguments.size()))
                 return false;
 
             for (size_t i = 0; i < func->arguments.size(); i++) {
                 VariableStatement *arg_var = func->arguments[i];
                 Expression *arg = ce->arguments[i];
-                if (!verify_expression(arg) || !iassert(arg_var->type.is_compatible(arg->type),
-                                                        arg->origin,
-                                                        "passing value of type '{}' to argument of type '{}'",
-                                                        arg->type.str().c_str(),
-                                                        arg_var->type.str().c_str()) || !verify_expression(arg))
+                if (!verify_expression(arg) || !bucket->iassert(arg_var->type.is_compatible(arg->type),
+                                                                arg->origin,
+                                                                "passing value of type '{}' to argument of type '{}'",
+                                                                arg->type.str().c_str(),
+                                                                arg_var->type.str().c_str()) || !verify_expression(arg))
                     return false;
             }
             ce->assign_type(func->return_type);
@@ -428,12 +430,12 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            if (!verify_expression(ae->left) || !verify_expression(ae->right) || !iassert(ae->left->type.
-                    is_compatible(ae->right->type),
-                    ae->right->origin,
-                    "can't assign to type '{}' from '{}'",
-                    ae->left->type.str().c_str(),
-                    ae->right->type.str().c_str()))
+            if (!verify_expression(ae->left) || !verify_expression(ae->right) || !bucket->iassert(ae->left->type.
+                is_compatible(ae->right->type),
+                ae->right->origin,
+                "can't assign to type '{}' from '{}'",
+                ae->left->type.str().c_str(),
+                ae->right->type.str().c_str()))
                 return false;
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
@@ -451,24 +453,27 @@ bool Analyser::verify_expression(Expression *expression) {
             if (!verify_expression(left))
                 return false;
 
-            if (!iassert(!left->type.is_primitive(), left->origin, "'{}' is not a structure", left->type.str().c_str()))
+            if (!bucket->iassert(!left->type.is_primitive(),
+                                 left->origin,
+                                 "'{}' is not a structure",
+                                 left->type.str().c_str()))
                 return false;
             auto struct_name = left->type.get_user();
-            if (!iassert(is_struct_declared({struct_name}),
-                         left->origin,
-                         "undefined structure '{}'",
-                         left->type.str().c_str()))
+            if (!bucket->iassert(is_struct_declared({struct_name}),
+                                 left->origin,
+                                 "undefined structure '{}'",
+                                 left->type.str().c_str()))
                 return false;
             StructStatement *s = get_struct({struct_name});
-            if (!iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
+            if (!bucket->iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
                 return false;
             std::string member_name = ((NameExpression *) right)->name;
 
-            if (!iassert(s->has_member(member_name),
-                         right->origin,
-                         "no member named '{}' in '{}'",
-                         member_name.c_str(),
-                         left->type.str().c_str()))
+            if (!bucket->iassert(s->has_member(member_name),
+                                 right->origin,
+                                 "no member named '{}' in '{}'",
+                                 member_name.c_str(),
+                                 left->type.str().c_str()))
                 return false;
             mae->assign_type(s->get_member_type(member_name));
             break;
@@ -485,25 +490,27 @@ bool Analyser::verify_expression(Expression *expression) {
                 case POS:
                 case NEG:
                 case LOG_NOT:
-                    res = iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
-                                  pe->operand->origin,
-                                  "invalid operand to unary expression");
+                    res = bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
+                                          pe->operand->origin,
+                                          "invalid operand to unary expression");
                     break;
                 case REF: {
                     pe_type.pointer_level++;
                     ExprType etype = pe->operand->expression_type;
-                    res = iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR,
-                                  pe->operand->origin,
-                                  "cannot take reference of temporary value");
+                    res = bucket->iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR,
+                                          pe->operand->origin,
+                                          "cannot take reference of temporary value");
                     if (!res)
-                        note(pe->operand->origin, "'{}' produces a temporary value", pe->operand->print().c_str());
+                        bucket->note(pe->operand->origin,
+                                     "'{}' produces a temporary value",
+                                     pe->operand->print().c_str());
                     break;
                 }
                 case DEREF:
-                    res = iassert(pe_type.pointer_level > 0,
-                                  pe->operand->origin,
-                                  "cannot dereference non-pointer type '{}'",
-                                  pe->operand->type.str().c_str());
+                    res = bucket->iassert(pe_type.pointer_level > 0,
+                                          pe->operand->origin,
+                                          "cannot dereference non-pointer type '{}'",
+                                          pe->operand->type.str().c_str());
                     pe_type.pointer_level--;
             }
 
@@ -512,7 +519,10 @@ bool Analyser::verify_expression(Expression *expression) {
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
-            if (!iassert(is_var_declared(ne->name), expression->origin, "undefined variable '{}'", ne->name.c_str()))
+            if (!bucket->iassert(is_var_declared(ne->name),
+                                 expression->origin,
+                                 "undefined variable '{}'",
+                                 ne->name.c_str()))
                 return false;
             ne->assign_type(get_variable(ne->name)->type);
             break;

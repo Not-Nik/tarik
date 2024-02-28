@@ -45,7 +45,7 @@ std::optional<Type> Parser::type() {
         for (auto c : peek.raw)
             type_name.push_back((char) toupper(c));
         TypeSize size = to_typesize(type_name);
-        iassert(size != (TypeSize) -1, "internal: couldn't find enum member for built-in type");
+        bucket->iassert(size != (TypeSize) -1, peek.origin, "internal: couldn't find enum member for built-in type");
         t = Type(size);
     } else {
         std::vector path = {peek.raw};
@@ -118,14 +118,16 @@ void Parser::init_parslets() {
     infix_parslets.emplace(EQUAL, new AssignParselet());
 }
 
-Parser::Parser(std::istream *code, std::vector<std::filesystem::path> paths)
+Parser::Parser(std::istream *code, Bucket *bucket, std::vector<std::filesystem::path> paths)
     : lexer(code),
+      bucket(bucket),
       search_paths(std::move(paths)) {
     init_parslets();
 }
 
-Parser::Parser(const std::filesystem::path &f, std::vector<std::filesystem::path> paths)
+Parser::Parser(const std::filesystem::path &f, Bucket *bucket, std::vector<std::filesystem::path> paths)
     : lexer(f),
+      bucket(bucket),
       search_paths(std::move(paths)) {
     imported.push_back(absolute(f));
     init_parslets();
@@ -144,13 +146,19 @@ LexerPos Parser::where() {
 
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
-    iassert(lexer.peek().id == raw, "expected a {} found '{}' instead", s.c_str(), lexer.peek().raw.c_str());
+    Token peek = lexer.peek();
+    bucket->iassert(peek.id == raw, peek.origin, "expected a {} found '{}' instead", s.c_str(), peek.raw.c_str());
     return lexer.consume();
 }
 
 bool Parser::check_expect(TokenType raw) {
     std::string s = to_string(raw);
-    bool r = iassert(lexer.peek().id == raw, "expected a {} found '{}' instead", s.c_str(), lexer.peek().raw.c_str());
+    Token peek = lexer.peek();
+    bool r = bucket->iassert(peek.id == raw,
+                             peek.origin,
+                             "expected a {} found '{}' instead",
+                             s.c_str(),
+                             peek.raw.c_str());
     lexer.consume();
     return r;
 }
@@ -212,7 +220,10 @@ Statement *Parser::parse_statement() {
     if (token.id == END)
         return nullptr;
 
-    if (token.id == FUNC) {
+    if (token.id == SEMICOLON) {
+        lexer.consume();
+        return parse_statement();
+    } else if (token.id == FUNC) {
         lexer.consume();
         Token name = expect(NAME);
 
@@ -230,7 +241,7 @@ Statement *Parser::parse_statement() {
                     break;
                 }
                 std::optional<Type> maybe_type = type();
-                iassert(maybe_type.has_value(), "exepcted type name");
+                bucket->iassert(maybe_type.has_value(), lexer.peek().origin, "exepcted type name");
 
                 Type arg_type = maybe_type.value_or(Type());
 
@@ -246,7 +257,7 @@ Statement *Parser::parse_statement() {
             t = Type(VOID);
         else {
             std::optional<Type> ty = type();
-            iassert(ty.has_value(), "exepcted type name");
+            bucket->iassert(ty.has_value(), lexer.peek().origin, "exepcted type name");
             t = ty.value_or(Type());
         }
 
@@ -263,8 +274,9 @@ Statement *Parser::parse_statement() {
         auto is = new IfStatement(token.origin, parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             auto es = parse_statement();
-            iassert(es->statement_type == ELSE_STMT,
-                    "internal: next token is 'else', but parsed statement isn't. report this as a bug");
+            bucket->iassert(es->statement_type == ELSE_STMT,
+                            es->origin,
+                            "internal: next token is 'else', but parsed statement isn't. report this as a bug");
             is->else_statement = (ElseStatement *) es;
         }
         return is;
@@ -295,7 +307,7 @@ Statement *Parser::parse_statement() {
         while (lexer.peek().id != CURLY_CLOSE) {
             std::optional<Type> maybe_type = type();
 
-            iassert(maybe_type.has_value(), "expected type name");
+            bucket->iassert(maybe_type.has_value(), lexer.peek().origin, "expected type name");
 
             Type member_type = maybe_type.value_or(Type());
 
@@ -315,14 +327,18 @@ Statement *Parser::parse_statement() {
         if (exists(import_path)) {
             if (std::find(imported.begin(), imported.end(), absolute(import_path)) == imported.end()) {
                 imported.push_back(absolute(import_path));
-                Parser p(import_path, search_paths);
+                Parser p(import_path, bucket, search_paths);
                 do {
                     statements.push_back(p.parse_statement());
                 } while (statements.back());
                 statements.pop_back();
             }
         } else {
-            iassert(false, "tried to import '{}', but file can't be found", import_path.string().c_str());
+            bucket->iassert(false,
+                            token.origin,
+                            "tried to import '{}', but file can't be found",
+                            import_path.string().c_str
+                            ());
         }
         expect(SEMICOLON);
 
@@ -339,7 +355,8 @@ Statement *Parser::parse_statement() {
         if (std::optional<Type> ty = type(); ty.has_value()) {
             Type t = ty.value();
 
-            iassert(is_peek(NAME), "expected a name found '{}' instead", lexer.peek().raw.c_str());
+            Token peek = lexer.peek();
+            bucket->iassert(peek.id == NAME, peek.origin, "expected a name found '{}' instead", lexer.peek().raw.c_str());
             Token name = lexer.peek();
 
             if (lexer.peek(1).id != EQUAL) {
@@ -358,7 +375,8 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
         return e;
     } else {
-        iassert(false, "unexpected token '{}'", token.raw.c_str());
+        bucket->iassert(false, token.origin, "unexpected token '{}'", token.raw.c_str());
+        lexer.consume();
         return parse_statement();
     }
 }

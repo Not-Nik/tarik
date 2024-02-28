@@ -81,7 +81,7 @@ int main(int argc, const char *argv[]) {
 
     if (!output_filename.empty() && parser.get_inputs().size() > 1) {
         std::cerr << "An explicit output file with multiple input files would discard compilation results. (Where'd "
-            "you want me to write the rest?)\n";
+                "you want me to write the rest?)\n";
         return 1;
     }
 
@@ -110,7 +110,9 @@ int main(int argc, const char *argv[]) {
         if (output_path.has_parent_path() && !exists(output_path.parent_path())) {
             create_directories(output_path.parent_path());
         }
-        Parser p(input_path, search_paths);
+
+        Bucket error_bucket;
+        Parser p(input_path, &error_bucket, search_paths);
 
         std::vector<Statement *> statements;
         do {
@@ -118,13 +120,13 @@ int main(int argc, const char *argv[]) {
         } while (statements.back());
         statements.pop_back();
 
-        if (errorcount() == 0) {
-            Analyser analyser;
+        if (error_bucket.error_count() == 0) {
+            Analyser analyser(&error_bucket);
             analyser.verify_statements(statements);
             statements = analyser.finish();
         }
 
-        if (errorcount() == 0) {
+        if (error_bucket.error_count() == 0) {
             std::ofstream out(output_path);
             if (re_emit && !emit_llvm) {
                 for (auto s : statements) {
@@ -147,6 +149,7 @@ int main(int argc, const char *argv[]) {
         }
 
         std::for_each(statements.begin(), statements.end(), [](auto &p) { delete p; });
+        error_bucket.print_errors();
     }
 
     return endfile() ? 0 : 1;

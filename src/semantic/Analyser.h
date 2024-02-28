@@ -11,6 +11,8 @@
 
 #include <vector>
 
+#include "error/Bucket.h"
+
 class Analyser {
     std::map<std::vector<std::string>, FuncStatement *> functions;
     std::map<std::vector<std::string>, StructStatement *> structures;
@@ -22,6 +24,8 @@ class Analyser {
     Statement *last_loop = nullptr;
     unsigned int level = 0;
 
+    Bucket *bucket;
+
     [[nodiscard]] std::vector<std::string> get_local_path(const std::string& name) const;
     [[nodiscard]] std::vector<std::string> get_local_path(const std::vector<std::string>& name) const;
     [[nodiscard]] std::string flatten_path(const std::string& name = "") const;
@@ -30,9 +34,9 @@ class Analyser {
 
     struct __no_auto_main {};
 
-    Analyser(__no_auto_main _) {}
+    Analyser(Bucket *bucket, __no_auto_main _) : bucket(bucket) {}
 public:
-    Analyser();
+    Analyser(Bucket *bucket);
 
     bool verify_statement(Statement *statement);
     bool verify_statements(const std::vector<Statement *> &statements);
