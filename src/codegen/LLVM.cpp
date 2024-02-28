@@ -453,6 +453,8 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                     break;
                 case REF:
                     break;
+                case GLOBAL:
+                    break;
             }
             break;
         }

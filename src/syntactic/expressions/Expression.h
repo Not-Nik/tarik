@@ -109,6 +109,8 @@ inline std::string to_string(PrefixType pt) {
             return "*";
         case LOG_NOT:
             return "!";
+        case GLOBAL:
+            return "::";
     }
 }
 
@@ -175,6 +177,8 @@ constexpr ExprType to_expr_type(BinOpType bot) {
 
 inline std::string to_string(BinOpType bot) {
     switch (bot) {
+        case PATH:
+            return "::";
         case ADD:
             return "+";
         case SUB:
