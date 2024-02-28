@@ -23,6 +23,7 @@ class Analyser {
     std::vector<VariableStatement *> variables;
     Statement *last_loop = nullptr;
     unsigned int level = 0;
+    Type return_type = Type(VOID);
 
     Bucket *bucket;
 

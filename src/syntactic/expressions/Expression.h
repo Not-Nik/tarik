@@ -253,7 +253,9 @@ public:
 class EmptyExpression : public Expression {
 public:
     EmptyExpression(const LexerRange &lp)
-        : Expression(EMPTY_EXPR, lp) {}
+        : Expression(EMPTY_EXPR, lp) {
+        type = Type(VOID);
+    }
 
     [[nodiscard]] std::string print() const override {
         return "empty";

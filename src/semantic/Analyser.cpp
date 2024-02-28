@@ -192,6 +192,7 @@ bool Analyser::verify_function(FuncStatement *func) {
                          func->origin,
                          "function with return type doesn't always return"))
         return false;
+    return_type = func->return_type;
     functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
         variables.push_back(arg);
@@ -222,14 +223,21 @@ bool Analyser::verify_if(IfStatement *if_) {
 }
 
 bool Analyser::verify_else(ElseStatement *else_) {
-    bucket->error(else_->origin, "Else, but no preceding if");
+    bucket->error(else_->origin, "else, but no preceding if");
     return false;
 }
 
 bool Analyser::verify_return(ReturnStatement *return_) {
     if (return_->value)
-        return verify_expression(return_->value);
-    return true;
+        return verify_expression(return_->value) && bucket->iassert(return_type.is_compatible(return_->value->type),
+                                                                    return_->value->origin,
+                                                                    "can't return value of type '{}' in function with return type '{}'",
+                                                                    return_->value->type.str(),
+                                                                    return_type.str());
+    else
+        return bucket->iassert(return_type == Type(VOID),
+                               return_->origin,
+                               "function with return type should return a value");
 }
 
 bool Analyser::verify_while(WhileStatement *while_) {
