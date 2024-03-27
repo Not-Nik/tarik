@@ -130,7 +130,7 @@ int main(int argc, const char *argv[]) {
         statements = analyser.finish();
     }
 
-    if (error_bucket.error_count() == 0) {
+    if (error_bucket.error_count() == 0 || re_emit) {
         std::ofstream out(output_path);
         if (re_emit && !emit_llvm) {
             for (auto s : statements) {
