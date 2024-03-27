@@ -13,6 +13,80 @@
 #include "error/Error.h"
 #include "syntactic/expressions/Expression.h"
 
+VariableState::VariableState(bool undefined, bool defined, bool read, LexerRange defined_pos, LexerRange read_pos)
+    : is_undefined(undefined),
+      was_defined(defined),
+      was_read(read),
+      defined_pos(defined_pos),
+      read_pos(read_pos) {}
+
+VariableState VariableState::defined(LexerRange pos) {
+    return VariableState(false, true, false, pos, LexerRange());
+}
+
+VariableState VariableState::read(LexerRange pos) {
+    return VariableState(false, false, true, LexerRange(), pos);
+}
+
+void VariableState::make_definitely_defined(LexerRange pos) {
+    is_undefined = false;
+    was_defined = true;
+    was_read = false;
+
+    defined_pos = pos;
+    read_pos = LexerRange();
+}
+
+void VariableState::make_definitely_read(LexerRange pos) {
+    is_undefined = false;
+    was_defined = false;
+    was_read = true;
+
+    defined_pos = LexerRange();
+    read_pos = pos;
+}
+
+bool VariableState::is_definitely_undefined() const {
+    return is_undefined && !was_defined && !was_read;
+}
+
+bool VariableState::is_definitely_defined() const {
+    return !is_undefined && was_defined && !was_read;
+}
+
+bool VariableState::is_definitely_read() const {
+    return !is_undefined && !was_defined && was_read;
+}
+
+bool VariableState::is_maybe_undefined() const {
+    return is_undefined;
+}
+
+bool VariableState::is_maybe_defined() const {
+    return was_defined;
+}
+
+bool VariableState::is_maybe_read() const {
+    return was_read;
+}
+
+LexerRange VariableState::get_defined_pos() const {
+    return defined_pos;
+}
+
+LexerRange VariableState::get_read_pos() const {
+    return read_pos;
+}
+
+VariableState VariableState::operator||(const VariableState &other) const {
+    return VariableState(is_undefined || other.is_undefined,
+                         was_defined || other.was_defined,
+                         was_read || other.was_read,
+                         (defined_pos > other.defined_pos ? defined_pos : other.defined_pos),
+                         (read_pos > other.read_pos ? read_pos : other.read_pos));
+}
+
+
 std::vector<std::string> Analyser::get_local_path(const std::string &name) const {
     auto local = path;
     local.push_back(name);
@@ -158,6 +232,10 @@ std::vector<Statement *> Analyser::finish() {
 bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
     size_t old_var_count = variables.size();
 
+    for (auto &var : variables) {
+        var.state.push(var.state.top());
+    }
+
     path.push_back(name);
 
     level++;
@@ -168,6 +246,22 @@ bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
 
     while (old_var_count < variables.size())
         variables.pop_back();
+
+    // todo: for loops this doesn't catch all situations where defines immediately follow defines
+    for (auto &var : variables) {
+        VariableState old_definite_state = var.state.top();
+        var.state.pop();
+
+        if (scope->statement_type == SCOPE_STMT) {
+            // plain scopes are always executed, so the old state is the new one
+            var.state.pop();
+            var.state.push(old_definite_state);
+        } else {
+            VariableState new_definite_state = var.state.top() || old_definite_state;
+            var.state.pop();
+            var.state.push(new_definite_state);
+        }
+    }
 
     path.pop_back();
 
@@ -196,6 +290,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
         variables.push_back(arg);
+        variables.back().state.top().make_definitely_defined(arg->origin);
     }
 
     if (func->var_arg)
@@ -375,7 +470,7 @@ bool Analyser::verify_import(ImportStatement *import_) {
     return res;
 }
 
-bool Analyser::verify_expression(Expression *expression) {
+bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool member_acc) {
     switch (expression->expression_type) {
         case CALL_EXPR: {
             auto ce = (CallExpression *) expression;
@@ -438,12 +533,13 @@ bool Analyser::verify_expression(Expression *expression) {
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            if (!verify_expression(ae->left) || !verify_expression(ae->right) || !bucket->iassert(ae->left->type.
-                is_compatible(ae->right->type),
-                ae->right->origin,
-                "can't assign to type '{}' from '{}'",
-                ae->left->type.str(),
-                ae->right->type.str()))
+            if (!verify_expression(ae->left, expression->expression_type == ASSIGN_EXPR) || !
+                verify_expression(ae->right) || !bucket->iassert(ae->left->type.
+                                                                     is_compatible(ae->right->type),
+                                                                 ae->right->origin,
+                                                                 "can't assign to type '{}' from '{}'",
+                                                                 ae->left->type.str(),
+                                                                 ae->right->type.str()))
                 return false;
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
@@ -458,7 +554,7 @@ bool Analyser::verify_expression(Expression *expression) {
             auto left = mae->left;
             auto right = mae->right;
 
-            if (!verify_expression(left))
+            if (!verify_expression(left, assigned_to, true))
                 return false;
 
             if (!bucket->iassert(!left->type.is_primitive(),
@@ -531,7 +627,40 @@ bool Analyser::verify_expression(Expression *expression) {
                                  "undefined variable '{}'",
                                  ne->name))
                 return false;
-            ne->assign_type(get_variable(ne->name)->type);
+            SemanticVariable &var = get_variable(ne->name);
+
+            ne->assign_type(var->type);
+
+            if (member_acc) {
+                // Checking state for structs is hard, I'll do that later
+                // todo: check variable state for members
+                if (assigned_to)
+                    var.state.top().make_definitely_defined(expression->origin);
+                else
+                    var.state.top().make_definitely_read(expression->origin);
+            } else if (assigned_to) {
+                if (var.state.top().is_definitely_defined()) {
+                    bucket->warning(var.state.top().get_defined_pos(), "assigned value is immediately discarded");
+                    bucket->note(expression->origin, "overwritten here");
+                } else if (var.state.top().is_maybe_defined()) {
+                    bucket->warning(expression->origin,
+                                    "value might overwrite previous assignment without reading it");
+                }
+
+                var.state.top().make_definitely_defined(expression->origin);
+            } else {
+                if (!bucket->iassert(!var.state.top().is_definitely_undefined(),
+                                     expression->origin,
+                                     "value is still undefined"))
+                    return false;
+
+                if (!bucket->iassert(!var.state.top().is_maybe_undefined(),
+                                     expression->origin,
+                                     "value might be undefined"))
+                    return false;
+
+                var.state.top().make_definitely_read(expression->origin);
+            }
             break;
         }
         case INT_EXPR:
@@ -568,7 +697,7 @@ bool Analyser::does_always_return(ScopeStatement *scope) {
 bool Analyser::is_var_declared(const std::string &name) {
     return std::find_if(variables.begin(),
                         variables.end(),
-                        [name](VariableStatement *v) {
+                        [name](SemanticVariable v) {
                             return name == v->name.raw;
                         }) != variables.end();
 }
@@ -589,10 +718,10 @@ bool Analyser::is_struct_declared(const std::vector<std::string> &name) {
     return structures.contains(global) || structures.contains(local);
 }
 
-VariableStatement *Analyser::get_variable(const std::string &name) {
+SemanticVariable &Analyser::get_variable(const std::string &name) {
     return *std::find_if(variables.begin(),
                          variables.end(),
-                         [name](VariableStatement *v) {
+                         [name](SemanticVariable v) {
                              return name == v->name.raw;
                          });
 }
