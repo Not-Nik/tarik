@@ -86,7 +86,10 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        return "return " + value->print() + ";";
+        if (value)
+            return "return " + value->print() + ";";
+        else
+            return "return;";
     }
 };
 
