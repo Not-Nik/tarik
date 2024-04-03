@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,82 +10,9 @@
 #include <iostream>
 
 #include "Path.h"
+#include "Variables.h"
 #include "error/Error.h"
 #include "syntactic/expressions/Expression.h"
-
-VariableState::VariableState(bool undefined, bool defined, bool read, LexerRange defined_pos, LexerRange read_pos)
-    : is_undefined(undefined),
-      was_defined(defined),
-      was_read(read),
-      defined_pos(defined_pos),
-      read_pos(read_pos) {}
-
-VariableState VariableState::defined(LexerRange pos) {
-    return VariableState(false, true, false, pos, LexerRange());
-}
-
-VariableState VariableState::read(LexerRange pos) {
-    return VariableState(false, false, true, LexerRange(), pos);
-}
-
-void VariableState::make_definitely_defined(LexerRange pos) {
-    is_undefined = false;
-    was_defined = true;
-    was_read = false;
-
-    defined_pos = pos;
-    read_pos = LexerRange();
-}
-
-void VariableState::make_definitely_read(LexerRange pos) {
-    is_undefined = false;
-    was_defined = false;
-    was_read = true;
-
-    defined_pos = LexerRange();
-    read_pos = pos;
-}
-
-bool VariableState::is_definitely_undefined() const {
-    return is_undefined && !was_defined && !was_read;
-}
-
-bool VariableState::is_definitely_defined() const {
-    return !is_undefined && was_defined && !was_read;
-}
-
-bool VariableState::is_definitely_read() const {
-    return !is_undefined && !was_defined && was_read;
-}
-
-bool VariableState::is_maybe_undefined() const {
-    return is_undefined;
-}
-
-bool VariableState::is_maybe_defined() const {
-    return was_defined;
-}
-
-bool VariableState::is_maybe_read() const {
-    return was_read;
-}
-
-LexerRange VariableState::get_defined_pos() const {
-    return defined_pos;
-}
-
-LexerRange VariableState::get_read_pos() const {
-    return read_pos;
-}
-
-VariableState VariableState::operator||(const VariableState &other) const {
-    return VariableState(is_undefined || other.is_undefined,
-                         was_defined || other.was_defined,
-                         was_read || other.was_read,
-                         (defined_pos > other.defined_pos ? defined_pos : other.defined_pos),
-                         (read_pos > other.read_pos ? read_pos : other.read_pos));
-}
-
 
 std::vector<std::string> Analyser::get_local_path(const std::string &name) const {
     auto local = path;
@@ -232,8 +159,8 @@ std::vector<Statement *> Analyser::finish() {
 bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
     size_t old_var_count = variables.size();
 
-    for (auto &var : variables) {
-        var.state.push(var.state.top());
+    for (auto var : variables) {
+        var->push_state(*var->state());
     }
 
     path.push_back(name);
@@ -247,19 +174,19 @@ bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
     while (old_var_count < variables.size())
         variables.pop_back();
 
-    // todo: for loops this doesn't catch all situations where defines immediately follow defines
-    for (auto &var : variables) {
-        VariableState old_definite_state = var.state.top();
-        var.state.pop();
+    // todo: for loops this doesn't catch all cases where defines at the start immediately follow defines at the end
+    for (auto var : variables) {
+        VariableState old_definite_state = *var->state();
+        var->pop_state();
 
         if (scope->statement_type == SCOPE_STMT) {
             // plain scopes are always executed, so the old state is the new one
-            var.state.pop();
-            var.state.push(old_definite_state);
+            var->pop_state();
+            var->push_state(old_definite_state);
         } else {
-            VariableState new_definite_state = var.state.top() || old_definite_state;
-            var.state.pop();
-            var.state.push(new_definite_state);
+            VariableState new_definite_state = *var->state() || old_definite_state;
+            var->pop_state();
+            var->push_state(new_definite_state);
         }
     }
 
@@ -289,8 +216,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     return_type = func->return_type;
     functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
-        variables.push_back(arg);
-        variables.back().state.top().make_definitely_defined(arg->origin);
+        verify_variable(arg)->state()->make_definitely_defined(arg->origin);
     }
 
     if (func->var_arg)
@@ -359,22 +285,40 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
     return bucket->iassert(last_loop, continue_->origin, "continue outside of loop");
 }
 
-bool Analyser::verify_variable(VariableStatement *var) {
+SemanticVariable *Analyser::verify_variable(VariableStatement *var) {
     if (!var->type.is_primitive() && !bucket->iassert(is_struct_declared(var->type.get_user()),
                                                       var->origin,
                                                       "undefied type '{}'",
                                                       flatten_path(var->type.get_user())))
-        return false;
+        return nullptr;
 
     for (auto variable : variables) {
-        if (var->name.raw == variable->name.raw) {
+        if (var->name.raw == variable->var->name.raw) {
             bucket->error(var->name.origin, "redefinition of '{}'", var->name.raw);
-            bucket->note(variable->name.origin, "previous definition here");
-            return false;
+            bucket->note(variable->var->name.origin, "previous definition here");
+            return nullptr;
         }
     }
-    variables.push_back(var);
-    return true;
+
+    SemanticVariable *res;
+    if (var->type.is_primitive()) {
+        res = new PrimitiveVariable(var);
+    } else {
+        StructStatement *st = get_struct(var->type.get_user());
+
+        std::vector<SemanticVariable *> member_states;
+        for (auto member : st->members) {
+            auto *temp = new VariableStatement(var->origin,
+                                               member->type,
+                                               Token::name(var->name.raw + "." + member->name.raw));
+
+            member_states.push_back(verify_variable(temp));
+        }
+
+        res = new CompoundVariable(var, member_states);
+    }
+    variables.push_back(res);
+    return res;
 }
 
 bool Analyser::verify_struct(StructStatement *struct_) {
@@ -580,6 +524,12 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                                  left->type.str()))
                 return false;
             mae->assign_type(s->get_member_type(member_name));
+
+            if (left->flattens_to_member_access()) {
+                std::string name = left->flatten_to_member_access() + "." + member_name;
+                return verify_expression(new NameExpression(mae->origin, name), assigned_to);
+            }
+
             break;
         }
         case PREFIX_EXPR: {
@@ -627,39 +577,35 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                                  "undefined variable '{}'",
                                  ne->name))
                 return false;
-            SemanticVariable &var = get_variable(ne->name);
+            SemanticVariable *var = get_variable(ne->name);
 
-            ne->assign_type(var->type);
+            ne->assign_type(var->var->type);
 
-            if (member_acc) {
-                // Checking state for structs is hard, I'll do that later
-                // todo: check variable state for members
-                if (assigned_to)
-                    var.state.top().make_definitely_defined(expression->origin);
-                else
-                    var.state.top().make_definitely_read(expression->origin);
-            } else if (assigned_to) {
-                if (var.state.top().is_definitely_defined()) {
-                    bucket->warning(var.state.top().get_defined_pos(), "assigned value is immediately discarded");
+            // don't do variable state checking if we are in a (pure) member access
+            if (member_acc) break;
+
+            if (assigned_to) {
+                if (var->state()->is_definitely_defined()) {
+                    bucket->warning(var->state()->get_defined_pos(), "assigned value is immediately discarded");
                     bucket->note(expression->origin, "overwritten here");
-                } else if (var.state.top().is_maybe_defined()) {
+                } else if (var->state()->is_maybe_defined()) {
                     bucket->warning(expression->origin,
                                     "value might overwrite previous assignment without reading it");
                 }
 
-                var.state.top().make_definitely_defined(expression->origin);
+                var->state()->make_definitely_defined(expression->origin);
             } else {
-                if (!bucket->iassert(!var.state.top().is_definitely_undefined(),
+                if (!bucket->iassert(!var->state()->is_definitely_undefined(),
                                      expression->origin,
                                      "value is still undefined"))
                     return false;
 
-                if (!bucket->iassert(!var.state.top().is_maybe_undefined(),
+                if (!bucket->iassert(!var->state()->is_maybe_undefined(),
                                      expression->origin,
                                      "value might be undefined"))
                     return false;
 
-                var.state.top().make_definitely_read(expression->origin);
+                var->state()->make_definitely_read(expression->origin);
             }
             break;
         }
@@ -697,8 +643,8 @@ bool Analyser::does_always_return(ScopeStatement *scope) {
 bool Analyser::is_var_declared(const std::string &name) {
     return std::find_if(variables.begin(),
                         variables.end(),
-                        [name](SemanticVariable v) {
-                            return name == v->name.raw;
+                        [name](SemanticVariable *v) {
+                            return name == v->var->name.raw;
                         }) != variables.end();
 }
 
@@ -718,11 +664,11 @@ bool Analyser::is_struct_declared(const std::vector<std::string> &name) {
     return structures.contains(global) || structures.contains(local);
 }
 
-SemanticVariable &Analyser::get_variable(const std::string &name) {
+SemanticVariable *Analyser::get_variable(const std::string &name) {
     return *std::find_if(variables.begin(),
                          variables.end(),
-                         [name](SemanticVariable v) {
-                             return name == v->name.raw;
+                         [name](SemanticVariable *v) {
+                             return name == v->var->name.raw;
                          });
 }
 

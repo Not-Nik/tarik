@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -11,51 +11,8 @@
 
 #include <vector>
 
+#include "Variables.h"
 #include "error/Bucket.h"
-
-class VariableState {
-    bool is_undefined = true, was_defined = false, was_read = false;
-    LexerRange defined_pos, read_pos;
-
-    VariableState(bool undefined, bool defined, bool read, LexerRange defined_pos, LexerRange read_pos);
-public:
-    VariableState() = default;
-
-    static VariableState defined(LexerRange pos);
-    static VariableState read(LexerRange pos);
-
-    void make_definitely_defined(LexerRange pos);
-    void make_definitely_read(LexerRange pos);
-
-    bool is_definitely_undefined() const;
-    bool is_definitely_defined() const;
-    bool is_definitely_read() const;
-
-    bool is_maybe_undefined() const;
-    bool is_maybe_defined() const;
-    bool is_maybe_read() const;
-
-    LexerRange get_defined_pos() const;
-    LexerRange get_read_pos() const;
-
-    VariableState operator||(const VariableState &other) const;
-};
-
-struct SemanticVariable {
-    VariableStatement *var;
-    std::stack<VariableState> state;
-
-    SemanticVariable(VariableStatement *var)
-        : var(var), state({VariableState()}) {}
-
-    const VariableStatement *operator->() const {
-        return var;
-    }
-
-    VariableStatement *operator->() {
-        return var;
-    }
-};
 
 class Analyser {
     std::map<std::vector<std::string>, FuncStatement *> functions;
@@ -64,7 +21,7 @@ class Analyser {
 
     std::vector<std::string> path;
 
-    std::vector<SemanticVariable> variables;
+    std::vector<SemanticVariable *> variables;
     Statement *last_loop = nullptr;
     unsigned int level = 0;
     Type return_type = Type(VOID);
@@ -100,7 +57,7 @@ protected:
     bool verify_while(WhileStatement *while_);
     bool verify_break(BreakStatement *break_);
     bool verify_continue(ContinueStatement *continue_);
-    bool verify_variable(VariableStatement *var);
+    SemanticVariable *verify_variable(VariableStatement *var);
     bool verify_struct(StructStatement *struct_);
     bool verify_import(ImportStatement *import_);
     bool verify_expression(Expression *expression, bool assigned_to = false, bool member_acc = false);
@@ -110,7 +67,7 @@ protected:
     bool is_func_declared(const std::vector<std::string> &name);
     bool is_struct_declared(const std::vector<std::string> &name);
 
-    SemanticVariable &get_variable(const std::string &name);
+    SemanticVariable *get_variable(const std::string &name);
     FuncStCommon *get_func_decl(const std::vector<std::string> &name);
     StructStatement *get_struct(const std::vector<std::string> &name);
 };

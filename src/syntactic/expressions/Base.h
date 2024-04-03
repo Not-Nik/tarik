@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -92,6 +92,9 @@ public:
     explicit Expression(ExprType t, const LexerRange &lp) : Statement(EXPR_STMT, lp) { expression_type = t; }
 
     void assign_type(Type t) { type = t; }
+
+    virtual bool flattens_to_member_access() const { return false; }
+    virtual std::string flatten_to_member_access() const { return "<>"; }
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_BASE_H_

@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +20,14 @@ public:
           name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
+        return name;
+    }
+
+    bool flattens_to_member_access() const override {
+        return true;
+    }
+
+    std::string flatten_to_member_access() const override {
         return name;
     }
 };
@@ -217,6 +225,16 @@ public:
 
     [[nodiscard]] std::string print() const override {
         return "(" + left->print() + to_string(bin_op_type) + right->print() + ")";
+    }
+
+    bool flattens_to_member_access() const override {
+        return (bin_op_type == MEM_ACC)
+               ? (left->flattens_to_member_access() && right->flattens_to_member_access())
+               : false;
+    }
+
+    std::string flatten_to_member_access() const override {
+        return left->flatten_to_member_access() + "." + right->flatten_to_member_access();
     }
 };
 
