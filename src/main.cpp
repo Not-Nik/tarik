@@ -46,9 +46,9 @@ int main(int argc, const char *argv[]) {
         if (option == test_option) {
             int r = test();
             if (r)
-                puts("Tests succeeded");
+                std::cout << "Tests succeeded\n";
             else
-                puts("Tests failed");
+                std::cerr << "Tests failed\n";
             return !r;
         } else if (option == re_emit_option) {
             re_emit = true;
@@ -76,7 +76,7 @@ int main(int argc, const char *argv[]) {
     }
 
     if (re_emit && emit_llvm) {
-        std::cerr << "Options 're-emit' and 'emit-llvm' are mutually-exclusive; using 'emit-llvm'...\n";
+        std::cerr << "waring: Options 're-emit' and 'emit-llvm' are mutually-exclusive; using 'emit-llvm'...\n";
     }
 
     if (parser.get_inputs().size() > 1) {
@@ -84,7 +84,7 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
-    if (parser.get_inputs().size() == 0) {
+    if (parser.get_inputs().empty()) {
         std::cerr << "error: No input file\n";
         return 1;
     }
@@ -93,7 +93,7 @@ int main(int argc, const char *argv[]) {
     fs::path input_path = input;
 
     if (!exists(input_path)) {
-        std::cerr << "'" << input_path << "' doesn't exist...\n";
+        std::cerr << "error: '" << input_path << "' doesn't exist...\n";
         return 1;
     }
 
@@ -127,7 +127,8 @@ int main(int argc, const char *argv[]) {
     if (error_bucket.error_count() == 0) {
         Analyser analyser(&error_bucket);
         analyser.verify_statements(statements);
-        statements = analyser.finish();
+        if (!re_emit)
+            statements = analyser.finish();
     }
 
     if (error_bucket.error_count() == 0 || re_emit) {
@@ -141,7 +142,7 @@ int main(int argc, const char *argv[]) {
         if (!re_emit) {
             LLVM generator(input);
             if (!triple.empty() && !LLVM::is_valid_triple(triple)) {
-                std::cerr << "Invalid triple '" << triple << "'\n";
+                std::cerr << "error: Invalid triple '" << triple << "'\n";
                 return 1;
             }
             generator.generate_statements(statements);
