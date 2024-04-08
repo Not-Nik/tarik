@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2023
+// tarik (c) Nikolas Wipper 2023-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,6 +17,10 @@ std::vector<std::string> flatten_path(Expression *path) {
         part1.insert(part1.end(), part2.begin(), part2.end());
 
         return part1;
+    } else if (auto *gl = (PrefixOperatorExpression *) path;
+        path->expression_type == PREFIX_EXPR && gl->prefix_type == GLOBAL) {
+        std::vector<std::string> path = flatten_path(gl->operand);
+        path.insert(path.begin(), "");
     }
 
     return {};

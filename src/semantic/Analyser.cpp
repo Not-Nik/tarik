@@ -650,6 +650,11 @@ bool Analyser::is_var_declared(const std::string &name) {
 
 bool Analyser::is_func_declared(const std::vector<std::string> &name) {
     auto global = name;
+    if (name.front().empty()) {
+        global.erase(global.begin());
+        return functions.contains(global);
+    }
+
     auto local = path;
     local.insert(local.end(), name.begin(), name.end());
 
@@ -658,6 +663,11 @@ bool Analyser::is_func_declared(const std::vector<std::string> &name) {
 
 bool Analyser::is_struct_declared(const std::vector<std::string> &name) {
     auto global = name;
+    if (name.front().empty()) {
+        global.erase(global.begin());
+        return structures.contains(global);
+    }
+
     auto local = path;
     local.insert(local.end(), name.begin(), name.end());
 
@@ -674,6 +684,11 @@ SemanticVariable *Analyser::get_variable(const std::string &name) {
 
 FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {
     auto global = name;
+    if (name.front().empty()) {
+        global.erase(global.begin());
+        return declarations[global];
+    }
+
     auto local = path;
     local.insert(local.end(), name.begin(), name.end());
 
@@ -685,6 +700,11 @@ FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {
 
 StructStatement *Analyser::get_struct(const std::vector<std::string> &name) {
     auto global = name;
+    if (name.front().empty()) {
+        global.erase(global.begin());
+        return structures[global];
+    }
+
     auto local = path;
     local.insert(local.end(), name.begin(), name.end());
 
