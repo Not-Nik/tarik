@@ -121,9 +121,9 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     bool res = true;
 
     for (auto statement : statements) {
-        bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
-                        statement->origin,
-                        "internal: premature function declaration: report this as a bug");
+        res = res && bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
+                                     statement->origin,
+                                     "internal: premature function declaration: report this as a bug");
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
             std::vector<std::string> name = get_local_path(func->name.raw);
@@ -582,7 +582,8 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             ne->assign_type(var->var->type);
 
             // don't do variable state checking if we are in a (pure) member access
-            if (member_acc) break;
+            if (member_acc)
+                break;
 
             if (assigned_to) {
                 if (var->state()->is_definitely_defined()) {
