@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -31,20 +31,35 @@ class LLVM {
     std::map<std::string, StructStatement *> struct_statements;
 
 public:
+    static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();
+
+    struct Config {
+        std::string triple = default_triple;
+
+        enum class Output {
+            Assembly,
+            Object
+        } output = Output::Object;
+
+        llvm::CodeGenOpt::Level optimisation_level = llvm::CodeGenOpt::None;
+        bool pic = false;
+        std::optional<llvm::CodeModel::Model> code_model;
+    };
+
     explicit LLVM(const std::string &name);
     static void force_init();
 
-    void dump_ir(const std::string &to);
-    void write_object_file(const std::string &to, const std::string &triple = default_triple);
+    int dump_ir(const std::string &to);
+    int write_file(const std::string &to, Config config);
 
     void generate_statement(Statement *s, bool is_last);
     void generate_statements(const std::vector<Statement *> &s, bool is_last = true);
 
-    static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();
     static bool is_valid_triple(const std::string &triple) {
         std::string err;
         return llvm::TargetRegistry::lookupTarget(triple, err) != nullptr;
     }
+
     static std::vector<std::string> get_available_triples() {
         std::vector<std::string> res;
         for (auto t : llvm::TargetRegistry::targets())

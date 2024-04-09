@@ -33,7 +33,15 @@ int main(int argc, const char *argv[]) {
                                             's');
 
     // Code Generation
-    Option *override_triple = parser.add_option("target",
+    Option *code_model = parser.add_option("Ccode-model", "Code Generation", "Set the code model", true, "model");
+    Option *optimise = parser.add_option("Coptimise",
+                                         "Code Generation",
+                                         "Set the optimisation level",
+                                         true,
+                                         "level",
+                                         'O');
+    Option *pic = parser.add_option("Cpic", "Code Generation", "Enable PIC");
+    Option *override_triple = parser.add_option("Ctarget",
                                                 "Code Generation",
                                                 "Set the target-triple (defaults to '" + LLVM::default_triple + "')",
                                                 true,
@@ -46,39 +54,49 @@ int main(int argc, const char *argv[]) {
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
 
     // Output
+    Option *emit_assembly = parser.add_option("emit-assembly", "Output", "Emit Assembly", false, "", 's');
     Option *emit_llvm_option = parser.add_option("emit-llvm", "Output", "Emit generated LLVM IR");
     Option *output_option = parser.add_option("output", "Output", "Output to file", true, "file", 'o');
     Option *re_emit_option = parser.add_option("re-emit",
                                                "Output",
                                                "Parse code, and re-emit it based on the internal AST");
 
+    LLVM::Config config;
     bool re_emit = false, emit_llvm = false;
-    std::string output_filename, triple = LLVM::default_triple;
+    std::string output_filename;
     std::vector<fs::path> search_paths;
 
     for (const auto &option : parser) {
-        if (option == test_option) {
-            int r = test();
-            if (r)
-                std::cout << "Tests succeeded\n";
-            else
-                std::cerr << "Tests failed\n";
-            return !r;
-        } else if (option == re_emit_option) {
-            re_emit = true;
-        } else if (option == emit_llvm_option) {
-            emit_llvm = true;
-        } else if (option == output_option) {
-            output_filename = option.argument;
-        } else if (option == override_triple) {
-            triple = option.argument;
-        } else if (option == search_path) {
+        if (option == search_path) {
             search_paths.emplace_back(option.argument);
-        } else if (option == version) {
-            LLVM::force_init();
-            std::cout << version_id << " tarik compiler version " << version_string << "\n";
-            std::cout << "Default target: " << LLVM::default_triple << "\n";
-            return 0;
+        } else if (option == code_model) {
+            if (option.argument == "tiny")
+                config.code_model = llvm::CodeModel::Tiny;
+            else if (option.argument == "small")
+                config.code_model = llvm::CodeModel::Small;
+            else if (option.argument == "kernel")
+                config.code_model = llvm::CodeModel::Kernel;
+            else if (option.argument == "medium")
+                config.code_model = llvm::CodeModel::Medium;
+            else if (option.argument == "large")
+                config.code_model = llvm::CodeModel::Large;
+            else
+                std::cerr << "error: Unknown code model '" << option.argument << "'\n";
+        } else if (option == optimise) {
+            if (option.argument == "0")
+                config.optimisation_level = llvm::CodeGenOpt::None;
+            else if (option.argument == "1")
+                config.optimisation_level = llvm::CodeGenOpt::Less;
+            else if (option.argument == "2")
+                config.optimisation_level = llvm::CodeGenOpt::Default;
+            else if (option.argument == "3")
+                config.optimisation_level = llvm::CodeGenOpt::Aggressive;
+            else
+                std::cerr << "error: Unknown optimisation level '" << option.argument << "'\n";
+        } else if (option == pic) {
+            config.pic = true;
+        } else if (option == override_triple) {
+            config.triple = option.argument;
         } else if (option == list_targets) {
             LLVM::force_init();
             std::cout << "Available LLVM targets:\n";
@@ -86,11 +104,32 @@ int main(int argc, const char *argv[]) {
                 std::cout << "    " << t << "\n";
             }
             return 0;
+        } else if (option == test_option) {
+            int r = test();
+            if (r)
+                std::cout << "Tests succeeded\n";
+            else
+                std::cerr << "Tests failed\n";
+            return !r;
+        } else if (option == version) {
+            LLVM::force_init();
+            std::cout << version_id << " tarik compiler version " << version_string << "\n";
+            std::cout << "Default target: " << LLVM::default_triple << "\n";
+            return 0;
+        } else if (option == emit_assembly) {
+            config.output = LLVM::Config::Output::Assembly;
+        } else if (option == emit_llvm_option) {
+            emit_llvm = true;
+        } else if (option == output_option) {
+            output_filename = option.argument;
+        } else if (option == re_emit_option) {
+            re_emit = true;
         }
     }
 
     if (re_emit && emit_llvm) {
-        std::cerr << "waring: Options 're-emit' and 'emit-llvm' are mutually-exclusive; using 'emit-llvm'...\n";
+        std::cerr << "error: Options 're-emit' and 'emit-llvm' are mutually-exclusive\n";
+        return 1;
     }
 
     if (parser.get_inputs().size() > 1) {
@@ -114,10 +153,12 @@ int main(int argc, const char *argv[]) {
     fs::path output_path = input_path;
     if (output_filename.empty()) {
         std::string new_extension;
-        if (re_emit && !emit_llvm) {
+        if (re_emit) {
             new_extension = ".re.tk";
         } else if (emit_llvm) {
             new_extension = ".ll";
+        } else if (config.output == LLVM::Config::Output::Assembly) {
+            new_extension = ".s";
         } else {
             new_extension = ".o";
         }
@@ -155,21 +196,16 @@ int main(int argc, const char *argv[]) {
         }
         if (!re_emit) {
             LLVM generator(input);
-            if (!triple.empty() && !LLVM::is_valid_triple(triple)) {
-                std::cerr << "error: Invalid triple '" << triple << "'\n";
-                return 1;
-            }
             generator.generate_statements(statements);
             if (emit_llvm)
                 generator.dump_ir(output_path);
             else
-                generator.write_object_file(output_path, triple);
+                return generator.write_file(output_path, config);
         }
     }
 
     std::for_each(statements.begin(), statements.end(), [](auto &p) { delete p; });
     error_bucket.print_errors();
-
 
     return endfile() ? 0 : 1;
 }

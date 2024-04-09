@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -43,48 +43,59 @@ void LLVM::force_init() {
     }
 }
 
-void LLVM::dump_ir(const std::string &to) {
+int LLVM::dump_ir(const std::string &to) {
     std::error_code EC;
     llvm::raw_fd_ostream stream(to, EC, llvm::sys::fs::CD_CreateAlways);
     if (!EC) {
         module->print(stream, nullptr);
+        return 0;
+    } else {
+        std::cerr << "error: " << EC.message() << "\n";
+        return 1;
     }
 }
 
-void LLVM::write_object_file(const std::string &to, const std::string &triple) {
+int LLVM::write_file(const std::string &to, Config config) {
     std::string error;
-    auto target = llvm::TargetRegistry::lookupTarget(triple, error);
+    auto target = llvm::TargetRegistry::lookupTarget(config.triple, error);
 
     if (!target) {
         // probably an invalid triple
-        std::cerr << "unknown triple '" << triple << "'\n";
-        return;
+        std::cerr << "unknown triple '" << config.triple << "'\n";
+        return 1;
     }
 
     auto cpu = "generic";
     auto features = "";
 
     llvm::TargetOptions opt;
-    auto rm = std::optional<llvm::Reloc::Model>();
-    auto target_machine = target->createTargetMachine(triple, cpu, features, opt, rm);
+    auto target_machine = target->createTargetMachine(config.triple,
+                                                      cpu,
+                                                      features,
+                                                      opt,
+                                                      config.pic ? llvm::Reloc::Model::PIC_ : llvm::Reloc::Model::Static,
+                                                      config.code_model,
+                                                      config.optimisation_level);
 
     module->setDataLayout(target_machine->createDataLayout());
-    module->setTargetTriple(triple);
+    module->setTargetTriple(config.triple);
 
     std::error_code EC;
     llvm::raw_fd_ostream stream(to, EC, llvm::sys::fs::CD_CreateAlways);
 
     llvm::legacy::PassManager pass;
-    auto file_type = llvm::CGFT_ObjectFile;
+    auto file_type = config.output == Config::Output::Assembly ? llvm::CGFT_AssemblyFile : llvm::CGFT_ObjectFile;
 
     if (target_machine->addPassesToEmitFile(pass, stream, nullptr, file_type)) {
         // damn
         std::cerr << "couldn't open '" << to << "'\n";
-        return;
+        return 1;
     }
 
     pass.run(*module);
     stream.flush();
+
+    return 0;
 }
 
 void LLVM::generate_statement(Statement *statement, bool is_last) {
@@ -467,7 +478,7 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                 dest = generate_member_access((BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
             } else if (ae->left->expression_type == PREFIX_EXPR && ((PrefixOperatorExpression *) ae->left)->prefix_type
-                       == DEREF) {
+                == DEREF) {
                 auto deref = (PrefixOperatorExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
