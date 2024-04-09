@@ -21,6 +21,8 @@ std::vector<std::string> flatten_path(Expression *path) {
         path->expression_type == PREFIX_EXPR && gl->prefix_type == GLOBAL) {
         std::vector<std::string> path = flatten_path(gl->operand);
         path.insert(path.begin(), "");
+
+        return path;
     }
 
     return {};
