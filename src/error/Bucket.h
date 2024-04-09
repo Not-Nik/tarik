@@ -14,6 +14,7 @@
 
 class Bucket {
     std::vector<Error> errors;
+    size_t error_count = 0;
 
     void add_error(LexerRange pos, std::string message);
     void add_warning(LexerRange pos, std::string message);
@@ -47,7 +48,7 @@ public:
         return false;
     }
 
-    size_t error_count();
+    size_t get_error_count();
     std::vector<Error> finish();
     void print_errors() const;
 };

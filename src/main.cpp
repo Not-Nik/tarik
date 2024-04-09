@@ -179,14 +179,14 @@ int main(int argc, const char *argv[]) {
     } while (statements.back());
     statements.pop_back();
 
-    if (error_bucket.error_count() == 0) {
+    if (error_bucket.get_error_count() == 0) {
         Analyser analyser(&error_bucket);
         analyser.verify_statements(statements);
         if (!re_emit)
             statements = analyser.finish();
     }
 
-    if (error_bucket.error_count() == 0 || re_emit) {
+    if (error_bucket.get_error_count() == 0 || re_emit) {
         std::ofstream out(output_path);
         if (re_emit && !emit_llvm) {
             for (auto s : statements) {

@@ -12,6 +12,7 @@ void Bucket::add_error(LexerRange pos, std::string message) {
         message,
         pos
     });
+    error_count++;
 }
 
 void Bucket::add_warning(LexerRange pos, std::string message) {
@@ -30,8 +31,8 @@ void Bucket::add_note(LexerRange pos, std::string message) {
     });
 }
 
-size_t Bucket::error_count() {
-    return errors.size();
+size_t Bucket::get_error_count() {
+    return error_count;
 }
 
 std::vector<Error> Bucket::finish() {

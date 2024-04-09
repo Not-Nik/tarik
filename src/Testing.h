@@ -49,7 +49,7 @@ if (!local_st) { printf("\nFailed for expression: expected '%s' to be true.", #e
 else count_suc++;\
 _st = _st && local_st;}
 
-#define ASSERT_NO_ERROR(b) {bool local_st = b.error_count() == 0;\
+#define ASSERT_NO_ERROR(b) {bool local_st = b.get_error_count() == 0;\
 count_tested++;\
 if (!local_st) { printf("\nFailed to parse expression.\n");\
 b.print_errors();}\
