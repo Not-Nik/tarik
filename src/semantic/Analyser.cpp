@@ -33,6 +33,10 @@ std::string Analyser::flatten_path(const std::string &name) const {
 std::string Analyser::flatten_path(const std::vector<std::string> &path) {
     std::string res = "::";
     for (auto it = path.begin(); it != path.end();) {
+        if (it->empty()) {
+            it++;
+            continue;
+        }
         res += *it;
         if (++it != path.end()) {
             res += "::";
@@ -420,7 +424,9 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             auto ce = (CallExpression *) expression;
 
             std::vector<std::string> func_path;
-            if (ce->callee->expression_type == NAME_EXPR || ce->callee->expression_type == PATH_EXPR) {
+            if (auto *gl = (PrefixOperatorExpression *) ce->callee;
+                ce->callee->expression_type == NAME_EXPR || ce->callee->expression_type == PATH_EXPR ||
+                (ce->callee->expression_type == PREFIX_EXPR && gl->prefix_type == GLOBAL)) {
                 func_path = ::flatten_path(ce->callee);
 
                 if (is_struct_declared(func_path)) {
@@ -565,6 +571,11 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                                           "cannot dereference non-pointer type '{}'",
                                           pe->operand->type.str());
                     pe_type.pointer_level--;
+                    break;
+                case GLOBAL:
+                    res = false;
+                    bucket->error(pe->origin, "internal: Unhandled global path prefix");
+                    break;
             }
 
             pe->assign_type(pe_type);

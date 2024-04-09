@@ -50,10 +50,10 @@ class NameParselet : public PrefixParselet {
     }
 };
 
-template <PrefixType prefix_type>
+template <PrefixType prefix_type, Precedence precedence = PREFIX>
 class PrefixOperatorParselet : public PrefixParselet {
     Expression *parse(Parser *parser, const Token &token) override {
-        Expression *right = parser->parse_expression(PREFIX);
+        Expression *right = parser->parse_expression(precedence);
 
         return new PrefixOperatorExpression(token.origin, prefix_type, right);
     }
@@ -63,7 +63,7 @@ using NegParselet = PrefixOperatorParselet<NEG>;
 using RefParselet = PrefixOperatorParselet<REF>;
 using DerefParselet = PrefixOperatorParselet<DEREF>;
 using NotParselet = PrefixOperatorParselet<LOG_NOT>;
-using GlobalParselet = PrefixOperatorParselet<GLOBAL>;
+using GlobalParselet = PrefixOperatorParselet<GLOBAL, NAME_CONCAT>;
 
 template <BinOpType bot, Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
