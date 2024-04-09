@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -27,8 +27,7 @@ public:
           option_id(option_count++),
           has_arg(has_arg_),
           argument_name(std::move(argument_name_)),
-          short_name(short_name_) {
-    }
+          short_name(short_name_) {}
 
     Option(const Option &) = delete;
     Option(Option &&) = default;
@@ -57,7 +56,7 @@ class ArgumentParser {
     std::vector<std::string> passed;
     std::vector<std::string>::iterator it;
 
-    std::vector<Option *> options;
+    std::map<std::string, std::vector<Option *>> options;
     std::vector<std::string> inputs;
 
 protected:
@@ -77,12 +76,11 @@ public:
     public:
         explicit iterator(ArgumentParser *parser_)
             : parser(parser_),
-              overriden(false) {
-        }
+              overriden(false) {}
+
         explicit iterator(ParsedOption override_)
             : override(std::move(override_)),
-              overriden(true) {
-        }
+              overriden(true) {}
 
         ParsedOption operator++() {
             if (overriden)
@@ -107,11 +105,12 @@ public:
 
     ArgumentParser(int argc, const char *argv[], std::string toolName);
 
-    Option *add_option(Option option);
-    Option *add_option(std::string name_,
-                       std::string description_,
-                       bool has_arg_ = false,
-                       std::string argument_name_ = "",
+    Option *add_option(Option option, const std::string &category);
+    Option *add_option(std::string name,
+                       std::string category,
+                       std::string description,
+                       bool has_arg = false,
+                       std::string argument_name = "",
                        char short_name = 0);
 
     ParsedOption parse_next_arg();

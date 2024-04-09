@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -24,19 +24,33 @@ constinit const char *version_string = "0.0.1a";
 int main(int argc, const char *argv[]) {
     ArgumentParser parser(argc, argv, "tarik");
 
-    Option *test_option = parser.add_option("test", "Run internal tarik tests");
-    Option *output_option = parser.add_option("output", "Output to file", true, "file", 'o');
+    // Code Analsis
+    Option *search_path = parser.add_option("search-path",
+                                            "Code Analysis",
+                                            "Add an import search path",
+                                            true,
+                                            "path",
+                                            's');
 
-    Option *re_emit_option = parser.add_option("re-emit", "Parse code, and re-emit it based on the internal AST");
-    Option *emit_llvm_option = parser.add_option("emit-llvm", "Emit generated LLVM IR");
+    // Code Generation
     Option *override_triple = parser.add_option("target",
+                                                "Code Generation",
                                                 "Set the target-triple (defaults to '" + LLVM::default_triple + "')",
                                                 true,
                                                 "triple",
                                                 't');
-    Option *search_path = parser.add_option("search-path", "Add an import search path", true, "path", 's');
-    Option *version = parser.add_option("version", "Display the compiler version");
-    Option *list_targets = parser.add_option("list-targets", "List all available targets");
+
+    // Miscellaneous
+    Option *list_targets = parser.add_option("list-targets", "Miscellaneous", "List all available targets");
+    Option *test_option = parser.add_option("test", "Miscellaneous", "Run internal tarik tests");
+    Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
+
+    // Output
+    Option *emit_llvm_option = parser.add_option("emit-llvm", "Output", "Emit generated LLVM IR");
+    Option *output_option = parser.add_option("output", "Output", "Output to file", true, "file", 'o');
+    Option *re_emit_option = parser.add_option("re-emit",
+                                               "Output",
+                                               "Parse code, and re-emit it based on the internal AST");
 
     bool re_emit = false, emit_llvm = false;
     std::string output_filename, triple = LLVM::default_triple;
