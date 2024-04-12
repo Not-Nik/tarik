@@ -36,7 +36,7 @@ std::optional<Type> Parser::type() {
     int peek_distance = 0;
 
     auto peek = lexer.peek(peek_distance++);
-    if (peek.id != TYPE && peek.id != NAME)
+    if (peek.id != TYPE && peek.id != NAME && peek.id != DOUBLE_COLON)
         return {};
     Type t;
 
@@ -49,6 +49,10 @@ std::optional<Type> Parser::type() {
         t = Type(size);
     } else {
         std::vector path = {peek.raw};
+        if (peek.id == DOUBLE_COLON) {
+            path = {""};
+            peek_distance--;
+        }
 
         while (lexer.peek(peek_distance++).id == DOUBLE_COLON) {
             Token part = lexer.peek(peek_distance++);
@@ -195,7 +199,7 @@ Expression *Parser::parse_expression(int precedence) {
         return reinterpret_cast<Expression *>(-1);
     if (!bucket->iassert(prefix_parslets.contains(token.id),
                          token.origin,
-                         "Expected expression, found '{}'",
+                         "expected expression, found '{}'",
                          token.raw))
         return new EmptyExpression(token.origin);
     lexer.consume();
@@ -351,7 +355,7 @@ Statement *Parser::parse_statement() {
                 break;
         }
         return res;
-    } else if (Token peek = lexer.peek(1); peek.id == NAME || peek.id == ASTERISK) {
+    } else if (Token peek = lexer.peek(1); peek.id == NAME || peek.id == ASTERISK || peek.id == DOUBLE_COLON) {
         if (std::optional<Type> ty = type(); ty.has_value()) {
             Type t = ty.value();
 

@@ -26,7 +26,11 @@ std::string Type::base() const {
         res = to_string(std::get<TypeSize>(type));
     } else {
         auto path = std::get<std::vector<std::string>>(type);
-        res = std::accumulate(path.begin(), path.end(), std::string("::"));
+        for (auto part : path) {
+            res.reserve(path.size() + part.size() + 2);
+            res += "::";
+            res += part;
+        }
     }
     return res;
 }

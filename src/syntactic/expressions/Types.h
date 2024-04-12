@@ -115,6 +115,10 @@ public:
         return std::get<std::vector<std::string>>(type);
     }
 
+    void set_user(std::vector<std::string> user) {
+        type = user;
+    }
+
     [[nodiscard]] bool is_primitive() const {
         return type.index() == 0;
     }

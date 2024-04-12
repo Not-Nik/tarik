@@ -28,8 +28,8 @@ class Analyser {
 
     Bucket *bucket;
 
-    [[nodiscard]] std::vector<std::string> get_local_path(const std::string &name) const;
-    [[nodiscard]] std::vector<std::string> get_local_path(const std::vector<std::string> &name) const;
+    [[nodiscard]] std::vector<std::string> get_global_path(const std::string &name) const;
+    [[nodiscard]] std::vector<std::string> get_global_path(const std::vector<std::string> &name) const;
     [[nodiscard]] std::string flatten_path(const std::string &name = "") const;
     [[nodiscard]] static std::string flatten_path(const std::vector<std::string> &path);
     [[nodiscard]] static std::string flatten_path(std::vector<std::string> path, const std::string &name);
@@ -61,6 +61,7 @@ protected:
     bool verify_struct(StructStatement *struct_);
     bool verify_import(ImportStatement *import_);
     bool verify_expression(Expression *expression, bool assigned_to = false, bool member_acc = false);
+    bool verify_type(Type *type);
 
     bool does_always_return(ScopeStatement *scope);
     bool is_var_declared(const std::string &name);

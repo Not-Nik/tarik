@@ -14,13 +14,13 @@
 #include "error/Error.h"
 #include "syntactic/expressions/Expression.h"
 
-std::vector<std::string> Analyser::get_local_path(const std::string &name) const {
+std::vector<std::string> Analyser::get_global_path(const std::string &name) const {
     auto local = path;
     local.push_back(name);
     return local;
 }
 
-std::vector<std::string> Analyser::get_local_path(const std::vector<std::string> &name) const {
+std::vector<std::string> Analyser::get_global_path(const std::vector<std::string> &name) const {
     auto local = path;
     local.insert(local.end(), name.begin(), name.end());
     return local;
@@ -130,7 +130,7 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
                                      "internal: premature function declaration: report this as a bug");
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
-            std::vector<std::string> name = get_local_path(func->name.raw);
+            std::vector<std::string> name = get_global_path(func->name.raw);
             declarations.emplace(name,
                                  new FuncDeclareStatement(statement->origin,
                                                           Token::name(flatten_path(name), func->name.origin),
@@ -203,7 +203,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
-    std::vector<std::string> func_path = get_local_path(func->name.raw);
+    std::vector<std::string> func_path = get_global_path(func->name.raw);
 
     for (auto [path, registered] : functions) {
         if (path != func_path)
@@ -290,10 +290,7 @@ bool Analyser::verify_continue(ContinueStatement *continue_) {
 }
 
 SemanticVariable *Analyser::verify_variable(VariableStatement *var) {
-    if (!var->type.is_primitive() && !bucket->iassert(is_struct_declared(var->type.get_user()),
-                                                      var->origin,
-                                                      "undefied type '{}'",
-                                                      flatten_path(var->type.get_user())))
+    if (!verify_type(&var->type))
         return nullptr;
 
     for (auto variable : variables) {
@@ -327,7 +324,7 @@ SemanticVariable *Analyser::verify_variable(VariableStatement *var) {
 
 bool Analyser::verify_struct(StructStatement *struct_) {
     std::vector<std::string> registered;
-    std::vector<std::string> struct_path = get_local_path(struct_->name.raw);
+    std::vector<std::string> struct_path = get_global_path(struct_->name.raw);
 
     for (auto [path, registered] : structures) {
         if (path != struct_path)
@@ -396,19 +393,19 @@ bool Analyser::verify_import(ImportStatement *import_) {
     path.push_back(import_->name);
 
     for (auto [local_path, struct_] : import_analyser.structures) {
-        auto global_path = get_local_path(local_path);
+        auto global_path = get_global_path(local_path);
         struct_->name.raw = flatten_path(global_path);
         structures.emplace(global_path, struct_);
     }
 
     for (auto [local_path, decl] : import_analyser.declarations) {
-        auto global_path = get_local_path(local_path);
+        auto global_path = get_global_path(local_path);
         decl->name.raw = flatten_path(global_path);
         declarations.emplace(global_path, decl);
     }
 
     for (auto [local_path, func] : import_analyser.functions) {
-        auto global_path = get_local_path(local_path);
+        auto global_path = get_global_path(local_path);
         func->name.raw = flatten_path(global_path);
         functions.emplace(global_path, func);
     }
@@ -643,6 +640,37 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
     return true;
 }
 
+bool Analyser::verify_type(Type *type) {
+    bool res = true;
+
+    if (!type->is_primitive()) {
+        auto path = type->get_user();
+        if (path.front().empty()) {
+            path.erase(path.begin());
+        } else {
+            // global_path here, means global path to local struct
+            // precisely, type->get_user() contains a local path
+            // and global_path contains a global_path, both to the
+            // same type. if type->get_user() interpreted locally
+            // points to a type it is converted to a global path
+            // and used, otherwise it is left as is and interpreted
+            // as a global path
+            auto global_path = get_global_path(path);
+            if (is_struct_declared(global_path)) {
+                path = global_path;
+            } else {
+                res = bucket->iassert(is_struct_declared(path),
+                                      type->origin,
+                                      "undefied type '{}'",
+                                      flatten_path(path));
+            }
+        }
+        type->set_user(path);
+    }
+
+    return res;
+}
+
 bool Analyser::does_always_return(ScopeStatement *scope) {
     for (auto &it : scope->block) {
         if (it->statement_type == RETURN_STMT || (
@@ -677,16 +705,7 @@ bool Analyser::is_func_declared(const std::vector<std::string> &name) {
 }
 
 bool Analyser::is_struct_declared(const std::vector<std::string> &name) {
-    auto global = name;
-    if (name.front().empty()) {
-        global.erase(global.begin());
-        return structures.contains(global);
-    }
-
-    auto local = path;
-    local.insert(local.end(), name.begin(), name.end());
-
-    return structures.contains(global) || structures.contains(local);
+    return structures.contains(name);
 }
 
 SemanticVariable *Analyser::get_variable(const std::string &name) {
