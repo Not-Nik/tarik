@@ -354,6 +354,10 @@ bool Analyser::verify_struct(StructStatement *struct_) {
                              "duplicate member '{}'",
                              member->name.raw))
             return false;
+
+        if (!verify_type(&member->type))
+            return false;
+
         registered.push_back(member->name.raw);
         ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
 
