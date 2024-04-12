@@ -213,6 +213,10 @@ bool Analyser::verify_function(FuncStatement *func) {
         return false;
     }
 
+    if (!verify_type(&func->return_type)) {
+        return false;
+    }
+
     if (!bucket->iassert(func->return_type == Type(VOID) || does_always_return(func),
                          func->origin,
                          "function with return type doesn't always return"))
