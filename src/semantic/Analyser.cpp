@@ -220,7 +220,11 @@ bool Analyser::verify_function(FuncStatement *func) {
     return_type = func->return_type;
     functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
-        verify_variable(arg)->state()->make_definitely_defined(arg->origin);
+        SemanticVariable *var = verify_variable(arg);
+        if (var)
+            var->state()->make_definitely_defined(arg->origin);
+        else
+            return false;
     }
 
     if (func->var_arg)
