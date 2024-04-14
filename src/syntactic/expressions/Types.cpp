@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -27,9 +27,11 @@ std::string Type::base() const {
     } else {
         auto path = std::get<std::vector<std::string>>(type);
         for (auto part : path) {
-            res.reserve(path.size() + part.size() + 2);
-            res += "::";
-            res += part;
+            if (!part.empty()) {
+                res.reserve(path.size() + part.size() + 2);
+                res += "::";
+                res += part;
+            }
         }
     }
     return res;

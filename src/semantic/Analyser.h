@@ -48,6 +48,11 @@ public:
     std::vector<Statement *> finish();
 
 protected:
+    struct VariableVerificationResult {
+        SemanticVariable *var;
+        bool res;
+    };
+
     bool verify_scope(ScopeStatement *scope, std::string name = "");
     bool verify_function(FuncStatement *func);
     bool verify_func_decl(FuncDeclareStatement *decl);
@@ -57,7 +62,7 @@ protected:
     bool verify_while(WhileStatement *while_);
     bool verify_break(BreakStatement *break_);
     bool verify_continue(ContinueStatement *continue_);
-    SemanticVariable *verify_variable(VariableStatement *var);
+    VariableVerificationResult verify_variable(VariableStatement *var);
     bool verify_struct(StructStatement *struct_);
     bool verify_import(ImportStatement *import_);
     bool verify_expression(Expression *expression, bool assigned_to = false, bool member_acc = false);
