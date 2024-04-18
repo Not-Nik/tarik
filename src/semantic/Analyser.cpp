@@ -504,14 +504,16 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
         case COMP_EXPR:
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
-            if (!verify_expression(ae->left, expression->expression_type == ASSIGN_EXPR) || !
-                verify_expression(ae->right) || !bucket->iassert(ae->left->type.
-                                                                     is_compatible(ae->right->type),
-                                                                 ae->right->origin,
-                                                                 "can't assign to type '{}' from '{}'",
-                                                                 ae->left->type.str(),
-                                                                 ae->right->type.str()))
-                res = false;
+
+            res = verify_expression(ae->left, expression->expression_type == ASSIGN_EXPR) && res;
+            res = verify_expression(ae->right) && res;
+            if (res)
+                res = bucket->iassert(ae->left->type.is_compatible(ae->right->type),
+                                      ae->right->origin,
+                                      "can't assign to type '{}' from '{}'",
+                                      ae->left->type.str(),
+                                      ae->right->type.str());
+
             if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
                 ae->assign_type(Type(BOOL));
                 // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
@@ -688,9 +690,9 @@ bool Analyser::verify_type(Type *type) {
         }
 
         res = bucket->iassert(is_struct_declared(path),
-                                      type->origin,
-                                      "undefied type '{}'",
-                                      flatten_path(path));
+                              type->origin,
+                              "undefied type '{}'",
+                              flatten_path(path));
 
         type->set_user(path);
     }
