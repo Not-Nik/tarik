@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -76,7 +76,7 @@ Token Lexer::peek(int dist) {
 std::string post_process_string(std::string s) {
     for (size_t i = 0; i < s.size(); i++) {
         if (s[i] == '\\') {
-            s.erase(1);
+            s.erase(i);
             i++;
             switch (s[i]) {
                 case '?':
@@ -129,48 +129,9 @@ Token Lexer::consume() {
             }
             c = read_stream();
             for (; c != '\"'; c = read_stream()) {
-                if (c == '\\') {
-                    c = read_stream();
-                    switch (c) {
-                        case '\'':
-                            c = '\'';
-                            break;
-                        case '"':
-                            c = '"';
-                            break;
-                        case '?':
-                            c = '\?';
-                            break;
-                        case '\\':
-                            c = '\\';
-                            break;
-                        case 'a':
-                            c = '\a';
-                            break;
-                        case 'b':
-                            c = '\b';
-                            break;
-                        case 'f':
-                            c = '\f';
-                            break;
-                        case 'n':
-                            c = '\n';
-                            break;
-                        case 'r':
-                            c = '\r';
-                            break;
-                        case 't':
-                            c = '\t';
-                            break;
-                        case 'v':
-                            c = '\v';
-                            break;
-                        default:
-                            continue;
-                    }
-                }
                 tok.push_back(c);
             }
+            post_process_string(tok);
             string = true;
             break;
         }
