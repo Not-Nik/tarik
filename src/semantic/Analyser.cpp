@@ -14,6 +14,8 @@
 #include "error/Error.h"
 #include "syntactic/expressions/Expression.h"
 
+#define UPDATE_RES(expr) {bool temp = expr; res = res && temp;}
+
 std::vector<std::string> Analyser::get_global_path(const std::string &name) const {
     auto local = path;
     local.push_back(name);
@@ -125,9 +127,9 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     bool res = true;
 
     for (auto statement : statements) {
-        res = res && bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
-                                     statement->origin,
-                                     "internal: premature function declaration: report this as a bug");
+        UPDATE_RES(bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
+            statement->origin,
+            "internal: premature function declaration: report this as a bug"))
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
             std::vector<std::string> name = get_global_path(func->name.raw);
@@ -214,11 +216,11 @@ bool Analyser::verify_function(FuncStatement *func) {
         res = false;
     }
 
-    res = res && verify_type(&func->return_type);
+    UPDATE_RES(verify_type(&func->return_type))
 
-    res = res && bucket->iassert(func->return_type == Type(VOID) || does_always_return(func),
-                                 func->origin,
-                                 "function with return type doesn't always return");
+    UPDATE_RES(bucket->iassert(func->return_type == Type(VOID) || does_always_return(func),
+        func->origin,
+        "function with return type doesn't always return"))
     return_type = func->return_type;
     functions.emplace(func_path, func);
     for (auto arg : func->arguments) {
@@ -226,7 +228,7 @@ bool Analyser::verify_function(FuncStatement *func) {
 
         if (sem.var)
             sem.var->state()->make_definitely_defined(arg->origin);
-        res = res && sem.res;
+        UPDATE_RES(sem.res)
     }
 
     if (func->var_arg)
@@ -234,7 +236,8 @@ bool Analyser::verify_function(FuncStatement *func) {
 
     func->name.raw = flatten_path(func->name.raw);
 
-    return verify_scope(func, func->name.raw);
+    UPDATE_RES(verify_scope(func, func->name.raw))
+    return res;
 }
 
 bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
@@ -249,8 +252,13 @@ bool Analyser::verify_if(IfStatement *if_) {
                                                       new IntExpression(if_->condition->origin, "0"));
     }
 
-    return verify_expression(if_->condition) && verify_scope(if_) && (
-        !if_->else_statement || verify_scope(if_->else_statement));
+    bool res = true;
+    UPDATE_RES(verify_expression(if_->condition))
+    UPDATE_RES(verify_scope(if_))
+    if (if_->else_statement)
+        UPDATE_RES(verify_scope(if_->else_statement))
+
+    return res;
 }
 
 bool Analyser::verify_else(ElseStatement *else_) {
@@ -259,16 +267,20 @@ bool Analyser::verify_else(ElseStatement *else_) {
 }
 
 bool Analyser::verify_return(ReturnStatement *return_) {
-    if (return_->value)
-        return verify_expression(return_->value) && bucket->iassert(return_type.is_compatible(return_->value->type),
-                                                                    return_->value->origin,
-                                                                    "can't return value of type '{}' in function with return type '{}'",
-                                                                    return_->value->type.str(),
-                                                                    return_type.str());
-    else
-        return bucket->iassert(return_type == Type(VOID),
+    bool res = true;
+    if (return_->value) {
+        UPDATE_RES(verify_expression(return_->value))
+        if (res)
+            UPDATE_RES(bucket->iassert(return_type.is_compatible(return_->value->type),
+                return_->value->origin,
+                "can't return value of type '{}' in function with return type '{}'",
+                return_->value->type.str(),
+                return_type.str()))
+    } else
+        res = bucket->iassert(return_type == Type(VOID),
                                return_->origin,
                                "function with return type should return a value");
+    return res;
 }
 
 bool Analyser::verify_while(WhileStatement *while_) {
@@ -282,7 +294,9 @@ bool Analyser::verify_while(WhileStatement *while_) {
                                                          new IntExpression(while_->condition->origin, "0"));
     }
 
-    bool res = verify_expression(while_->condition) && verify_scope(while_);
+    bool res = true;
+    UPDATE_RES(verify_expression(while_->condition))
+    UPDATE_RES(verify_scope(while_))
     last_loop = old_last_loop;
     return res;
 }
@@ -326,7 +340,7 @@ Analyser::VariableVerificationResult Analyser::verify_variable(VariableStatement
             auto semantic_member = verify_variable(temp);
             if (semantic_member.var)
                 member_states.push_back(semantic_member.var);
-            res = res && semantic_member.res;
+            UPDATE_RES(semantic_member.res)
         }
 
         sem = new CompoundVariable(var, member_states);
@@ -356,13 +370,13 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     body.push_back(instance);
 
     for (auto member : struct_->members) {
-        res = res && bucket->iassert(
+        UPDATE_RES(bucket->iassert(
             std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
             member->name.origin,
             "duplicate member '{}'",
-            member->name.raw);
+            member->name.raw))
 
-        res = res && verify_type(&member->type);
+        UPDATE_RES(verify_type(&member->type))
 
         registered.push_back(member->name.raw);
         ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
@@ -389,7 +403,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     structures.emplace(struct_path, struct_);
 
     // fixme: this throws additional errors if member types are invalid
-    res = res && verify_function(ctor);
+    UPDATE_RES(verify_function(ctor))
 
     struct_path.push_back("$constructor");
 
@@ -505,8 +519,8 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
         case ASSIGN_EXPR: {
             auto ae = (BinaryOperatorExpression *) expression;
 
-            res = verify_expression(ae->left, expression->expression_type == ASSIGN_EXPR) && res;
-            res = verify_expression(ae->right) && res;
+            UPDATE_RES(verify_expression(ae->left, expression->expression_type == ASSIGN_EXPR))
+            UPDATE_RES(verify_expression(ae->right))
             if (res)
                 res = bucket->iassert(ae->left->type.is_compatible(ae->right->type),
                                       ae->right->origin,
@@ -527,7 +541,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             auto left = mae->left;
             auto right = mae->right;
 
-            res = res && verify_expression(left, assigned_to, true);
+            UPDATE_RES(verify_expression(left, assigned_to, true))
 
             if (!bucket->iassert(!left->type.is_primitive(),
                                  left->origin,
@@ -558,23 +572,23 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
 
             if (left->flattens_to_member_access()) {
                 std::string name = left->flatten_to_member_access() + "." + member_name;
-                res = res && verify_expression(new NameExpression(mae->origin, name), assigned_to);
+                UPDATE_RES(verify_expression(new NameExpression(mae->origin, name), assigned_to))
             }
 
             break;
         }
         case PREFIX_EXPR: {
             auto pe = (PrefixOperatorExpression *) expression;
-            res = res && verify_expression(pe->operand);
+            UPDATE_RES(verify_expression(pe->operand))
 
             Type pe_type = pe->operand->type;
 
             switch (pe->prefix_type) {
                 case NEG:
                 case LOG_NOT:
-                    res = res && bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
-                                                 pe->operand->origin,
-                                                 "invalid operand to unary expression");
+                    UPDATE_RES(bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
+                        pe->operand->origin,
+                        "invalid operand to unary expression"))
                     break;
                 case REF: {
                     pe_type.pointer_level++;
@@ -591,10 +605,10 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                     break;
                 }
                 case DEREF:
-                    res = res && bucket->iassert(pe_type.pointer_level > 0,
-                                                 pe->operand->origin,
-                                                 "cannot dereference non-pointer type '{}'",
-                                                 pe->operand->type.str());
+                    UPDATE_RES(bucket->iassert(pe_type.pointer_level > 0,
+                        pe->operand->origin,
+                        "cannot dereference non-pointer type '{}'",
+                        pe->operand->type.str()))
                     pe_type.pointer_level--;
                     break;
                 case GLOBAL:
@@ -604,7 +618,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             }
 
             pe->assign_type(pe_type);
-            return res;
+            break;
         }
         case NAME_EXPR: {
             auto ne = (NameExpression *) expression;
