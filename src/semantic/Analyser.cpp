@@ -65,6 +65,64 @@ Analyser::Analyser(Bucket *bucket)
     declarations.emplace(std::vector<std::string>(), decl);
 }
 
+
+std::vector<Statement *> Analyser::finish() {
+    std::vector<Statement *> res;
+    res.reserve(structures.size() + declarations.size() + functions.size());
+    for (auto [_, st] : structures)
+        res.push_back(st);
+    for (auto [_, dc] : declarations)
+        res.push_back(dc);
+    for (auto [_, fn] : functions)
+        res.push_back(fn);
+    return res;
+}
+
+bool Analyser::analyse(const std::vector<Statement *> &statements) {
+    bool res;
+
+    UPDATE_RES(analyse_import(statements))
+    UPDATE_RES(verify_statements(statements))
+
+    return res;
+}
+
+bool Analyser::analyse_import(const std::vector<Statement *> &statements) {
+    bool res = true;
+
+    for (auto statement : statements) {
+        UPDATE_RES(bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
+            statement->origin,
+            "internal: premature function declaration: report this as a bug"))
+
+        if (statement->statement_type == FUNC_STMT) {
+            auto func = reinterpret_cast<FuncStatement *>(statement);
+            std::vector<std::string> name;
+            if (func->member_of.has_value()) {
+                name = get_global_path(func->member_of.value().get_path());
+                name.push_back(func->name.raw);
+            } else {
+                name = get_global_path(func->name.raw);
+            }
+            declarations.emplace(name,
+                                 new FuncDeclareStatement(statement->origin,
+                                                          Token::name(flatten_path(name), func->name.origin),
+                                                          func->return_type,
+                                                          func->arguments,
+                                                          func->var_arg,
+                                                          func->member_of));
+        } else if (statement->statement_type == IMPORT_STMT) {
+            auto *import_ = (ImportStatement *) statement;
+
+            path.push_back(import_->name);
+            UPDATE_RES(analyse_import(import_->block))
+            path.pop_back();
+        }
+    }
+
+    return res;
+}
+
 bool Analyser::verify_statement(Statement *statement) {
     bool allowed = true;
 
@@ -127,45 +185,10 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     bool res = true;
 
     for (auto statement : statements) {
-        UPDATE_RES(bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
-            statement->origin,
-            "internal: premature function declaration: report this as a bug"))
-        if (statement->statement_type == FUNC_STMT) {
-            auto func = reinterpret_cast<FuncStatement *>(statement);
-            std::vector<std::string> name;
-            if (func->member_of.has_value()) {
-                name = get_global_path(func->member_of.value().get_path());
-                name.push_back(func->name.raw);
-            } else {
-                name = get_global_path(func->name.raw);
-            }
-            declarations.emplace(name,
-                                 new FuncDeclareStatement(statement->origin,
-                                                          Token::name(flatten_path(name), func->name.origin),
-                                                          func->return_type,
-                                                          func->arguments,
-                                                          func->var_arg,
-                                                          func->member_of));
-        }
-    }
-
-    for (auto statement : statements) {
         // Combining these two lines will cause clang to not call `verify_statement` when res is false, effectively limiting us to a single error
         bool t = verify_statement(statement);
         res = res and t;
     }
-    return res;
-}
-
-std::vector<Statement *> Analyser::finish() {
-    std::vector<Statement *> res;
-    res.reserve(structures.size() + declarations.size() + functions.size());
-    for (auto [_, st] : structures)
-        res.push_back(st);
-    for (auto [_, dc] : declarations)
-        res.push_back(dc);
-    for (auto [_, fn] : functions)
-        res.push_back(fn);
     return res;
 }
 

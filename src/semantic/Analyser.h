@@ -42,17 +42,20 @@ class Analyser {
 public:
     Analyser(Bucket *bucket);
 
-    bool verify_statement(Statement *statement);
-    bool verify_statements(const std::vector<Statement *> &statements);
-
     std::vector<Statement *> finish();
 
+    bool analyse(const std::vector<Statement *> &statements);
+
 protected:
+    bool analyse_import(const std::vector<Statement *> &statements);
+
     struct VariableVerificationResult {
         SemanticVariable *var;
         bool res;
     };
 
+    bool verify_statement(Statement *statement);
+    bool verify_statements(const std::vector<Statement *> &statements);
     bool verify_scope(ScopeStatement *scope, std::string name = "");
     bool verify_function(FuncStatement *func);
     bool verify_func_decl(FuncDeclareStatement *decl);

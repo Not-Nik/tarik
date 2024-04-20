@@ -193,7 +193,7 @@ int main(int argc, const char *argv[]) {
     } else {
         if (error_bucket.get_error_count() == 0) {
             Analyser analyser(&error_bucket);
-            analyser.verify_statements(statements);
+            analyser.analyse(statements);
             statements = analyser.finish();
         }
 
