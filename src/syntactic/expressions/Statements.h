@@ -151,9 +151,10 @@ public:
     Type return_type;
     std::vector<VariableStatement *> arguments;
     bool var_arg;
+    std::optional<Type> member_of;
 
-    FuncStCommon(Token n, Type ret, std::vector<VariableStatement *> args, bool va)
-        : name(std::move(n)), return_type(ret), arguments(std::move(args)), var_arg(va) {}
+    FuncStCommon(Token n, Type ret, std::vector<VariableStatement *> args, bool va, std::optional<Type> mo)
+        : name(std::move(n)), return_type(ret), arguments(std::move(args)), var_arg(va), member_of(mo) {}
 
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + name.raw + "(";
@@ -181,8 +182,9 @@ public:
                          Token n,
                          Type ret,
                          std::vector<VariableStatement *> args,
-                         bool var_arg)
-        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg) {}
+                         bool var_arg,
+                         std::optional<Type> member_of)
+        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg, member_of) {}
 
     [[nodiscard]] std::string print() const override {
         return head();
@@ -196,8 +198,9 @@ public:
                   Type ret,
                   std::vector<VariableStatement *> args,
                   std::vector<Statement *> b,
-                  bool var_arg)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args), var_arg) {}
+                  bool var_arg,
+                  std::optional<Type> member_of)
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args), var_arg, member_of) {}
 
     ~FuncStatement() override {
         for (auto *arg: arguments) {

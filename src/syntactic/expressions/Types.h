@@ -115,6 +115,14 @@ public:
         return std::get<std::vector<std::string>>(type);
     }
 
+    [[nodiscard]] std::vector<std::string> get_path() const {
+        if (is_primitive()) {
+            return {to_string(get_primitive())};
+        } else {
+            return get_user();
+        }
+    }
+
     void set_user(std::vector<std::string> user) {
         type = user;
     }

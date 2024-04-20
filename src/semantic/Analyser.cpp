@@ -58,8 +58,8 @@ Analyser::Analyser(Bucket *bucket)
     std::vector<Statement *> body;
     body.push_back(new ReturnStatement(lr, new CallExpression(lr, new NameExpression(lr, "::main"), {})));
 
-    auto *func = new FuncStatement(lr, Token::name("main"), Type(U32), {}, body, false);
-    auto *decl = new FuncDeclareStatement(lr, Token::name("main"), Type(I32), {}, false);
+    auto *func = new FuncStatement(lr, Token::name("main"), Type(U32), {}, body, false, {});
+    auto *decl = new FuncDeclareStatement(lr, Token::name("main"), Type(I32), {}, false, {});
 
     functions.emplace(std::vector<std::string>(), func);
     declarations.emplace(std::vector<std::string>(), decl);
@@ -132,13 +132,20 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
             "internal: premature function declaration: report this as a bug"))
         if (statement->statement_type == FUNC_STMT) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
-            std::vector<std::string> name = get_global_path(func->name.raw);
+            std::vector<std::string> name;
+            if (func->member_of.has_value()) {
+                name = func->member_of.value().get_path();
+                name.push_back(func->name.raw);
+            } else {
+                name = get_global_path(func->name.raw);
+            }
             declarations.emplace(name,
                                  new FuncDeclareStatement(statement->origin,
                                                           Token::name(flatten_path(name), func->name.origin),
                                                           func->return_type,
                                                           func->arguments,
-                                                          func->var_arg));
+                                                          func->var_arg,
+                                                          func->member_of));
         }
     }
 
@@ -217,6 +224,8 @@ bool Analyser::verify_function(FuncStatement *func) {
     }
 
     UPDATE_RES(verify_type(&func->return_type))
+    if (func->member_of.has_value())
+        UPDATE_RES(verify_type(&func->member_of.value()))
 
     UPDATE_RES(bucket->iassert(func->return_type == Type(VOID) || does_always_return(func),
         func->origin,
@@ -234,7 +243,11 @@ bool Analyser::verify_function(FuncStatement *func) {
     if (func->var_arg)
         bucket->warning(func->origin, "function uses var args, but they cannot be accessed");
 
-    func->name.raw = flatten_path(func->name.raw);
+    if (func->member_of.has_value()) {
+        func->name.raw = flatten_path(func->member_of.value().get_path(), func->name.raw);
+    } else {
+        func->name.raw = flatten_path(func->name.raw);
+    }
 
     UPDATE_RES(verify_scope(func, func->name.raw))
     return res;
@@ -272,14 +285,14 @@ bool Analyser::verify_return(ReturnStatement *return_) {
         UPDATE_RES(verify_expression(return_->value))
         if (res)
             UPDATE_RES(bucket->iassert(return_type.is_compatible(return_->value->type),
-                return_->value->origin,
-                "can't return value of type '{}' in function with return type '{}'",
-                return_->value->type.str(),
-                return_type.str()))
+            return_->value->origin,
+            "can't return value of type '{}' in function with return type '{}'",
+            return_->value->type.str(),
+            return_type.str()))
     } else
         res = bucket->iassert(return_type == Type(VOID),
-                               return_->origin,
-                               "function with return type should return a value");
+                              return_->origin,
+                              "function with return type should return a value");
     return res;
 }
 
@@ -398,7 +411,8 @@ bool Analyser::verify_struct(StructStatement *struct_) {
                                    struct_->get_type(path),
                                    ctor_args,
                                    body,
-                                   false);
+                                   false,
+                                   {}); // fixme: this seems off
 
     structures.emplace(struct_path, struct_);
 
@@ -412,7 +426,8 @@ bool Analyser::verify_struct(StructStatement *struct_) {
                                                   ctor->name,
                                                   ctor->return_type,
                                                   ctor->arguments,
-                                                  ctor->var_arg));
+                                                  ctor->var_arg,
+                                                  ctor->member_of));
 
     struct_->name.raw = flatten_path(struct_->name.raw);
 
@@ -465,18 +480,28 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                     func_path.push_back("$constructor");
                     // TODO: check if there exists a function with the same name
                 }
+            } else if (ce->callee->expression_type == MEM_ACC_EXPR) {
+                auto *mem = (BinaryOperatorExpression *) ce->callee;
+                verify_expression(mem->left);
 
-                if (ce->callee->expression_type == NAME_EXPR) {
-                    ((NameExpression *) ce->callee)->name = flatten_path(func_path);
-                } else {
-                    auto *name = new NameExpression(ce->callee->origin, flatten_path(func_path));
-                    delete ce->callee;
-                    ce->callee = name;
+                if (mem->right->expression_type != NAME_EXPR) {
+                    bucket->error(mem->right->origin, "expected function name");
+                    return false;
                 }
+
+                func_path = mem->left->type.get_path();
+                func_path.push_back(((NameExpression *) mem->right)->name);
+
+                ce->arguments.insert(ce->arguments.begin(), mem->left);
+                mem->left = nullptr;
             } else {
                 bucket->error(ce->callee->origin, "calling of expressions is unimplemented");
                 return false;
             }
+
+            auto *name = new NameExpression(ce->callee->origin, flatten_path(func_path));
+            delete ce->callee;
+            ce->callee = name;
 
             if (!bucket->iassert(is_func_declared(func_path),
                                  ce->callee->origin,
@@ -486,6 +511,15 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             FuncStCommon *func = get_func_decl(func_path);
 
             ce->assign_type(func->return_type);
+
+            size_t i = 0;
+            if (func->member_of.has_value()) {
+                if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this")
+                    i = 1;
+                else
+                    // function is static, but we always put in the this argument
+                        ce->arguments.erase(ce->arguments.begin());
+            }
 
             if (!bucket->iassert(ce->arguments.size() >= func->arguments.size(),
                                  ce->origin,
@@ -500,7 +534,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                 ce->arguments.size()))
                 res = false;
 
-            for (size_t i = 0; i < func->arguments.size(); i++) {
+            for (; i < std::min(func->arguments.size(), ce->arguments.size()); i++) {
                 VariableStatement *arg_var = func->arguments[i];
                 Expression *arg = ce->arguments[i];
                 if (!verify_expression(arg) || !bucket->iassert(arg_var->type.is_compatible(arg->type),
@@ -589,7 +623,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                     UPDATE_RES(bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
                         pe->operand->origin,
                         "invalid operand to unary expression"))
-                    break;
+                break;
                 case REF: {
                     pe_type.pointer_level++;
                     ExprType etype = pe->operand->expression_type;
@@ -738,7 +772,7 @@ bool Analyser::is_func_declared(const std::vector<std::string> &name) {
     auto global = name;
     if (name.front().empty()) {
         global.erase(global.begin());
-        return functions.contains(global);
+        return declarations.contains(global);
     }
 
     auto local = path;

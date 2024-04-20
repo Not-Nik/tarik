@@ -227,7 +227,26 @@ Statement *Parser::parse_statement() {
         return parse_statement();
     } else if (token.id == FUNC) {
         lexer.consume();
-        Token name = expect(NAME);
+
+        std::optional<Type> member_of = type();
+
+        Token name = Token::name("$$not_assigned");
+        if (member_of.has_value()) {
+            if (lexer.peek().id == PERIOD) {
+                lexer.consume();
+                name = expect(NAME);
+            } else {
+                // We read a type, but it's probably a function name instead
+                if (bucket->iassert(!member_of.value().is_primitive() && member_of.value().get_user().size() == 1,
+                                    member_of.value().origin,
+                                    "Expected function name")) {
+                    name = Token::name(member_of.value().get_user()[0], member_of.value().origin);
+                    member_of = {};
+                }
+            }
+        } else {
+            name = expect(NAME);
+        }
 
         std::vector<VariableStatement *> args;
         bool var_arg = false;
@@ -236,6 +255,14 @@ Statement *Parser::parse_statement() {
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE)
                 lexer.consume();
         } else {
+            if (member_of.has_value() && lexer.peek().raw == "this") {
+                Token this_tok = lexer.consume();
+                args.push_back(new VariableStatement(this_tok.origin, member_of.value(), this_tok));
+
+                if (lexer.peek().id != PAREN_CLOSE)
+                    expect(COMMA);
+            }
+
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE) {
                 if (lexer.peek().id == TRIPLE_PERIOD) {
                     var_arg = true;
@@ -265,7 +292,7 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
 
-        return new FuncStatement(token.origin, name, t, args, body, var_arg);
+        return new FuncStatement(token.origin, name, t, args, body, var_arg, member_of);
     } else if (token.id == RETURN) {
         lexer.consume();
         Expression *val = nullptr;
