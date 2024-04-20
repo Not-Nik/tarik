@@ -54,15 +54,18 @@ int main(int argc, const char *argv[]) {
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
 
     // Output
+    Option *emit_aast_option = parser.add_option("emit-aast",
+                                                 "Output",
+                                                 "Parse code, analyse, and re-emit it based on the internal AST");
     Option *emit_assembly = parser.add_option("emit-assembly", "Output", "Emit Assembly", false, "", 's');
+    Option *emit_ast_option = parser.add_option("emit-ast",
+                                                "Output",
+                                                "Parse code, and re-emit it based on the internal AST");
     Option *emit_llvm_option = parser.add_option("emit-llvm", "Output", "Emit generated LLVM IR");
     Option *output_option = parser.add_option("output", "Output", "Output to file", true, "file", 'o');
-    Option *re_emit_option = parser.add_option("re-emit",
-                                               "Output",
-                                               "Parse code, and re-emit it based on the internal AST");
 
     LLVM::Config config;
-    bool re_emit = false, emit_llvm = false;
+    bool emit_aast = false, emit_ast = false, emit_llvm = false;
     std::string output_filename;
     std::vector<fs::path> search_paths;
 
@@ -116,18 +119,20 @@ int main(int argc, const char *argv[]) {
             std::cout << version_id << " tarik compiler version " << version_string << "\n";
             std::cout << "Default target: " << LLVM::default_triple << "\n";
             return 0;
+        } else if (option == emit_aast_option) {
+            emit_aast = true;
         } else if (option == emit_assembly) {
             config.output = LLVM::Config::Output::Assembly;
+        } else if (option == emit_ast_option) {
+            emit_ast = true;
         } else if (option == emit_llvm_option) {
             emit_llvm = true;
         } else if (option == output_option) {
             output_filename = option.argument;
-        } else if (option == re_emit_option) {
-            re_emit = true;
         }
     }
 
-    if (re_emit && emit_llvm) {
+    if (emit_ast && emit_llvm) {
         std::cerr << "error: Options 're-emit' and 'emit-llvm' are mutually-exclusive\n";
         return 1;
     }
@@ -153,7 +158,7 @@ int main(int argc, const char *argv[]) {
     fs::path output_path = input_path;
     if (output_filename.empty()) {
         std::string new_extension;
-        if (re_emit) {
+        if (emit_ast) {
             new_extension = ".re.tk";
         } else if (emit_llvm) {
             new_extension = ".ll";
@@ -179,28 +184,33 @@ int main(int argc, const char *argv[]) {
     } while (statements.back());
     statements.pop_back();
 
-    if (error_bucket.get_error_count() == 0) {
-        Analyser analyser(&error_bucket);
-        analyser.verify_statements(statements);
-        if (!re_emit)
-            statements = analyser.finish();
-    }
-
-    if (error_bucket.get_error_count() == 0 || re_emit) {
-        std::ofstream out(output_path);
-        if (re_emit && !emit_llvm) {
-            for (auto s : statements) {
-                out << s->print() << "\n\n";
-            }
-            out.put('\n');
+    std::ofstream out(output_path);
+    if (emit_ast) {
+        for (auto s : statements) {
+            out << s->print() << "\n\n";
         }
-        if (!re_emit) {
-            LLVM generator(input);
-            generator.generate_statements(statements);
-            if (emit_llvm)
-                generator.dump_ir(output_path);
-            else
-                return generator.write_file(output_path, config);
+        out.put('\n');
+    } else {
+        if (error_bucket.get_error_count() == 0) {
+            Analyser analyser(&error_bucket);
+            analyser.verify_statements(statements);
+            statements = analyser.finish();
+        }
+
+        if (error_bucket.get_error_count() == 0) {
+            if (emit_aast) {
+                for (auto s : statements) {
+                    out << s->print() << "\n\n";
+                }
+                out.put('\n');
+            } else {
+                LLVM generator(input);
+                generator.generate_statements(statements);
+                if (emit_llvm)
+                    generator.dump_ir(output_path);
+                else
+                    return generator.write_file(output_path, config);
+            }
         }
     }
 
