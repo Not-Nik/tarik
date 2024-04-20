@@ -510,8 +510,6 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             auto be = (BoolExpression *) expression;
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
         }
-        case NULL_EXPR:
-            return llvm::ConstantPointerNull::get(llvm::PointerType::get(context, 0));
     }
     return nullptr;
 }

@@ -74,7 +74,6 @@ enum ExprType {
     BOOL_EXPR,
     REAL_EXPR,
     STR_EXPR,
-    NULL_EXPR,
     PATH_EXPR,
     EMPTY_EXPR,
 };

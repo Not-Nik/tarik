@@ -26,12 +26,6 @@ public:
     virtual ~InfixParselet() = default;
 };
 
-class NullParselet : public PrefixParselet {
-    Expression *parse(Parser *, const Token &token) override {
-        return new NullExpression(token.origin);
-    }
-};
-
 template <class SimpleExpression>
 class SimpleParselet : public PrefixParselet {
     Expression *parse(Parser *, const Token &token) override {

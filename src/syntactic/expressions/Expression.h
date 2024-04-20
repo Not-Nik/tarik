@@ -83,16 +83,6 @@ using BoolExpression = PrimitiveExpression<bool, BOOL_EXPR>;
 using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
 using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
 
-class NullExpression : public Expression {
-public:
-    explicit NullExpression(LexerRange lp)
-        : Expression(NULL_EXPR, lp) {}
-
-    [[nodiscard]] std::string print() const override {
-        return "null";
-    }
-};
-
 enum PrefixType {
     NEG,
     REF,

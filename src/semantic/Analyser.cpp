@@ -706,9 +706,6 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
         case BOOL_EXPR:
             expression->assign_type(Type(BOOL));
             break;
-        case NULL_EXPR:
-            expression->assign_type(Type(VOID, 1));
-            break;
         default:
             bucket->error(expression->origin, "internal: unexpected, unhandled type of expression");
             res = false;
