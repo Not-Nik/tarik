@@ -134,7 +134,7 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
             auto func = reinterpret_cast<FuncStatement *>(statement);
             std::vector<std::string> name;
             if (func->member_of.has_value()) {
-                name = func->member_of.value().get_path();
+                name = get_global_path(func->member_of.value().get_path());
                 name.push_back(func->name.raw);
             } else {
                 name = get_global_path(func->name.raw);
@@ -212,7 +212,13 @@ bool Analyser::verify_function(FuncStatement *func) {
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
-    std::vector<std::string> func_path = get_global_path(func->name.raw);
+    std::vector<std::string> func_path;
+    if (func->member_of.has_value()) {
+        func_path = get_global_path(func->member_of.value().get_path());
+        func_path.push_back(func->name.raw);
+    } else {
+        func_path = get_global_path(func->name.raw);
+    }
     bool res = true;
 
     for (auto [path, registered] : functions) {
@@ -243,11 +249,7 @@ bool Analyser::verify_function(FuncStatement *func) {
     if (func->var_arg)
         bucket->warning(func->origin, "function uses var args, but they cannot be accessed");
 
-    if (func->member_of.has_value()) {
-        func->name.raw = flatten_path(func->member_of.value().get_path(), func->name.raw);
-    } else {
-        func->name.raw = flatten_path(func->name.raw);
-    }
+    func->name.raw = flatten_path(func_path);
 
     UPDATE_RES(verify_scope(func, func->name.raw))
     return res;
@@ -435,29 +437,8 @@ bool Analyser::verify_struct(StructStatement *struct_) {
 }
 
 bool Analyser::verify_import(ImportStatement *import_) {
-    Analyser import_analyser(bucket, __no_auto_main {});
-    const bool res = import_analyser.verify_statements(import_->block);
-
     path.push_back(import_->name);
-
-    for (auto [local_path, struct_] : import_analyser.structures) {
-        auto global_path = get_global_path(local_path);
-        struct_->name.raw = flatten_path(global_path);
-        structures.emplace(global_path, struct_);
-    }
-
-    for (auto [local_path, decl] : import_analyser.declarations) {
-        auto global_path = get_global_path(local_path);
-        decl->name.raw = flatten_path(global_path);
-        declarations.emplace(global_path, decl);
-    }
-
-    for (auto [local_path, func] : import_analyser.functions) {
-        auto global_path = get_global_path(local_path);
-        func->name.raw = flatten_path(global_path);
-        functions.emplace(global_path, func);
-    }
-
+    bool res = verify_statements(import_->block);
     path.pop_back();
 
     return res;
@@ -518,7 +499,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                     i = 1;
                 else
                     // function is static, but we always put in the this argument
-                        ce->arguments.erase(ce->arguments.begin());
+                    ce->arguments.erase(ce->arguments.begin());
             }
 
             if (!bucket->iassert(ce->arguments.size() >= func->arguments.size(),
