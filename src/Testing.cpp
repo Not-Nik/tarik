@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2023
+// tarik (c) Nikolas Wipper 2021-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -7,7 +7,7 @@
 #include "Testing.h"
 
 #include "syntactic/Parser.h"
-#include "syntactic/expressions/Types.h"
+#include "syntactic/Types.h"
 #include "syntactic/expressions/Expression.h"
 
 #include <sstream>
@@ -25,7 +25,7 @@ void operator delete(void *p) noexcept {
 
 // this is disgusting
 namespace std {
-std::string to_string(const FuncStatement *f) {
+std::string to_string(const ast::FuncStatement *f) {
     return f->head();
 }
 
@@ -71,29 +71,29 @@ bool test() {
     MID_TEST(expression parsing)
 
         ss c; {
-            Expression *e = Parser(&(c = ss("3 + 4 * 5")), &error_bucket).parse_expression();
+            ast::Expression *e = Parser(&(c = ss("3 + 4 * 5")), &error_bucket).parse_expression();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(e->print(), "(3+(4*5))")
             delete e;
         } {
-            Expression *e = Parser(&(c = ss("-3 + -4 * 5")), &error_bucket).parse_expression();
+            ast::Expression *e = Parser(&(c = ss("-3 + -4 * 5")), &error_bucket).parse_expression();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(e->print(), "(-3+(-4*5))")
             delete e;
         } {
             Parser p(&(c = ss("-name + 4 * -5")), &error_bucket);
             ASSERT_NO_ERROR(error_bucket)
-            Expression *e = p.parse_expression();
+            ast::Expression *e = p.parse_expression();
             ASSERT_STR_EQ(e->print(), "(-name+(4*-5))")
             delete e;
         } {
-            Expression *e = Parser(&(c = ss("(3 + 4) * 5")), &error_bucket).parse_expression();
+            ast::Expression *e = Parser(&(c = ss("(3 + 4) * 5")), &error_bucket).parse_expression();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(e->print(), "((3+4)*5)")
             delete e;
         } {
             Parser tmp = Parser(&(c = ss("3 + 4 * 5; 6 + 7 * 8")), &error_bucket);
-            Expression *e = tmp.parse_expression();
+            ast::Expression *e = tmp.parse_expression();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(e->print(), "(3+(4*5))")
             delete e;
@@ -104,7 +104,7 @@ bool test() {
             delete e;
         } {
             Parser p = Parser(&(c = ss("func(1, 2, 3, 4)")), &error_bucket);
-            Expression *e = p.parse_expression();
+            ast::Expression *e = p.parse_expression();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(e->print(), "func(1, 2, 3, 4)")
             delete e;
@@ -115,18 +115,18 @@ bool test() {
         ss c;
 
         // If/while (they're syntactically the same)
-        IfStatement *ifStatement = (IfStatement *) Parser(&(c = ss("if 4 + 4 {}")), &error_bucket).parse_statement();
+        ast::IfStatement *ifStatement = (ast::IfStatement *) Parser(&(c = ss("if 4 + 4 {}")), &error_bucket).parse_statement();
             ASSERT_NO_ERROR(error_bucket)
-        ASSERT_EQ(ifStatement->statement_type, IF_STMT)
+        ASSERT_EQ(ifStatement->statement_type, ast::IF_STMT)
         ASSERT_STR_EQ(ifStatement->condition->print(), "(4+4)")
         delete ifStatement;
 
         // Functions
         {
             Parser p(&(c = ss("fn test_func(i32 arg1, f64 arg2) i8 {} test_func(1, 2.3);")), &error_bucket);
-            auto func = (FuncStatement *) p.parse_statement();
+            auto func = (ast::FuncStatement *) p.parse_statement();
             ASSERT_NO_ERROR(error_bucket)
-            ASSERT_EQ(func->statement_type, FUNC_STMT)
+            ASSERT_EQ(func->statement_type, ast::FUNC_STMT)
             ASSERT_STR_EQ(func->name.raw, "test_func")
             ASSERT_TRUE(func->return_type == Type(I8))
             ASSERT_STR_EQ(func->arguments[0]->name.raw, "arg1")
@@ -135,7 +135,7 @@ bool test() {
             ASSERT_EQ(func->arguments[1]->type, Type(F64))
             ASSERT_EQ(func->return_type, Type(I8))
 
-            auto call = (CallExpression *) p.parse_statement();
+            auto call = (ast::CallExpression *) p.parse_statement();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(call->callee->print(), "test_func")
 
@@ -145,24 +145,24 @@ bool test() {
 
         // Variables and assignments
         Parser p(&(c = ss("u8 test_var = 4; test_var = 5; u32 *test_ptr;")), &error_bucket);
-        auto *var = (VariableStatement *) p.parse_statement();
+        auto *var = (ast::VariableStatement *) p.parse_statement();
         ASSERT_NO_ERROR(error_bucket)
-        ASSERT_EQ(var->statement_type, VARIABLE_STMT)
+        ASSERT_EQ(var->statement_type, ast::VARIABLE_STMT)
         ASSERT_STR_EQ(var->name.raw, "test_var")
         ASSERT_TRUE(var->type.is_primitive())
         ASSERT_EQ(var->type.pointer_level, 0)
         ASSERT_EQ(var->type, Type(U8))
 
-        auto *first = (Expression *) p.parse_statement(), *second = (Expression *) p.parse_statement();
+        auto *first = (ast::Expression *) p.parse_statement(), *second = (ast::Expression *) p.parse_statement();
         ASSERT_NO_ERROR(error_bucket)
-        ASSERT_EQ(first->expression_type, ASSIGN_EXPR)
-        ASSERT_EQ(second->expression_type, ASSIGN_EXPR)
+        ASSERT_EQ(first->expression_type, ast::ASSIGN_EXPR)
+        ASSERT_EQ(second->expression_type, ast::ASSIGN_EXPR)
         delete var;
         delete first;
         delete second;
 
-        auto *ptr = (VariableStatement *) p.parse_statement();
-        ASSERT_EQ(ptr->statement_type, VARIABLE_STMT)
+        auto *ptr = (ast::VariableStatement *) p.parse_statement();
+        ASSERT_EQ(ptr->statement_type, ast::VARIABLE_STMT)
         ASSERT_STR_EQ(ptr->name.raw, "test_ptr")
         ASSERT_TRUE(ptr->type.is_primitive())
         ASSERT_EQ(ptr->type.pointer_level, 1)
@@ -175,12 +175,12 @@ bool test() {
                   "  if some_int {\n" "      some_int = 0;\n" "  }\n" "  return some_int;\n" "}");
 
         Parser p(&c, &error_bucket);
-        Statement *s = p.parse_statement();
+        ast::Statement *s = p.parse_statement();
         ASSERT_NO_ERROR(error_bucket)
 
-        ASSERT_EQ(s->statement_type, FUNC_STMT)
+        ASSERT_EQ(s->statement_type, ast::FUNC_STMT)
 
-        auto *f = (FuncStatement *) s;
+        auto *f = (ast::FuncStatement *) s;
 
         ASSERT_STR_EQ(f->name.raw, "main")
         ASSERT_TRUE(f->return_type == Type(U8))
@@ -188,27 +188,27 @@ bool test() {
         ASSERT_TRUE(f->arguments.empty())
 
         ASSERT_EQ(f->block.size(), 5)
-        ASSERT_EQ(f->block[0]->statement_type, VARIABLE_STMT)
-        ASSERT_EQ(f->block[1]->statement_type, EXPR_STMT)
-        ASSERT_EQ(f->block[2]->statement_type, EXPR_STMT)
-        ASSERT_EQ(f->block[3]->statement_type, IF_STMT)
-        ASSERT_EQ(f->block[4]->statement_type, RETURN_STMT)
+        ASSERT_EQ(f->block[0]->statement_type, ast::VARIABLE_STMT)
+        ASSERT_EQ(f->block[1]->statement_type, ast::EXPR_STMT)
+        ASSERT_EQ(f->block[2]->statement_type, ast::EXPR_STMT)
+        ASSERT_EQ(f->block[3]->statement_type, ast::IF_STMT)
+        ASSERT_EQ(f->block[4]->statement_type, ast::RETURN_STMT)
 
-        auto *if_stmt = (IfStatement *) f->block[3];
+        auto *if_stmt = (ast::IfStatement *) f->block[3];
 
-        ASSERT_EQ(if_stmt->condition->statement_type, EXPR_STMT)
+        ASSERT_EQ(if_stmt->condition->statement_type, ast::EXPR_STMT)
 
-        auto if_cond = (Expression *) if_stmt->condition;
+        auto if_cond = (ast::Expression *) if_stmt->condition;
 
-        ASSERT_EQ(if_cond->expression_type, NAME_EXPR)
+        ASSERT_EQ(if_cond->expression_type, ast::NAME_EXPR)
 
         ASSERT_EQ(if_stmt->block.size(), 1)
-        ASSERT_EQ(if_stmt->block[0]->statement_type, EXPR_STMT)
+        ASSERT_EQ(if_stmt->block[0]->statement_type, ast::EXPR_STMT)
 
-        auto *ret_stmt = (ReturnStatement *) f->block[4];
+        auto *ret_stmt = (ast::ReturnStatement *) f->block[4];
 
-        ASSERT_EQ(ret_stmt->value->statement_type, EXPR_STMT)
-        ASSERT_EQ(((Expression *) ret_stmt->value)->expression_type, NAME_EXPR)
+        ASSERT_EQ(ret_stmt->value->statement_type, ast::EXPR_STMT)
+        ASSERT_EQ(((ast::Expression *) ret_stmt->value)->expression_type, ast::NAME_EXPR)
 
         delete s; //
 

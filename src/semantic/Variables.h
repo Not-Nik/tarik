@@ -37,9 +37,9 @@ public:
 };
 
 struct SemanticVariable {
-    VariableStatement *var;
+    ast::VariableStatement *var;
 
-    SemanticVariable(VariableStatement *var)
+    SemanticVariable(ast::VariableStatement *var)
         : var(var) {}
 
     virtual VariableState *state() = 0;
@@ -71,7 +71,7 @@ class PrimitiveVariable : public SemanticVariable {
     std::stack<VariableState> state_stack;
 
 public:
-    PrimitiveVariable(VariableStatement *var)
+    PrimitiveVariable(ast::VariableStatement *var)
         : SemanticVariable(var),
           state_stack({VariableState()}) {}
 
@@ -84,7 +84,7 @@ class CompoundVariable : public SemanticVariable {
     CompoundState compound_state;
 
 public:
-    CompoundVariable(VariableStatement *var, const std::vector<SemanticVariable *> &states)
+    CompoundVariable(ast::VariableStatement *var, const std::vector<SemanticVariable *> &states)
         : SemanticVariable(var),
           compound_state(states) {}
 

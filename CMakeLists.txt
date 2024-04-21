@@ -36,12 +36,12 @@ add_executable(tarik
         src/semantic/Variables.h
         src/syntactic/Parser.cpp
         src/syntactic/Parser.h
+        src/syntactic/Types.cpp
+        src/syntactic/Types.h
         src/syntactic/expressions/Base.h
         src/syntactic/expressions/Expression.h
         src/syntactic/expressions/Parslets.h
-        src/syntactic/expressions/Statements.h
-        src/syntactic/expressions/Types.cpp
-        src/syntactic/expressions/Types.h)
+        src/syntactic/expressions/Statements.h)
 
 set(LLVM_LINK_COMPONENTS
         AArch64

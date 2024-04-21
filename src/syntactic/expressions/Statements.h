@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -10,9 +10,11 @@
 #include <map>
 #include <vector>
 
-#include "Types.h"
 #include "Base.h"
+#include "syntactic/Types.h"
 
+namespace ast
+{
 class ScopeStatement : public Statement {
 public:
     std::vector<Statement *> block;
@@ -271,5 +273,6 @@ public:
     ImportStatement(const LexerRange &o, std::string n, std::vector<Statement *> s)
         : ScopeStatement(IMPORT_STMT, o, std::move(s)), name(std::move(n)) {}
 };
+} // namespace ast
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_

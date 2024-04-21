@@ -6,19 +6,19 @@
 
 #include "Path.h"
 
-std::vector<std::string> flatten_path(Expression *path) {
-    if (path->expression_type == NAME_EXPR) {
-        return {((NameExpression *) path)->name};
-    } else if (path->expression_type == PATH_EXPR) {
-        auto *concat = (BinaryOperatorExpression *) path;
+std::vector<std::string> flatten_path(ast::Expression *path) {
+    if (path->expression_type == ast::NAME_EXPR) {
+        return {((ast::NameExpression *) path)->name};
+    } else if (path->expression_type == ast::PATH_EXPR) {
+        auto *concat = (ast::BinaryOperatorExpression *) path;
         std::vector<std::string> part1 = flatten_path(concat->left);
         std::vector<std::string> part2 = flatten_path(concat->right);
 
         part1.insert(part1.end(), part2.begin(), part2.end());
 
         return part1;
-    } else if (auto *gl = (PrefixOperatorExpression *) path;
-        path->expression_type == PREFIX_EXPR && gl->prefix_type == GLOBAL) {
+    } else if (auto *gl = (ast::PrefixOperatorExpression *) path;
+        path->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL) {
         std::vector<std::string> path = flatten_path(gl->operand);
         path.insert(path.begin(), "");
 

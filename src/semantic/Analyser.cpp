@@ -55,19 +55,19 @@ std::string Analyser::flatten_path(std::vector<std::string> path, const std::str
 Analyser::Analyser(Bucket *bucket)
     : bucket(bucket) {
     LexerRange lr;
-    std::vector<Statement *> body;
-    body.push_back(new ReturnStatement(lr, new CallExpression(lr, new NameExpression(lr, "::main"), {})));
+    std::vector<ast::Statement *> body;
+    body.push_back(new ast::ReturnStatement(lr, new ast::CallExpression(lr, new ast::NameExpression(lr, "::main"), {})));
 
-    auto *func = new FuncStatement(lr, Token::name("main"), Type(U32), {}, body, false, {});
-    auto *decl = new FuncDeclareStatement(lr, Token::name("main"), Type(I32), {}, false, {});
+    auto *func = new ast::FuncStatement(lr, Token::name("main"), Type(U32), {}, body, false, {});
+    auto *decl = new ast::FuncDeclareStatement(lr, Token::name("main"), Type(I32), {}, false, {});
 
     functions.emplace(std::vector<std::string>(), func);
     declarations.emplace(std::vector<std::string>(), decl);
 }
 
 
-std::vector<Statement *> Analyser::finish() {
-    std::vector<Statement *> res;
+std::vector<ast::Statement *> Analyser::finish() {
+    std::vector<ast::Statement *> res;
     res.reserve(structures.size() + declarations.size() + functions.size());
     for (auto [_, st] : structures)
         res.push_back(st);
@@ -78,7 +78,7 @@ std::vector<Statement *> Analyser::finish() {
     return res;
 }
 
-bool Analyser::analyse(const std::vector<Statement *> &statements) {
+bool Analyser::analyse(const std::vector<ast::Statement *> &statements) {
     bool res;
 
     UPDATE_RES(analyse_import(statements))
@@ -87,16 +87,16 @@ bool Analyser::analyse(const std::vector<Statement *> &statements) {
     return res;
 }
 
-bool Analyser::analyse_import(const std::vector<Statement *> &statements) {
+bool Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
     bool res = true;
 
     for (auto statement : statements) {
-        UPDATE_RES(bucket->iassert(statement->statement_type != FUNC_DECL_STMT,
+        UPDATE_RES(bucket->iassert(statement->statement_type != ast::FUNC_DECL_STMT,
             statement->origin,
             "internal: premature function declaration: report this as a bug"))
 
-        if (statement->statement_type == FUNC_STMT) {
-            auto func = reinterpret_cast<FuncStatement *>(statement);
+        if (statement->statement_type == ast::FUNC_STMT) {
+            auto func = reinterpret_cast<ast::FuncStatement *>(statement);
             std::vector<std::string> name;
             if (func->member_of.has_value()) {
                 name = get_global_path(func->member_of.value().get_path());
@@ -105,14 +105,14 @@ bool Analyser::analyse_import(const std::vector<Statement *> &statements) {
                 name = get_global_path(func->name.raw);
             }
             declarations.emplace(name,
-                                 new FuncDeclareStatement(statement->origin,
+                                 new ast::FuncDeclareStatement(statement->origin,
                                                           Token::name(flatten_path(name), func->name.origin),
                                                           func->return_type,
                                                           func->arguments,
                                                           func->var_arg,
                                                           func->member_of));
-        } else if (statement->statement_type == IMPORT_STMT) {
-            auto *import_ = (ImportStatement *) statement;
+        } else if (statement->statement_type == ast::IMPORT_STMT) {
+            auto *import_ = (ast::ImportStatement *) statement;
 
             path.push_back(import_->name);
             UPDATE_RES(analyse_import(import_->block))
@@ -123,24 +123,24 @@ bool Analyser::analyse_import(const std::vector<Statement *> &statements) {
     return res;
 }
 
-bool Analyser::verify_statement(Statement *statement) {
+bool Analyser::verify_statement(ast::Statement *statement) {
     bool allowed = true;
 
     switch (statement->statement_type) {
-        case STRUCT_STMT:
-        case IMPORT_STMT:
-        case FUNC_STMT:
+        case ast::STRUCT_STMT:
+        case ast::IMPORT_STMT:
+        case ast::FUNC_STMT:
             allowed = bucket->iassert(level == 0, statement->origin, "declaration not allowed here");
             break;
-        case IF_STMT:
-        case ELSE_STMT:
-        case RETURN_STMT:
-        case WHILE_STMT:
-        case BREAK_STMT:
-        case CONTINUE_STMT:
-        case VARIABLE_STMT:
-        case EXPR_STMT:
-        case SCOPE_STMT:
+        case ast::IF_STMT:
+        case ast::ELSE_STMT:
+        case ast::RETURN_STMT:
+        case ast::WHILE_STMT:
+        case ast::BREAK_STMT:
+        case ast::CONTINUE_STMT:
+        case ast::VARIABLE_STMT:
+        case ast::EXPR_STMT:
+        case ast::SCOPE_STMT:
             allowed = bucket->iassert(level > 0, statement->origin, "expected declaration");
             [[fallthrough]];
         default:
@@ -151,37 +151,37 @@ bool Analyser::verify_statement(Statement *statement) {
         return false;
 
     switch (statement->statement_type) {
-        case SCOPE_STMT:
-            return verify_scope((ScopeStatement *) statement);
-        case FUNC_STMT:
-            return verify_function((FuncStatement *) statement);
-        case FUNC_DECL_STMT:
-            return verify_func_decl((FuncDeclareStatement *) statement);
-        case IF_STMT:
-            return verify_if((IfStatement *) statement);
-        case ELSE_STMT:
-            return verify_else((ElseStatement *) statement);
-        case RETURN_STMT:
-            return verify_return((ReturnStatement *) statement);
-        case WHILE_STMT:
-            return verify_while((WhileStatement *) statement);
-        case BREAK_STMT:
-            return verify_break((BreakStatement *) statement);
-        case CONTINUE_STMT:
-            return verify_continue((ContinueStatement *) statement);
-        case VARIABLE_STMT:
-            return verify_variable((VariableStatement *) statement).res;
-        case STRUCT_STMT:
-            return verify_struct((StructStatement *) statement);
-        case IMPORT_STMT:
-            return verify_import((ImportStatement *) statement);
-        case EXPR_STMT:
-            return verify_expression((Expression *) statement);
+        case ast::SCOPE_STMT:
+            return verify_scope((ast::ScopeStatement *) statement);
+        case ast::FUNC_STMT:
+            return verify_function((ast::FuncStatement *) statement);
+        case ast::FUNC_DECL_STMT:
+            return verify_func_decl((ast::FuncDeclareStatement *) statement);
+        case ast::IF_STMT:
+            return verify_if((ast::IfStatement *) statement);
+        case ast::ELSE_STMT:
+            return verify_else((ast::ElseStatement *) statement);
+        case ast::RETURN_STMT:
+            return verify_return((ast::ReturnStatement *) statement);
+        case ast::WHILE_STMT:
+            return verify_while((ast::WhileStatement *) statement);
+        case ast::BREAK_STMT:
+            return verify_break((ast::BreakStatement *) statement);
+        case ast::CONTINUE_STMT:
+            return verify_continue((ast::ContinueStatement *) statement);
+        case ast::VARIABLE_STMT:
+            return verify_variable((ast::VariableStatement *) statement).res;
+        case ast::STRUCT_STMT:
+            return verify_struct((ast::StructStatement *) statement);
+        case ast::IMPORT_STMT:
+            return verify_import((ast::ImportStatement *) statement);
+        case ast::EXPR_STMT:
+            return verify_expression((ast::Expression *) statement);
     }
     return true;
 }
 
-bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
+bool Analyser::verify_statements(const std::vector<ast::Statement *> &statements) {
     bool res = true;
 
     for (auto statement : statements) {
@@ -192,7 +192,7 @@ bool Analyser::verify_statements(const std::vector<Statement *> &statements) {
     return res;
 }
 
-bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
+bool Analyser::verify_scope(ast::ScopeStatement *scope, std::string name) {
     size_t old_var_count = variables.size();
 
     for (auto var : variables) {
@@ -215,7 +215,7 @@ bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
         VariableState old_definite_state = *var->state();
         var->pop_state();
 
-        if (scope->statement_type == SCOPE_STMT) {
+        if (scope->statement_type == ast::SCOPE_STMT) {
             // plain scopes are always executed, so the old state is the new one
             var->pop_state();
             var->push_state(old_definite_state);
@@ -231,7 +231,7 @@ bool Analyser::verify_scope(ScopeStatement *scope, std::string name) {
     return res;
 }
 
-bool Analyser::verify_function(FuncStatement *func) {
+bool Analyser::verify_function(ast::FuncStatement *func) {
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
@@ -278,16 +278,16 @@ bool Analyser::verify_function(FuncStatement *func) {
     return res;
 }
 
-bool Analyser::verify_func_decl(FuncDeclareStatement *decl) {
+bool Analyser::verify_func_decl(ast::FuncDeclareStatement *decl) {
     return true;
 }
 
-bool Analyser::verify_if(IfStatement *if_) {
+bool Analyser::verify_if(ast::IfStatement *if_) {
     if (if_->condition->type != Type(BOOL, 0)) {
-        if_->condition = new BinaryOperatorExpression(if_->condition->origin,
-                                                      NEQ,
+        if_->condition = new ast::BinaryOperatorExpression(if_->condition->origin,
+                                                      ast::NEQ,
                                                       if_->condition,
-                                                      new IntExpression(if_->condition->origin, "0"));
+                                                      new ast::IntExpression(if_->condition->origin, "0"));
     }
 
     bool res = true;
@@ -299,12 +299,12 @@ bool Analyser::verify_if(IfStatement *if_) {
     return res;
 }
 
-bool Analyser::verify_else(ElseStatement *else_) {
+bool Analyser::verify_else(ast::ElseStatement *else_) {
     bucket->error(else_->origin, "else, but no preceding if");
     return false;
 }
 
-bool Analyser::verify_return(ReturnStatement *return_) {
+bool Analyser::verify_return(ast::ReturnStatement *return_) {
     bool res = true;
     if (return_->value) {
         UPDATE_RES(verify_expression(return_->value))
@@ -321,15 +321,15 @@ bool Analyser::verify_return(ReturnStatement *return_) {
     return res;
 }
 
-bool Analyser::verify_while(WhileStatement *while_) {
-    Statement *old_last_loop = last_loop;
+bool Analyser::verify_while(ast::WhileStatement *while_) {
+    ast::Statement *old_last_loop = last_loop;
     last_loop = while_;
 
     if (while_->condition->type != Type(BOOL, 0)) {
-        while_->condition = new BinaryOperatorExpression(while_->condition->origin,
-                                                         NEQ,
+        while_->condition = new ast::BinaryOperatorExpression(while_->condition->origin,
+                                                         ast::NEQ,
                                                          while_->condition,
-                                                         new IntExpression(while_->condition->origin, "0"));
+                                                         new ast::IntExpression(while_->condition->origin, "0"));
     }
 
     bool res = true;
@@ -339,15 +339,15 @@ bool Analyser::verify_while(WhileStatement *while_) {
     return res;
 }
 
-bool Analyser::verify_break(BreakStatement *break_) {
+bool Analyser::verify_break(ast::BreakStatement *break_) {
     return bucket->iassert(last_loop, break_->origin, "break outside of loop");
 }
 
-bool Analyser::verify_continue(ContinueStatement *continue_) {
+bool Analyser::verify_continue(ast::ContinueStatement *continue_) {
     return bucket->iassert(last_loop, continue_->origin, "continue outside of loop");
 }
 
-Analyser::VariableVerificationResult Analyser::verify_variable(VariableStatement *var) {
+Analyser::VariableVerificationResult Analyser::verify_variable(ast::VariableStatement *var) {
     bool valid_type = verify_type(&var->type);
 
     bool res = true;
@@ -367,11 +367,11 @@ Analyser::VariableVerificationResult Analyser::verify_variable(VariableStatement
     if (var->type.is_primitive()) {
         sem = new PrimitiveVariable(var);
     } else {
-        StructStatement *st = get_struct(var->type.get_user());
+        ast::StructStatement *st = get_struct(var->type.get_user());
 
         std::vector<SemanticVariable *> member_states;
         for (auto member : st->members) {
-            auto *temp = new VariableStatement(var->origin,
+            auto *temp = new ast::VariableStatement(var->origin,
                                                member->type,
                                                Token::name(var->name.raw + "." + member->name.raw));
 
@@ -387,7 +387,7 @@ Analyser::VariableVerificationResult Analyser::verify_variable(VariableStatement
     return {sem, res};
 }
 
-bool Analyser::verify_struct(StructStatement *struct_) {
+bool Analyser::verify_struct(ast::StructStatement *struct_) {
     std::vector<std::string> registered;
     std::vector<std::string> struct_path = get_global_path(struct_->name.raw);
 
@@ -401,10 +401,10 @@ bool Analyser::verify_struct(StructStatement *struct_) {
         res = false;
     }
 
-    std::vector<VariableStatement *> ctor_args;
-    std::vector<Statement *> body;
+    std::vector<ast::VariableStatement *> ctor_args;
+    std::vector<ast::Statement *> body;
 
-    auto *instance = new VariableStatement(struct_->origin, struct_->get_type(path), Token::name("_instance"));
+    auto *instance = new ast::VariableStatement(struct_->origin, struct_->get_type(path), Token::name("_instance"));
     body.push_back(instance);
 
     for (auto member : struct_->members) {
@@ -417,21 +417,21 @@ bool Analyser::verify_struct(StructStatement *struct_) {
         UPDATE_RES(verify_type(&member->type))
 
         registered.push_back(member->name.raw);
-        ctor_args.push_back(new VariableStatement(struct_->origin, member->type, member->name));
+        ctor_args.push_back(new ast::VariableStatement(struct_->origin, member->type, member->name));
 
-        auto *member_access = new BinaryOperatorExpression(struct_->origin,
-                                                           MEM_ACC,
-                                                           new NameExpression(struct_->origin, "_instance"),
-                                                           new NameExpression(struct_->origin, member->name.raw));
+        auto *member_access = new ast::BinaryOperatorExpression(struct_->origin,
+                                                           ast::MEM_ACC,
+                                                           new ast::NameExpression(struct_->origin, "_instance"),
+                                                           new ast::NameExpression(struct_->origin, member->name.raw));
 
-        body.push_back(new BinaryOperatorExpression(struct_->origin,
-                                                    ASSIGN,
+        body.push_back(new ast::BinaryOperatorExpression(struct_->origin,
+                                                    ast::ASSIGN,
                                                     member_access,
-                                                    new NameExpression(struct_->origin, member->name.raw)));
+                                                    new ast::NameExpression(struct_->origin, member->name.raw)));
     }
-    body.push_back(new ReturnStatement(struct_->origin, new NameExpression(struct_->origin, "_instance")));
+    body.push_back(new ast::ReturnStatement(struct_->origin, new ast::NameExpression(struct_->origin, "_instance")));
 
-    auto *ctor = new FuncStatement(struct_->origin,
+    auto *ctor = new ast::FuncStatement(struct_->origin,
                                    Token::name(struct_->name.raw + "::$constructor", struct_->origin),
                                    struct_->get_type(path),
                                    ctor_args,
@@ -447,7 +447,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     struct_path.push_back("$constructor");
 
     declarations.emplace(struct_path,
-                         new FuncDeclareStatement(ctor->origin,
+                         new ast::FuncDeclareStatement(ctor->origin,
                                                   ctor->name,
                                                   ctor->return_type,
                                                   ctor->arguments,
@@ -459,7 +459,7 @@ bool Analyser::verify_struct(StructStatement *struct_) {
     return res;
 }
 
-bool Analyser::verify_import(ImportStatement *import_) {
+bool Analyser::verify_import(ast::ImportStatement *import_) {
     path.push_back(import_->name);
     bool res = verify_statements(import_->block);
     path.pop_back();
@@ -467,34 +467,34 @@ bool Analyser::verify_import(ImportStatement *import_) {
     return res;
 }
 
-bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool member_acc) {
+bool Analyser::verify_expression(ast::Expression *expression, bool assigned_to, bool member_acc) {
     bool res = true;
 
     switch (expression->expression_type) {
-        case CALL_EXPR: {
-            auto ce = (CallExpression *) expression;
+        case ast::CALL_EXPR: {
+            auto ce = (ast::CallExpression *) expression;
 
             std::vector<std::string> func_path;
-            if (auto *gl = (PrefixOperatorExpression *) ce->callee;
-                ce->callee->expression_type == NAME_EXPR || ce->callee->expression_type == PATH_EXPR ||
-                (ce->callee->expression_type == PREFIX_EXPR && gl->prefix_type == GLOBAL)) {
+            if (auto *gl = (ast::PrefixOperatorExpression *) ce->callee;
+                ce->callee->expression_type == ast::NAME_EXPR || ce->callee->expression_type == ast::PATH_EXPR ||
+                (ce->callee->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL)) {
                 func_path = ::flatten_path(ce->callee);
 
                 if (is_struct_declared(func_path)) {
                     func_path.push_back("$constructor");
                     // TODO: check if there exists a function with the same name
                 }
-            } else if (ce->callee->expression_type == MEM_ACC_EXPR) {
-                auto *mem = (BinaryOperatorExpression *) ce->callee;
+            } else if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
+                auto *mem = (ast::BinaryOperatorExpression *) ce->callee;
                 verify_expression(mem->left);
 
-                if (mem->right->expression_type != NAME_EXPR) {
+                if (mem->right->expression_type != ast::NAME_EXPR) {
                     bucket->error(mem->right->origin, "expected function name");
                     return false;
                 }
 
                 func_path = mem->left->type.get_path();
-                func_path.push_back(((NameExpression *) mem->right)->name);
+                func_path.push_back(((ast::NameExpression *) mem->right)->name);
 
                 ce->arguments.insert(ce->arguments.begin(), mem->left);
                 mem->left = nullptr;
@@ -503,7 +503,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                 return false;
             }
 
-            auto *name = new NameExpression(ce->callee->origin, flatten_path(func_path));
+            auto *name = new ast::NameExpression(ce->callee->origin, flatten_path(func_path));
             delete ce->callee;
             ce->callee = name;
 
@@ -512,7 +512,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                                  "undefined function '{}'",
                                  flatten_path(func_path)))
                 return false;
-            FuncStCommon *func = get_func_decl(func_path);
+            ast::FuncStCommon *func = get_func_decl(func_path);
 
             ce->assign_type(func->return_type);
 
@@ -539,8 +539,8 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                 res = false;
 
             for (; i < std::min(func->arguments.size(), ce->arguments.size()); i++) {
-                VariableStatement *arg_var = func->arguments[i];
-                Expression *arg = ce->arguments[i];
+                ast::VariableStatement *arg_var = func->arguments[i];
+                ast::Expression *arg = ce->arguments[i];
                 if (!verify_expression(arg) || !bucket->iassert(arg_var->type.is_compatible(arg->type),
                                                                 arg->origin,
                                                                 "passing value of type '{}' to argument of type '{}'",
@@ -550,14 +550,14 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             }
             break;
         }
-        case DASH_EXPR:
-        case DOT_EXPR:
-        case EQ_EXPR:
-        case COMP_EXPR:
-        case ASSIGN_EXPR: {
-            auto ae = (BinaryOperatorExpression *) expression;
+        case ast::DASH_EXPR:
+        case ast::DOT_EXPR:
+        case ast::EQ_EXPR:
+        case ast::COMP_EXPR:
+        case ast::ASSIGN_EXPR: {
+            auto ae = (ast::BinaryOperatorExpression *) expression;
 
-            UPDATE_RES(verify_expression(ae->left, expression->expression_type == ASSIGN_EXPR))
+            UPDATE_RES(verify_expression(ae->left, expression->expression_type == ast::ASSIGN_EXPR))
             UPDATE_RES(verify_expression(ae->right))
             if (res)
                 res = bucket->iassert(ae->left->type.is_compatible(ae->right->type),
@@ -566,7 +566,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                                       ae->left->type.str(),
                                       ae->right->type.str());
 
-            if (expression->expression_type == EQ_EXPR || expression->expression_type == COMP_EXPR)
+            if (expression->expression_type == ast::EQ_EXPR || expression->expression_type == ast::COMP_EXPR)
                 ae->assign_type(Type(BOOL));
                 // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
                 //  to the highest bit width of the two operand
@@ -574,8 +574,8 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                 ae->assign_type(ae->left->type);
             break;
         }
-        case MEM_ACC_EXPR: {
-            auto mae = (BinaryOperatorExpression *) expression;
+        case ast::MEM_ACC_EXPR: {
+            auto mae = (ast::BinaryOperatorExpression *) expression;
             auto left = mae->left;
             auto right = mae->right;
 
@@ -592,12 +592,12 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                                  "undefined structure '{}'",
                                  left->type.str()))
                 return false;
-            StructStatement *s = get_struct({struct_name});
+            ast::StructStatement *s = get_struct({struct_name});
 
-            if (!bucket->iassert(right->expression_type == NAME_EXPR, right->origin, "expected identifier"))
+            if (!bucket->iassert(right->expression_type == ast::NAME_EXPR, right->origin, "expected identifier"))
                 return false;
 
-            std::string member_name = ((NameExpression *) right)->name;
+            std::string member_name = ((ast::NameExpression *) right)->name;
 
             if (!bucket->iassert(s->has_member(member_name),
                                  right->origin,
@@ -610,29 +610,29 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
 
             if (left->flattens_to_member_access()) {
                 std::string name = left->flatten_to_member_access() + "." + member_name;
-                UPDATE_RES(verify_expression(new NameExpression(mae->origin, name), assigned_to))
+                UPDATE_RES(verify_expression(new ast::NameExpression(mae->origin, name), assigned_to))
             }
 
             break;
         }
-        case PREFIX_EXPR: {
-            auto pe = (PrefixOperatorExpression *) expression;
+        case ast::PREFIX_EXPR: {
+            auto pe = (ast::PrefixOperatorExpression *) expression;
             UPDATE_RES(verify_expression(pe->operand))
 
             Type pe_type = pe->operand->type;
 
             switch (pe->prefix_type) {
-                case NEG:
-                case LOG_NOT:
+                case ast::NEG:
+                case ast::LOG_NOT:
                     UPDATE_RES(bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
                         pe->operand->origin,
                         "invalid operand to unary expression"))
                 break;
-                case REF: {
+                case ast::REF: {
                     pe_type.pointer_level++;
-                    ExprType etype = pe->operand->expression_type;
+                    ast::ExprType etype = pe->operand->expression_type;
 
-                    if (!bucket->iassert(etype == NAME_EXPR || etype == MEM_ACC_EXPR,
+                    if (!bucket->iassert(etype == ast::NAME_EXPR || etype == ast::MEM_ACC_EXPR,
                                          pe->operand->origin,
                                          "cannot take reference of temporary value")) {
                         res = false;
@@ -642,14 +642,14 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                     }
                     break;
                 }
-                case DEREF:
+                case ast::DEREF:
                     UPDATE_RES(bucket->iassert(pe_type.pointer_level > 0,
                         pe->operand->origin,
                         "cannot dereference non-pointer type '{}'",
                         pe->operand->type.str()))
                     pe_type.pointer_level--;
                     break;
-                case GLOBAL:
+                case ast::GLOBAL:
                     res = false;
                     bucket->error(pe->origin, "internal: unhandled global path prefix");
                     break;
@@ -658,8 +658,8 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             pe->assign_type(pe_type);
             break;
         }
-        case NAME_EXPR: {
-            auto ne = (NameExpression *) expression;
+        case ast::NAME_EXPR: {
+            auto ne = (ast::NameExpression *) expression;
             if (!bucket->iassert(is_var_declared(ne->name),
                                  expression->origin,
                                  "undefined variable '{}'",
@@ -698,16 +698,16 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             }
             break;
         }
-        case INT_EXPR:
+        case ast::INT_EXPR:
             expression->assign_type(Type(I32));
             break;
-        case REAL_EXPR:
+        case ast::REAL_EXPR:
             expression->assign_type(Type(F32));
             break;
-        case STR_EXPR:
+        case ast::STR_EXPR:
             expression->assign_type(Type(U8, 1));
             break;
-        case BOOL_EXPR:
+        case ast::BOOL_EXPR:
             expression->assign_type(Type(BOOL));
             break;
         default:
@@ -752,13 +752,13 @@ bool Analyser::verify_type(Type *type) {
     return res;
 }
 
-bool Analyser::does_always_return(ScopeStatement *scope) {
+bool Analyser::does_always_return(ast::ScopeStatement *scope) {
     for (auto &it : scope->block) {
-        if (it->statement_type == RETURN_STMT || (
-                it->statement_type == SCOPE_STMT && does_always_return((ScopeStatement *) it)) || (
-                it->statement_type == IF_STMT && ((IfStatement *) it)->else_statement &&
-                does_always_return((ScopeStatement *) it) && does_always_return(((IfStatement *) it)->else_statement))
-            || (it->statement_type == WHILE_STMT && does_always_return((ScopeStatement *) it)))
+        if (it->statement_type == ast::RETURN_STMT || (
+                it->statement_type == ast::SCOPE_STMT && does_always_return((ast::ScopeStatement *) it)) || (
+                it->statement_type == ast::IF_STMT && ((ast::IfStatement *) it)->else_statement &&
+                does_always_return((ast::ScopeStatement *) it) && does_always_return(((ast::IfStatement *) it)->else_statement))
+            || (it->statement_type == ast::WHILE_STMT && does_always_return((ast::ScopeStatement *) it)))
             return true;
     }
     return false;
@@ -797,7 +797,7 @@ SemanticVariable *Analyser::get_variable(const std::string &name) {
                          });
 }
 
-FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {
+ast::FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {
     auto global = name;
     if (name.front().empty()) {
         global.erase(global.begin());
@@ -813,7 +813,7 @@ FuncStCommon *Analyser::get_func_decl(const std::vector<std::string> &name) {
     return declarations[global];
 }
 
-StructStatement *Analyser::get_struct(const std::vector<std::string> &name) {
+ast::StructStatement *Analyser::get_struct(const std::vector<std::string> &name) {
     auto global = name;
     if (name.front().empty()) {
         global.erase(global.begin());

@@ -15,6 +15,7 @@
 #include "error/Bucket.h"
 #include "error/Error.h"
 #include "lexical/Lexer.h"
+#include "syntactic/expressions/Expression.h"
 #include "syntactic/expressions/Statements.h"
 
 class PrefixParselet;
@@ -34,9 +35,9 @@ class Parser {
 
     std::vector<std::filesystem::path> search_paths;
 
-    Precedence get_precedence();
+    ast::Precedence get_precedence();
 
-    std::vector<Statement *> block();
+    std::vector<ast::Statement *> block();
 
     std::optional<Type> type();
 
@@ -54,9 +55,9 @@ public:
 
     std::filesystem::path find_import();
 
-    Expression *parse_expression(int precedence = 0);
+    ast::Expression *parse_expression(int precedence = 0);
 
-    Statement *parse_statement();
+    ast::Statement *parse_statement();
 };
 
 #endif //TARIK_SRC_SYNTACTIC_PARSER_H_

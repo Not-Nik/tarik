@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2023
+// tarik (c) Nikolas Wipper 2023-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -6,8 +6,9 @@
 
 #ifndef TARIK_SRC_SEMANTIC_PATH_H_
 #define TARIK_SRC_SEMANTIC_PATH_H_
+
 #include "syntactic/expressions/Expression.h"
 
-std::vector<std::string> flatten_path(Expression *path);
+std::vector<std::string> flatten_path(ast::Expression *path);
 
 #endif //TARIK_SRC_SEMANTIC_PATH_H_

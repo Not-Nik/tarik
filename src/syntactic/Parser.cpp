@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,6 +8,7 @@
 
 #include "expressions/Parslets.h"
 
+using namespace ast;
 
 std::vector<std::filesystem::path> Parser::imported;
 

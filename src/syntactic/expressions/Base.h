@@ -10,7 +10,10 @@
 #include <string>
 
 #include "lexical/Lexer.h"
+#include "syntactic/Types.h"
 
+namespace ast
+{
 enum StmtType {
     SCOPE_STMT,
     FUNC_STMT,
@@ -95,5 +98,6 @@ public:
     virtual bool flattens_to_member_access() const { return false; }
     virtual std::string flatten_to_member_access() const { return "<>"; }
 };
+} // namespace ast
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_BASE_H_

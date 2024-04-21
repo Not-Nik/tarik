@@ -178,7 +178,7 @@ int main(int argc, const char *argv[]) {
     Bucket error_bucket;
     Parser p(input_path, &error_bucket, search_paths);
 
-    std::vector<Statement *> statements;
+    std::vector<ast::Statement *> statements;
     do {
         statements.push_back(p.parse_statement());
     } while (statements.back());

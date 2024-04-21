@@ -28,7 +28,7 @@ class LLVM {
     std::map<std::string, llvm::Function *> function_bodies;
     std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
     std::map<std::string, llvm::StructType *> structures;
-    std::map<std::string, StructStatement *> struct_statements;
+    std::map<std::string, ast::StructStatement *> struct_statements;
 
 public:
     static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();
@@ -52,8 +52,8 @@ public:
     int dump_ir(const std::string &to);
     int write_file(const std::string &to, Config config);
 
-    void generate_statement(Statement *s, bool is_last);
-    void generate_statements(const std::vector<Statement *> &s, bool is_last = true);
+    void generate_statement(ast::Statement *s, bool is_last);
+    void generate_statements(const std::vector<ast::Statement *> &s, bool is_last = true);
 
     static bool is_valid_triple(const std::string &triple) {
         std::string err;
@@ -69,24 +69,24 @@ public:
     }
 
 protected:
-    void generate_scope(ScopeStatement *scope, bool is_last);
-    void generate_function(FuncStatement *func);
-    void generate_func_decl(FuncDeclareStatement *decl);
-    void generate_if(IfStatement *if_, bool is_last);
-    void generate_else(ElseStatement *else_);
-    void generate_return(ReturnStatement *return_);
-    void generate_while(WhileStatement *while_, bool is_last);
-    void generate_break(BreakStatement *break_);
-    void generate_continue(ContinueStatement *continue_);
-    void generate_variable(VariableStatement *var);
-    void generate_struct(StructStatement *struct_);
-    void generate_import(ImportStatement *import_, bool is_last);
-    llvm::Value *generate_expression(Expression *expression);
+    void generate_scope(ast::ScopeStatement *scope, bool is_last);
+    void generate_function(ast::FuncStatement *func);
+    void generate_func_decl(ast::FuncDeclareStatement *decl);
+    void generate_if(ast::IfStatement *if_, bool is_last);
+    void generate_else(ast::ElseStatement *else_);
+    void generate_return(ast::ReturnStatement *return_);
+    void generate_while(ast::WhileStatement *while_, bool is_last);
+    void generate_break(ast::BreakStatement *break_);
+    void generate_continue(ast::ContinueStatement *continue_);
+    void generate_variable(ast::VariableStatement *var);
+    void generate_struct(ast::StructStatement *struct_);
+    void generate_import(ast::ImportStatement *import_, bool is_last);
+    llvm::Value *generate_expression(ast::Expression *expression);
     static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 
     llvm::Type *make_llvm_type(const Type &t);
-    llvm::FunctionType *make_llvm_function_type(FuncStCommon *func);
-    llvm::Value *generate_member_access(BinaryOperatorExpression *mae);
+    llvm::FunctionType *make_llvm_function_type(ast::FuncStCommon *func);
+    llvm::Value *generate_member_access(ast::BinaryOperatorExpression *mae);
 };
 
 #endif //TARIK_SRC_CODEGEN_LLVM_H_

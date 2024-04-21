@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -13,101 +13,101 @@
 
 class PrefixParselet {
 public:
-    virtual Expression *parse(Parser *, const Token &) = 0;
+    virtual ast::Expression *parse(Parser *, const Token &) = 0;
 
     virtual ~PrefixParselet() = default;
 };
 
 class InfixParselet {
 public:
-    virtual Expression *parse(Parser *parser, const Token &, Expression *left) = 0;
+    virtual ast::Expression *parse(Parser *parser, const Token &, ast::Expression *left) = 0;
 
-    virtual Precedence get_type() { return static_cast<Precedence>(0); }
+    virtual ast::Precedence get_type() { return static_cast<ast::Precedence>(0); }
     virtual ~InfixParselet() = default;
 };
 
 template <class SimpleExpression>
 class SimpleParselet : public PrefixParselet {
-    Expression *parse(Parser *, const Token &token) override {
-        return (Expression *) new SimpleExpression(token.origin, token.raw);
+    ast::Expression *parse(Parser *, const Token &token) override {
+        return (ast::Expression *) new SimpleExpression(token.origin, token.raw);
     }
 };
 
-using IntParselet = SimpleParselet<IntExpression>;
-using BoolParselet = SimpleParselet<BoolExpression>;
-using RealParselet = SimpleParselet<RealExpression>;
-using StringParselet = SimpleParselet<StringExpression>;
+using IntParselet = SimpleParselet<ast::IntExpression>;
+using BoolParselet = SimpleParselet<ast::BoolExpression>;
+using RealParselet = SimpleParselet<ast::RealExpression>;
+using StringParselet = SimpleParselet<ast::StringExpression>;
 
 class NameParselet : public PrefixParselet {
-    Expression *parse(Parser *, const Token &token) override {
-        return new NameExpression(token.origin, token.raw);
+    ast::Expression *parse(Parser *, const Token &token) override {
+        return new ast::NameExpression(token.origin, token.raw);
     }
 };
 
-template <PrefixType prefix_type, Precedence precedence = PREFIX>
+template <ast::PrefixType prefix_type, ast::Precedence precedence = ast::PREFIX>
 class PrefixOperatorParselet : public PrefixParselet {
-    Expression *parse(Parser *parser, const Token &token) override {
-        Expression *right = parser->parse_expression(precedence);
+    ast::Expression *parse(Parser *parser, const Token &token) override {
+        ast::Expression *right = parser->parse_expression(precedence);
 
-        return new PrefixOperatorExpression(token.origin, prefix_type, right);
+        return new ast::PrefixOperatorExpression(token.origin, prefix_type, right);
     }
 };
 
-using NegParselet = PrefixOperatorParselet<NEG>;
-using RefParselet = PrefixOperatorParselet<REF>;
-using DerefParselet = PrefixOperatorParselet<DEREF>;
-using NotParselet = PrefixOperatorParselet<LOG_NOT>;
-using GlobalParselet = PrefixOperatorParselet<GLOBAL, NAME_CONCAT>;
+using NegParselet = PrefixOperatorParselet<ast::NEG>;
+using RefParselet = PrefixOperatorParselet<ast::REF>;
+using DerefParselet = PrefixOperatorParselet<ast::DEREF>;
+using NotParselet = PrefixOperatorParselet<ast::LOG_NOT>;
+using GlobalParselet = PrefixOperatorParselet<ast::GLOBAL, ast::NAME_CONCAT>;
 
-template <BinOpType bot, Precedence prec>
+template <ast::BinOpType bot, ast::Precedence prec>
 class BinaryOperatorParselet : public InfixParselet {
-    Expression *parse(Parser *parser, const Token &token, Expression *left) override {
-        Expression *right = parser->parse_expression(prec);
+    ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
+        ast::Expression *right = parser->parse_expression(prec);
 
-        return new BinaryOperatorExpression(token.origin, bot, left, right);
+        return new ast::BinaryOperatorExpression(token.origin, bot, left, right);
     }
 
-    Precedence get_type() override {
+    ast::Precedence get_type() override {
         return prec;
     }
 };
 
-using PathParselet = BinaryOperatorParselet<PATH, NAME_CONCAT>;
-using AddParselet = BinaryOperatorParselet<ADD, SUM>;
-using SubParselet = BinaryOperatorParselet<SUB, SUM>;
-using MulParselet = BinaryOperatorParselet<MUL, PRODUCT>;
-using DivParselet = BinaryOperatorParselet<DIV, PRODUCT>;
-using EqParselet = BinaryOperatorParselet<EQ, EQUALITY>;
-using NeqParselet = BinaryOperatorParselet<NEQ, EQUALITY>;
-using SmParselet = BinaryOperatorParselet<SM, COMPARE>;
-using GrParselet = BinaryOperatorParselet<GR, COMPARE>;
-using SeParselet = BinaryOperatorParselet<SME, COMPARE>;
-using GeParselet = BinaryOperatorParselet<GRE, COMPARE>;
-using MemberAccessParselet = BinaryOperatorParselet<MEM_ACC, CALL>;
+using PathParselet = BinaryOperatorParselet<ast::PATH, ast::NAME_CONCAT>;
+using AddParselet = BinaryOperatorParselet<ast::ADD, ast::SUM>;
+using SubParselet = BinaryOperatorParselet<ast::SUB, ast::SUM>;
+using MulParselet = BinaryOperatorParselet<ast::MUL, ast::PRODUCT>;
+using DivParselet = BinaryOperatorParselet<ast::DIV, ast::PRODUCT>;
+using EqParselet = BinaryOperatorParselet<ast::EQ, ast::EQUALITY>;
+using NeqParselet = BinaryOperatorParselet<ast::NEQ, ast::EQUALITY>;
+using SmParselet = BinaryOperatorParselet<ast::SM, ast::COMPARE>;
+using GrParselet = BinaryOperatorParselet<ast::GR, ast::COMPARE>;
+using SeParselet = BinaryOperatorParselet<ast::SME, ast::COMPARE>;
+using GeParselet = BinaryOperatorParselet<ast::GRE, ast::COMPARE>;
+using MemberAccessParselet = BinaryOperatorParselet<ast::MEM_ACC, ast::CALL>;
 
 class GroupParselet : public PrefixParselet {
-    Expression *parse(Parser *parser, const Token &) override {
-        Expression *e = parser->parse_expression();
+    ast::Expression *parse(Parser *parser, const Token &) override {
+        ast::Expression *e = parser->parse_expression();
         parser->expect(PAREN_CLOSE);
         return e;
     }
 };
 
 class AssignParselet : public InfixParselet {
-    Expression *parse(Parser *parser, const Token &token, Expression *left) override {
-        Expression *right = parser->parse_expression(ASSIGNMENT - 1);
+    ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
+        ast::Expression *right = parser->parse_expression(ast::ASSIGNMENT - 1);
 
-        return new BinaryOperatorExpression(token.origin, ASSIGN, left, right);
+        return new ast::BinaryOperatorExpression(token.origin, ast::ASSIGN, left, right);
     }
 
-    Precedence get_type() override {
-        return ASSIGNMENT;
+    ast::Precedence get_type() override {
+        return ast::ASSIGNMENT;
     }
 };
 
 class CallParselet : public InfixParselet {
-    Expression *parse(Parser *parser, const Token &token, Expression *left) override {
-        std::vector<Expression *> args;
+    ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
+        std::vector<ast::Expression *> args;
 
         while (parser->lexer.peek().id != END && parser->lexer.peek().id != PAREN_CLOSE) {
             args.push_back(parser->parse_expression());
@@ -117,11 +117,11 @@ class CallParselet : public InfixParselet {
         }
         parser->lexer.consume();
 
-        return new CallExpression(token.origin, left, args);
+        return new ast::CallExpression(token.origin, left, args);
     }
 
-    Precedence get_type() override {
-        return CALL;
+    ast::Precedence get_type() override {
+        return ast::CALL;
     }
 };
 

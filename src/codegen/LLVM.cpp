@@ -98,61 +98,61 @@ int LLVM::write_file(const std::string &to, Config config) {
     return 0;
 }
 
-void LLVM::generate_statement(Statement *statement, bool is_last) {
+void LLVM::generate_statement(ast::Statement *statement, bool is_last) {
     switch (statement->statement_type) {
-        case SCOPE_STMT:
-            generate_scope((ScopeStatement *) statement, is_last);
+        case ast::SCOPE_STMT:
+            generate_scope((ast::ScopeStatement *) statement, is_last);
             break;
-        case FUNC_STMT:
-            generate_function((FuncStatement *) statement);
+        case ast::FUNC_STMT:
+            generate_function((ast::FuncStatement *) statement);
             break;
-        case FUNC_DECL_STMT:
-            generate_func_decl((FuncDeclareStatement *) statement);
+        case ast::FUNC_DECL_STMT:
+            generate_func_decl((ast::FuncDeclareStatement *) statement);
             break;
-        case IF_STMT:
-            generate_if((IfStatement *) statement, is_last);
+        case ast::IF_STMT:
+            generate_if((ast::IfStatement *) statement, is_last);
             break;
-        case ELSE_STMT:
-            generate_else((ElseStatement *) statement);
+        case ast::ELSE_STMT:
+            generate_else((ast::ElseStatement *) statement);
             break;
-        case RETURN_STMT:
-            generate_return((ReturnStatement *) statement);
+        case ast::RETURN_STMT:
+            generate_return((ast::ReturnStatement *) statement);
             break;
-        case WHILE_STMT:
-            generate_while((WhileStatement *) statement, is_last);
+        case ast::WHILE_STMT:
+            generate_while((ast::WhileStatement *) statement, is_last);
             break;
-        case BREAK_STMT:
-            generate_break((BreakStatement *) statement);
+        case ast::BREAK_STMT:
+            generate_break((ast::BreakStatement *) statement);
             break;
-        case CONTINUE_STMT:
-            generate_continue((ContinueStatement *) statement);
+        case ast::CONTINUE_STMT:
+            generate_continue((ast::ContinueStatement *) statement);
             break;
-        case VARIABLE_STMT:
-            generate_variable((VariableStatement *) statement);
+        case ast::VARIABLE_STMT:
+            generate_variable((ast::VariableStatement *) statement);
             break;
-        case STRUCT_STMT:
-            generate_struct((StructStatement *) statement);
+        case ast::STRUCT_STMT:
+            generate_struct((ast::StructStatement *) statement);
             break;
-        case IMPORT_STMT:
-            generate_import((ImportStatement *) statement, is_last);
+        case ast::IMPORT_STMT:
+            generate_import((ast::ImportStatement *) statement, is_last);
             break;
-        case EXPR_STMT:
-            generate_expression((Expression *) statement);
+        case ast::EXPR_STMT:
+            generate_expression((ast::Expression *) statement);
             break;
     }
 }
 
-void LLVM::generate_statements(const std::vector<Statement *> &statements, bool is_last) {
+void LLVM::generate_statements(const std::vector<ast::Statement *> &statements, bool is_last) {
     for (auto it = statements.begin(); it != statements.end(); ++it) {
         generate_statement(*it, is_last && it + 1 == statements.end());
     }
 }
 
-void LLVM::generate_scope(ScopeStatement *scope, bool is_last) {
+void LLVM::generate_scope(ast::ScopeStatement *scope, bool is_last) {
     generate_statements(scope->block, is_last);
 }
 
-void LLVM::generate_function(FuncStatement *func) {
+void LLVM::generate_function(ast::FuncStatement *func) {
     variables.clear();
 
     llvm::FunctionType *func_type = functions.at(func->name.raw);
@@ -176,12 +176,12 @@ void LLVM::generate_function(FuncStatement *func) {
 
     generate_scope(func, true);
 
-    if (func->return_type == Type(VOID) && func->block.back()->statement_type != RETURN_STMT) {
+    if (func->return_type == Type(VOID) && func->block.back()->statement_type != ast::RETURN_STMT) {
         builder.CreateRetVoid();
     }
 }
 
-void LLVM::generate_func_decl(FuncDeclareStatement *decl) {
+void LLVM::generate_func_decl(ast::FuncDeclareStatement *decl) {
     llvm::FunctionType *func_type = make_llvm_function_type(decl);
     functions.emplace(decl->name.raw, func_type);
 
@@ -192,7 +192,7 @@ void LLVM::generate_func_decl(FuncDeclareStatement *decl) {
     function_bodies.emplace(decl->name.raw, llvm_func);
 }
 
-void LLVM::generate_if(IfStatement *if_, bool is_last) {
+void LLVM::generate_if(ast::IfStatement *if_, bool is_last) {
     llvm::BasicBlock *if_block = llvm::BasicBlock::Create(context, "if_block", current_function);
     llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
     llvm::BasicBlock *else_block = nullptr;
@@ -227,11 +227,11 @@ void LLVM::generate_if(IfStatement *if_, bool is_last) {
     }
 }
 
-void LLVM::generate_else(ElseStatement *) {
+void LLVM::generate_else(ast::ElseStatement *) {
     // this will never happen
 }
 
-void LLVM::generate_return(ReturnStatement *return_) {
+void LLVM::generate_return(ast::ReturnStatement *return_) {
     if (!return_type)
         return;
     if (return_->value)
@@ -240,7 +240,7 @@ void LLVM::generate_return(ReturnStatement *return_) {
         builder.CreateRetVoid();
 }
 
-void LLVM::generate_while(WhileStatement *while_, bool is_last) {
+void LLVM::generate_while(ast::WhileStatement *while_, bool is_last) {
     llvm::BasicBlock *while_comp_block = llvm::BasicBlock::Create(context, "while_comp_block");
     llvm::BasicBlock *while_block = llvm::BasicBlock::Create(context, "while_block");
     llvm::BasicBlock *endwhile_block = llvm::BasicBlock::Create(context, "endwhile_block");
@@ -274,20 +274,20 @@ void LLVM::generate_while(WhileStatement *while_, bool is_last) {
     }
 }
 
-void LLVM::generate_break(BreakStatement *) {
+void LLVM::generate_break(ast::BreakStatement *) {
     builder.CreateBr(last_loop_exit);
 }
 
-void LLVM::generate_continue(ContinueStatement *) {
+void LLVM::generate_continue(ast::ContinueStatement *) {
     builder.CreateBr(last_loop_entry);
 }
 
-void LLVM::generate_variable(VariableStatement *var) {
+void LLVM::generate_variable(ast::VariableStatement *var) {
     llvm::Type *type = make_llvm_type(var->type);
     variables.emplace(var->name.raw, std::make_pair(builder.CreateAlloca(type, 0u, nullptr, var->name.raw), type));
 }
 
-void LLVM::generate_struct(StructStatement *struct_) {
+void LLVM::generate_struct(ast::StructStatement *struct_) {
     std::vector<llvm::Type *> members;
     for (auto member : struct_->members) {
         members.push_back(make_llvm_type(member->type));
@@ -297,7 +297,7 @@ void LLVM::generate_struct(StructStatement *struct_) {
     struct_statements.emplace(struct_->name.raw, struct_);
 }
 
-void LLVM::generate_import(ImportStatement *import_, bool is_last) {
+void LLVM::generate_import(ast::ImportStatement *import_, bool is_last) {
     generate_statements(import_->block, is_last);
 }
 
@@ -314,14 +314,14 @@ int roundUp(T numToRound, T multiple) {
     return numToRound + multiple - remainder;
 }
 
-llvm::Value *LLVM::generate_expression(Expression *expression) {
+llvm::Value *LLVM::generate_expression(ast::Expression *expression) {
     switch (expression->expression_type) {
-        case CALL_EXPR: {
-            auto ce = (CallExpression *) expression;
+        case ast::CALL_EXPR: {
+            auto ce = (ast::CallExpression *) expression;
             llvm::FunctionCallee function;
 
-            if (ce->callee->expression_type == NAME_EXPR) {
-                std::string name = ((NameExpression *) ce->callee)->name;
+            if (ce->callee->expression_type == ast::NAME_EXPR) {
+                std::string name = ((ast::NameExpression *) ce->callee)->name;
                 function = module->getOrInsertFunction(name, functions.at(name));
             } else {
                 throw "__unimplemented(expression_calling)";
@@ -345,11 +345,11 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                 name = "call_temp";
             return builder.CreateCall(function, arg_values, name);
         }
-        case DASH_EXPR:
-        case DOT_EXPR:
-        case EQ_EXPR:
-        case COMP_EXPR: {
-            auto ce = (BinaryOperatorExpression *) expression;
+        case ast::DASH_EXPR:
+        case ast::DOT_EXPR:
+        case ast::EQ_EXPR:
+        case ast::COMP_EXPR: {
+            auto ce = (ast::BinaryOperatorExpression *) expression;
             bool fp = false;
             llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
@@ -366,60 +366,60 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
                     left = generate_cast(left, right->getType(), ce->right->type.is_signed_int());
             }
             switch (ce->bin_op_type) {
-                case ADD:
+                case ast::ADD:
                     if (fp)
                         return builder.CreateFAdd(left, right, "add_temp");
                     else
                         return builder.CreateAdd(left, right, "add_temp");
-                case SUB:
+                case ast::SUB:
                     if (fp)
                         return builder.CreateFSub(left, right, "sub_temp");
                     else
                         return builder.CreateSub(left, right, "sub_temp");
-                case MUL:
+                case ast::MUL:
                     if (fp)
                         return builder.CreateFMul(left, right, "mul_temp");
                     else
                         return builder.CreateMul(left, right, "mul_temp");
-                case DIV:
+                case ast::DIV:
                     if (fp)
                         return builder.CreateFDiv(left, right, "div_temp");
                     else if (unsigned_int)
                         return builder.CreateUDiv(left, right, "div_temp");
                     else
                         return builder.CreateSDiv(left, right);
-                case EQ:
+                case ast::EQ:
                     if (fp)
                         return builder.CreateFCmpOEQ(left, right, "eq_temp");
                     else
                         return builder.CreateICmpEQ(left, right, "eq_temp");
-                case NEQ:
+                case ast::NEQ:
                     if (fp)
                         return builder.CreateFCmpONE(left, right, "neq_temp");
                     else
                         return builder.CreateICmpNE(left, right, "neq_temp");
-                case SM:
+                case ast::SM:
                     if (fp)
                         return builder.CreateFCmpOLE(left, right, "sm_temp");
                     else if (unsigned_int)
                         return builder.CreateICmpULT(left, right, "sm_temp");
                     else
                         return builder.CreateICmpSLT(left, right, "sm_temp");
-                case GR:
+                case ast::GR:
                     if (fp)
                         return builder.CreateFCmpOGT(left, right, "gr_temp");
                     else if (unsigned_int)
                         return builder.CreateICmpUGT(left, right, "gr_temp");
                     else
                         return builder.CreateICmpSGT(left, right, "gr_temp");
-                case SME:
+                case ast::SME:
                     if (fp)
                         return builder.CreateFCmpOLE(left, right, "sme_temp");
                     else if (unsigned_int)
                         return builder.CreateICmpULE(left, right, "sme_temp");
                     else
                         return builder.CreateICmpSLE(left, right, "sme_temp");
-                case GRE:
+                case ast::GRE:
                     if (fp)
                         return builder.CreateFCmpOGE(left, right, "gre_temp");
                     else if (unsigned_int)
@@ -429,57 +429,57 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             }
             break;
         }
-        case MEM_ACC_EXPR: {
-            auto mae = (BinaryOperatorExpression *) expression;
+        case ast::MEM_ACC_EXPR: {
+            auto mae = (ast::BinaryOperatorExpression *) expression;
             llvm::Value *gep = generate_member_access(mae);
             return builder.CreateLoad(make_llvm_type(mae->type), gep, "deref_temp");
         }
-        case PREFIX_EXPR: {
-            auto pe = (PrefixOperatorExpression *) expression;
+        case ast::PREFIX_EXPR: {
+            auto pe = (ast::PrefixOperatorExpression *) expression;
 
-            if (pe->prefix_type == REF) {
-                if (pe->operand->expression_type == NAME_EXPR) {
-                    return variables.at(((NameExpression *) pe->operand)->name).first;
+            if (pe->prefix_type == ast::REF) {
+                if (pe->operand->expression_type == ast::NAME_EXPR) {
+                    return variables.at(((ast::NameExpression *) pe->operand)->name).first;
                 }
-                if (pe->operand->expression_type == MEM_ACC_EXPR) {
-                    return generate_member_access((BinaryOperatorExpression *) expression);
+                if (pe->operand->expression_type == ast::MEM_ACC_EXPR) {
+                    return generate_member_access((ast::BinaryOperatorExpression *) expression);
                 }
             }
 
             llvm::Value *val = generate_expression(pe->operand);
 
             switch (pe->prefix_type) {
-                case NEG:
+                case ast::NEG:
                     if (val->getType()->isFloatingPointTy())
                         return builder.CreateFNeg(val, "neg_temp");
                     else
                         return builder.CreateNeg(val, "neg_temp");
-                case DEREF:
+                case ast::DEREF:
                     return builder.CreateLoad(make_llvm_type(pe->type), val, "deref_temp");
-                case LOG_NOT:
+                case ast::LOG_NOT:
                     return builder.CreateNot(val, "not_temp");
                     break;
-                case REF:
+                case ast::REF:
                     break;
-                case GLOBAL:
+                case ast::GLOBAL:
                     break;
             }
             break;
         }
-        case ASSIGN_EXPR: {
-            auto ae = (BinaryOperatorExpression *) expression;
+        case ast::ASSIGN_EXPR: {
+            auto ae = (ast::BinaryOperatorExpression *) expression;
             llvm::Value *dest;
             llvm::Type *dest_type;
-            if (ae->left->expression_type == NAME_EXPR) {
-                auto [var, type] = variables.at(((NameExpression *) ae->left)->name);
+            if (ae->left->expression_type == ast::NAME_EXPR) {
+                auto [var, type] = variables.at(((ast::NameExpression *) ae->left)->name);
                 dest = var;
                 dest_type = type;
-            } else if (ae->left->expression_type == MEM_ACC_EXPR) {
-                dest = generate_member_access((BinaryOperatorExpression *) ae->left);
+            } else if (ae->left->expression_type == ast::MEM_ACC_EXPR) {
+                dest = generate_member_access((ast::BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
-            } else if (ae->left->expression_type == PREFIX_EXPR && ((PrefixOperatorExpression *) ae->left)->prefix_type
-                == DEREF) {
-                auto deref = (PrefixOperatorExpression *) ae->left;
+            } else if (ae->left->expression_type == ast::PREFIX_EXPR && ((ast::PrefixOperatorExpression *) ae->left)->prefix_type
+                == ast::DEREF) {
+                auto deref = (ast::PrefixOperatorExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
             } else {
@@ -488,26 +488,26 @@ llvm::Value *LLVM::generate_expression(Expression *expression) {
             }
             return builder.CreateStore(generate_cast(generate_expression(ae->right), dest_type), dest, "assign_temp");
         }
-        case NAME_EXPR: {
-            auto ne = (NameExpression *) expression;
+        case ast::NAME_EXPR: {
+            auto ne = (ast::NameExpression *) expression;
             auto [var, type] = variables.at(ne->name);
             return builder.CreateLoad(type, var, "load_temp");
         }
-        case INT_EXPR: {
-            auto ie = (IntExpression *) expression;
+        case ast::INT_EXPR: {
+            auto ie = (ast::IntExpression *) expression;
             size_t width = std::max(8, roundUp((size_t) std::bit_width((size_t) ie->n), size_t(8)));
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
         }
-        case REAL_EXPR: {
-            auto re = (RealExpression *) expression;
+        case ast::REAL_EXPR: {
+            auto re = (ast::RealExpression *) expression;
             return llvm::ConstantFP::get(llvm::Type::getDoubleTy(context), re->n);
         }
-        case STR_EXPR: {
-            auto se = (StringExpression *) expression;
+        case ast::STR_EXPR: {
+            auto se = (ast::StringExpression *) expression;
             return builder.CreateGlobalStringPtr(se->n, "string_value");
         }
-        case BOOL_EXPR: {
-            auto be = (BoolExpression *) expression;
+        case ast::BOOL_EXPR: {
+            auto be = (ast::BoolExpression *) expression;
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
         }
     }
@@ -579,7 +579,7 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
     return res;
 }
 
-llvm::FunctionType *LLVM::make_llvm_function_type(FuncStCommon *func) {
+llvm::FunctionType *LLVM::make_llvm_function_type(ast::FuncStCommon *func) {
     llvm::Type *rt = make_llvm_type(func->return_type);
     std::vector<llvm::Type *> argument_types;
     argument_types.reserve(func->arguments.size());
@@ -590,14 +590,14 @@ llvm::FunctionType *LLVM::make_llvm_function_type(FuncStCommon *func) {
     return func_type;
 }
 
-llvm::Value *LLVM::generate_member_access(BinaryOperatorExpression *mae) {
-    std::string member_name = ((NameExpression *) mae->right)->name;
+llvm::Value *LLVM::generate_member_access(ast::BinaryOperatorExpression *mae) {
+    std::string member_name = ((ast::NameExpression *) mae->right)->name;
 
     llvm::Value *left;
     std::string struct_;
 
-    if (mae->left->expression_type == NAME_EXPR) {
-        std::string var_name = ((NameExpression *) mae->left)->name;
+    if (mae->left->expression_type == ast::NAME_EXPR) {
+        std::string var_name = ((ast::NameExpression *) mae->left)->name;
         auto var = variables.at(var_name);
 
         auto it = std::find_if(structures.begin(),

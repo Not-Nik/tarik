@@ -7,9 +7,11 @@
 #ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
 
-#include <utility>
+#include "Base.h"
+#include "syntactic/Types.h"
 
-#include "Statements.h"
+namespace ast
+{
 
 class NameExpression : public Expression {
 public:
@@ -269,5 +271,6 @@ public:
         return "empty";
     }
 };
+} // namespace ast
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
