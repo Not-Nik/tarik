@@ -651,7 +651,7 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
                     break;
                 case GLOBAL:
                     res = false;
-                    bucket->error(pe->origin, "internal: Unhandled global path prefix");
+                    bucket->error(pe->origin, "internal: unhandled global path prefix");
                     break;
             }
 
@@ -711,6 +711,9 @@ bool Analyser::verify_expression(Expression *expression, bool assigned_to, bool 
             expression->assign_type(Type(BOOL));
             break;
         default:
+            // todo: do more analysis here:
+            //  if it's a path, put an error after the expression: if the path points to a valid function, suggest
+            //  calling it. if it points to a valid struct, suggest creating a variable with it
             bucket->error(expression->origin, "internal: unexpected, unhandled type of expression");
             res = false;
     }

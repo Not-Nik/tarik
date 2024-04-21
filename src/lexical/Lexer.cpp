@@ -60,16 +60,26 @@ void Lexer::unget_stream() {
     stream->unget();
 }
 
+Lexer::State Lexer::checkpoint() const {
+    return State {
+        .pos = pos,
+        .streampos = stream->tellg()
+    };
+}
+
+void Lexer::rollback(State state) {
+    stream->clear();
+    stream->seekg(state.streampos);
+    pos = state.pos;
+}
+
 Token Lexer::peek(int dist) {
-    auto old_pos = stream->tellg();
-    auto old_int_pos = pos;
+    State state = checkpoint();
     Token t = consume();
     for (int i = 0; i < dist; i++) {
         t = consume();
     }
-    stream->clear();
-    stream->seekg(old_pos);
-    pos = old_int_pos;
+    rollback(state);
     return t;
 }
 

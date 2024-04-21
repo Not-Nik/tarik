@@ -58,8 +58,9 @@ std::optional<Type> Parser::type() {
             Token part = lexer.peek(peek_distance++);
             if (part.id == NAME)
                 path.push_back(part.raw);
-            else
-                peek_distance--;
+            else {
+                return {};
+            }
         }
 
         peek_distance--;
@@ -382,22 +383,28 @@ Statement *Parser::parse_statement() {
         }
         return res;
     } else if (Token peek = lexer.peek(1); peek.id == NAME || peek.id == ASTERISK || peek.id == DOUBLE_COLON) {
+        Lexer::State state = lexer.checkpoint();
         if (std::optional<Type> ty = type(); ty.has_value()) {
             Type t = ty.value();
 
             Token peek = lexer.peek();
-            bucket->iassert(peek.id == NAME,
-                            peek.origin,
-                            "expected a name found '{}' instead",
-                            lexer.peek().raw);
-            Token name = lexer.peek();
 
-            if (lexer.peek(1).id != EQUAL) {
-                lexer.consume();
-                expect(SEMICOLON);
+            if (peek.id == PAREN_OPEN) {
+                lexer.rollback(state);
+            } else {
+                bucket->iassert(peek.id == NAME,
+                                peek.origin,
+                                "expected a name found '{}' instead",
+                                lexer.peek().raw);
+                Token name = lexer.peek();
+
+                if (lexer.peek(1).id != EQUAL) {
+                    lexer.consume();
+                    expect(SEMICOLON);
+                }
+
+                return new VariableStatement(token.origin, t, name);
             }
-
-            return new VariableStatement(token.origin, t, name);
         }
     }
 

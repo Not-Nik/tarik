@@ -28,9 +28,17 @@ class Lexer {
     void unget_stream();
 
 public:
+    struct State {
+        LexerPos pos;
+        std::streampos streampos;
+    };
+
     explicit Lexer(std::istream *s);
     explicit Lexer(const std::filesystem::path &f);
     ~Lexer();
+
+    State checkpoint() const;
+    void rollback(State state);
 
     Token peek(int dist = 0);
 
