@@ -6,6 +6,8 @@
 
 #include "Path.h"
 
+#include "syntactic/ast/Expression.h"
+
 std::vector<std::string> flatten_path(ast::Expression *path) {
     if (path->expression_type == ast::NAME_EXPR) {
         return {((ast::NameExpression *) path)->name};
@@ -27,3 +29,64 @@ std::vector<std::string> flatten_path(ast::Expression *path) {
 
     return {};
 }
+
+Path::Path(std::vector<std::string> parts) : parts(parts) {
+    if (!this->parts.empty() && this->parts.front().empty()) {
+        this->parts.erase(this->parts.begin());
+        global = true;
+    }
+}
+
+Path Path::from_expression(ast::Expression *path) {
+    return Path(flatten_path(path));
+}
+
+std::string Path::str() const {
+    std::string res;
+    for (auto it = parts.begin(); it != parts.end();) {
+        if (it->empty()) {
+            ++it;
+            continue;
+        }
+        res += *it;
+        if (++it != parts.end()) {
+            res += "::";
+        }
+    }
+    return res;
+}
+
+std::vector<std::string> Path::get_parts() const {
+    return parts;
+}
+
+bool Path::is_global() const {
+    return global;
+}
+
+Path Path::create_member(std::string name) const {
+    std::vector member_parts = parts;
+    member_parts.push_back(name);
+    return Path(member_parts);
+}
+
+Path Path::get_parent() const {
+    std::vector parent_parts = parts;
+    parent_parts.pop_back();
+    return Path(parent_parts);
+}
+
+Path Path::with_prefix(Path prefix) const {
+    std::vector prefixed_parts = parts;
+    prefixed_parts.insert(prefixed_parts.begin(), prefix.parts.begin(), prefix.parts.end());
+    return Path(prefixed_parts);
+}
+
+bool Path::operator==(const Path &other) const {
+    return parts == other.parts;
+}
+
+bool Path::operator!=(const Path &other) const {
+    return parts != other.parts;
+}
+

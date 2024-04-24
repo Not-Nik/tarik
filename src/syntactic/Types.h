@@ -13,6 +13,7 @@
 #include <cstdint>
 
 #include "lexical/Token.h"
+#include "semantic/Path.h"
 
 enum TypeSize : std::uint8_t {
     VOID,
@@ -84,7 +85,7 @@ inline std::string to_string(const TypeSize &ts) {
 }
 
 class Type {
-    std::variant<TypeSize, std::vector<std::string>> type;
+    std::variant<TypeSize, Path> type;
 
 public:
     int pointer_level;
@@ -100,8 +101,8 @@ public:
           pointer_level(pl) {
     }
 
-    explicit Type(std::vector<std::string> t, int pl = 0)
-        : type(std::move(t)),
+    explicit Type(Path p, int pl = 0)
+        : type(std::move(p)),
           pointer_level(pl) {
     }
 
@@ -109,19 +110,19 @@ public:
         return std::get<TypeSize>(type);
     }
 
-    [[nodiscard]] std::vector<std::string> get_user() const {
-        return std::get<std::vector<std::string>>(type);
+    [[nodiscard]] Path get_user() const {
+        return std::get<Path>(type);
     }
 
-    [[nodiscard]] std::vector<std::string> get_path() const {
+    [[nodiscard]] Path get_path() const {
         if (is_primitive()) {
-            return {to_string(get_primitive())};
+            return Path({to_string(get_primitive())});
         } else {
             return get_user();
         }
     }
 
-    void set_user(std::vector<std::string> user) {
+    void set_user(Path user) {
         type = user;
     }
 

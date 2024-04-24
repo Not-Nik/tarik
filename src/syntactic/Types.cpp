@@ -8,7 +8,7 @@
 
 #include <numeric>
 
-#include "expressions/Statements.h"
+#include "ast/Statements.h"
 
 std::string Type::str() const {
     std::string res = base();
@@ -25,14 +25,7 @@ std::string Type::base() const {
     if (type.index() == 0) {
         res = to_string(std::get<TypeSize>(type));
     } else {
-        auto path = std::get<std::vector<std::string>>(type);
-        for (auto part : path) {
-            if (!part.empty()) {
-                res.reserve(path.size() + part.size() + 2);
-                res += "::";
-                res += part;
-            }
-        }
+        res = std::get<Path>(type).str();
     }
     return res;
 }

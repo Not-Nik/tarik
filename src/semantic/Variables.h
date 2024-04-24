@@ -9,7 +9,7 @@
 #include <stack>
 
 #include "lexical/Token.h"
-#include "syntactic/expressions/Statements.h"
+#include "semantic/ast/Statements.h"
 
 class VariableState {
 protected:
@@ -37,9 +37,9 @@ public:
 };
 
 struct SemanticVariable {
-    ast::VariableStatement *var;
+    aast::VariableStatement *var;
 
-    SemanticVariable(ast::VariableStatement *var)
+    SemanticVariable(aast::VariableStatement *var)
         : var(var) {}
 
     virtual VariableState *state() = 0;
@@ -71,7 +71,7 @@ class PrimitiveVariable : public SemanticVariable {
     std::stack<VariableState> state_stack;
 
 public:
-    PrimitiveVariable(ast::VariableStatement *var)
+    PrimitiveVariable(aast::VariableStatement *var)
         : SemanticVariable(var),
           state_stack({VariableState()}) {}
 
@@ -84,7 +84,7 @@ class CompoundVariable : public SemanticVariable {
     CompoundState compound_state;
 
 public:
-    CompoundVariable(ast::VariableStatement *var, const std::vector<SemanticVariable *> &states)
+    CompoundVariable(aast::VariableStatement *var, const std::vector<SemanticVariable *> &states)
         : SemanticVariable(var),
           compound_state(states) {}
 

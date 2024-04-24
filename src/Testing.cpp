@@ -8,7 +8,7 @@
 
 #include "syntactic/Parser.h"
 #include "syntactic/Types.h"
-#include "syntactic/expressions/Expression.h"
+#include "syntactic/ast/Expression.h"
 
 #include <sstream>
 

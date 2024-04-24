@@ -1,19 +1,20 @@
-// tarik (c) Nikolas Wipper 2020-2024
+// tarik (c) Nikolas Wipper 2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
-#define TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
+#ifndef TARIK_SRC_SEMANTIC_EXPRESSIONS_STATEMENTS_H_
+#define TARIK_SRC_SEMANTIC_EXPRESSIONS_STATEMENTS_H_
 
 #include <map>
 #include <vector>
 
 #include "Base.h"
+#include "semantic/Path.h"
 #include "syntactic/Types.h"
 
-namespace ast
+namespace aast
 {
 class ScopeStatement : public Statement {
 public:
@@ -149,17 +150,16 @@ public:
 
 class FuncStCommon {
 public:
-    Token name;
+    Path path;
     Type return_type;
     std::vector<VariableStatement *> arguments;
     bool var_arg;
-    std::optional<Type> member_of;
 
-    FuncStCommon(Token n, Type ret, std::vector<VariableStatement *> args, bool va, std::optional<Type> mo)
-        : name(std::move(n)), return_type(ret), arguments(std::move(args)), var_arg(va), member_of(mo) {}
+    FuncStCommon(Path p, Type ret, std::vector<VariableStatement *> args, bool va)
+        : path(std::move(p)), return_type(ret), arguments(std::move(args)), var_arg(va) {}
 
     [[nodiscard]] std::string head() const {
-        std::string res = "fn " + name.raw + "(";
+        std::string res = "fn " + path.str() + "(";
         for (auto arg: arguments) {
             res += arg->type.str() + " " + arg->name.raw + ", ";
         }
@@ -181,12 +181,11 @@ public:
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
     FuncDeclareStatement(const LexerRange &o,
-                         Token n,
+                         Path p,
                          Type ret,
                          std::vector<VariableStatement *> args,
-                         bool var_arg,
-                         std::optional<Type> member_of)
-        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(n), ret, args, var_arg, member_of) {}
+                         bool var_arg)
+        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(p), ret, args, var_arg) {}
 
     [[nodiscard]] std::string print() const override {
         return head();
@@ -196,13 +195,12 @@ public:
 class FuncStatement : public ScopeStatement, public FuncStCommon {
 public:
     FuncStatement(const LexerRange &o,
-                  Token n,
+                  Path p,
                   Type ret,
                   std::vector<VariableStatement *> args,
                   std::vector<Statement *> b,
-                  bool var_arg,
-                  std::optional<Type> member_of)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(n), ret, std::move(args), var_arg, member_of) {}
+                  bool var_arg)
+        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(p), ret, std::move(args), var_arg) {}
 
     ~FuncStatement() override {
         for (auto *arg: arguments) {
@@ -217,11 +215,11 @@ public:
 
 class StructStatement : public Statement {
 public:
-    Token name;
+    Path path;
     std::vector<VariableStatement *> members;
 
-    StructStatement(const LexerRange &o, Token n, std::vector<VariableStatement *> m)
-        : Statement(STRUCT_STMT, o), name(std::move(n)), members(std::move(m)) {}
+    StructStatement(const LexerRange &o, Path p, std::vector<VariableStatement *> m)
+        : Statement(STRUCT_STMT, o), path(std::move(p)), members(std::move(m)) {}
 
     ~StructStatement() override {
         for (auto *m: members) {
@@ -237,9 +235,8 @@ public:
         return false;
     }
 
-    Type get_type(std::vector<std::string> path = {}) {
-        path.push_back(this->name.raw);
-        return Type(path, 0);
+    Type get_type(Path prefix = Path({})) {
+        return Type(path.with_prefix(prefix), 0);
     }
 
     Type get_member_type(const std::string &n) {
@@ -258,7 +255,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string res = "struct " + name.raw + " {\n";
+        std::string res = "struct " + path.str() + " {\n";
         for (auto *mem: members) {
             res += mem->print() + "\n";
         }

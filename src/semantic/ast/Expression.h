@@ -1,24 +1,24 @@
-// tarik (c) Nikolas Wipper 2020-2024
+// tarik (c) Nikolas Wipper 2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
-#define TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
+#ifndef TARIK_SRC_SEMANTIC_EXPRESSIONS_EXPRESSION_H_
+#define TARIK_SRC_SEMANTIC_EXPRESSIONS_EXPRESSION_H_
 
 #include "Base.h"
 #include "syntactic/Types.h"
 
-namespace ast
+namespace aast
 {
 
 class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(const LexerRange &lp, std::string n)
-        : Expression(NAME_EXPR, lp),
+    explicit NameExpression(const LexerRange &lp, Type type, std::string n)
+        : Expression(NAME_EXPR, lp, type),
           name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
@@ -34,25 +34,6 @@ public:
     }
 };
 
-template <class To, class = decltype(std::string(std::declval<To>()))>
-std::string smart_cast_from_string(const std::string &n) {
-    return n;
-}
-
-template <class To, class = decltype(To(std::stoi(std::declval<std::string>())))>
-To smart_cast_from_string(const std::string &n) {
-    return std::stoi(n);
-}
-
-template <>
-inline bool smart_cast_from_string<bool>(const std::string &n) {
-    if (n == "true")
-        return true;
-    if (n == "false")
-        return false;
-    throw "__unexpected_bool";
-}
-
 template <class To, class = decltype(std::to_string(std::declval<To>()))>
 std::string smart_cast_to_string(To t) {
     return std::to_string(t);
@@ -66,31 +47,30 @@ inline std::string smart_cast_to_string(bool s) {
     return s ? "true" : "false";
 }
 
-template <class PrimitiveType, ExprType expr_type>
+template <class PrimitiveType, TypeSize size, int pointer_level, ExprType expr_type>
 class PrimitiveExpression : public Expression {
 public:
     PrimitiveType n;
 
-    PrimitiveExpression(LexerRange lp, const std::string &n)
-        : Expression(expr_type, lp),
-          n(smart_cast_from_string<PrimitiveType>(n)) {}
+    PrimitiveExpression(LexerRange lp, PrimitiveType n)
+        : Expression(expr_type, lp, Type(size, pointer_level)),
+          n(n) {}
 
     [[nodiscard]] std::string print() const override {
         return smart_cast_to_string(n);
     }
 };
 
-using IntExpression = PrimitiveExpression<long long int, INT_EXPR>;
-using BoolExpression = PrimitiveExpression<bool, BOOL_EXPR>;
-using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
-using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
+using IntExpression = PrimitiveExpression<long long int, I32, 0, INT_EXPR>;
+using BoolExpression = PrimitiveExpression<bool, BOOL, 0, BOOL_EXPR>;
+using RealExpression = PrimitiveExpression<double, F32, 0, REAL_EXPR>;
+using StringExpression = PrimitiveExpression<std::string, U8, 1, STR_EXPR>;
 
 enum PrefixType {
     NEG,
     REF,
     DEREF,
     LOG_NOT,
-    GLOBAL
 };
 
 inline std::string to_string(PrefixType pt) {
@@ -103,8 +83,6 @@ inline std::string to_string(PrefixType pt) {
             return "*";
         case LOG_NOT:
             return "!";
-        case GLOBAL:
-            return "::";
     }
 }
 
@@ -113,8 +91,8 @@ public:
     PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixOperatorExpression(const LexerRange &lp, PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR, lp),
+    explicit PrefixOperatorExpression(const LexerRange &lp, Type type, PrefixType pt, Expression *op)
+        : Expression(PREFIX_EXPR, lp, type),
           prefix_type(pt),
           operand(op) {}
 
@@ -128,7 +106,6 @@ public:
 };
 
 enum BinOpType {
-    PATH,
     ADD,
     SUB,
     MUL,
@@ -145,8 +122,6 @@ enum BinOpType {
 
 constexpr ExprType to_expr_type(BinOpType bot) {
     switch (bot) {
-        case PATH:
-            return PATH_EXPR;
         case ADD:
         case SUB:
             return DASH_EXPR;
@@ -170,8 +145,6 @@ constexpr ExprType to_expr_type(BinOpType bot) {
 
 inline std::string to_string(BinOpType bot) {
     switch (bot) {
-        case PATH:
-            return "::";
         case ADD:
             return "+";
         case SUB:
@@ -204,8 +177,8 @@ public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryOperatorExpression(const LexerRange &lp, BinOpType bot, Expression *l, Expression *r)
-        : Expression(to_expr_type(bot), l->origin + r->origin),
+    BinaryOperatorExpression(const LexerRange &lp, Type type, BinOpType bot, Expression *l, Expression *r)
+        : Expression(to_expr_type(bot), l->origin + r->origin, type),
           bin_op_type(bot),
           left(l),
           right(r) {}
@@ -235,8 +208,8 @@ public:
     Expression *callee;
     std::vector<Expression *> arguments;
 
-    CallExpression(const LexerRange &lp, Expression *c, std::vector<Expression *> args)
-        : Expression(CALL_EXPR, lp),
+    CallExpression(const LexerRange &lp, Type type, Expression *c, std::vector<Expression *> args)
+        : Expression(CALL_EXPR, lp, type),
           callee(c),
           arguments(std::move(args)) {}
 
@@ -259,18 +232,6 @@ public:
         return callee->print() + "(" + arg_string + ")";
     }
 };
-
-class EmptyExpression : public Expression {
-public:
-    EmptyExpression(const LexerRange &lp)
-        : Expression(EMPTY_EXPR, lp) {
-        type = Type(VOID);
-    }
-
-    [[nodiscard]] std::string print() const override {
-        return "empty";
-    }
-};
 } // namespace ast
 
-#endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
+#endif //TARIK_SRC_SEMANTIC_EXPRESSIONS_EXPRESSION_H_

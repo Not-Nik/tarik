@@ -6,7 +6,7 @@
 
 #include "Parser.h"
 
-#include "expressions/Parslets.h"
+#include "ast/Parslets.h"
 
 using namespace ast;
 
@@ -66,7 +66,7 @@ std::optional<Type> Parser::type() {
 
         peek_distance--;
 
-        t = Type(path);
+        t = Type(Path(path));
     }
     while (lexer.peek(peek_distance++).id == ASTERISK) {
         t.pointer_level++;
@@ -238,10 +238,11 @@ Statement *Parser::parse_statement() {
                 name = expect(NAME);
             } else {
                 // We read a type, but it's probably a function name instead
-                if (bucket->iassert(!member_of.value().is_primitive() && member_of.value().get_user().size() == 1,
-                                    member_of.value().origin,
-                                    "Expected function name")) {
-                    name = Token::name(member_of.value().get_user()[0], member_of.value().origin);
+                if (bucket->iassert(
+                    !member_of.value().is_primitive() && member_of.value().get_user().get_parts().size() == 1,
+                    member_of.value().origin,
+                    "Expected function name")) {
+                    name = Token::name(member_of.value().get_user().get_parts()[0], member_of.value().origin);
                     member_of = {};
                 }
             }

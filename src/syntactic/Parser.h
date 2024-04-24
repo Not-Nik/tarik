@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2023
+// tarik (c) Nikolas Wipper 2020-2024
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,8 +15,8 @@
 #include "error/Bucket.h"
 #include "error/Error.h"
 #include "lexical/Lexer.h"
-#include "syntactic/expressions/Expression.h"
-#include "syntactic/expressions/Statements.h"
+#include "syntactic/ast/Expression.h"
+#include "syntactic/ast/Statements.h"
 
 class PrefixParselet;
 

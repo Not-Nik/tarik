@@ -28,6 +28,9 @@ add_executable(tarik
         src/lexical/Lexer.h
         src/lexical/Token.cpp
         src/lexical/Token.h
+        src/semantic/ast/Base.h
+        src/semantic/ast/Expression.h
+        src/semantic/ast/Statements.h
         src/semantic/Analyser.cpp
         src/semantic/Analyser.h
         src/semantic/Path.cpp
@@ -38,10 +41,10 @@ add_executable(tarik
         src/syntactic/Parser.h
         src/syntactic/Types.cpp
         src/syntactic/Types.h
-        src/syntactic/expressions/Base.h
-        src/syntactic/expressions/Expression.h
-        src/syntactic/expressions/Parslets.h
-        src/syntactic/expressions/Statements.h)
+        src/syntactic/ast/Base.h
+        src/syntactic/ast/Expression.h
+        src/syntactic/ast/Parslets.h
+        src/syntactic/ast/Statements.h)
 
 set(LLVM_LINK_COMPONENTS
         AArch64

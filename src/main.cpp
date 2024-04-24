@@ -191,27 +191,30 @@ int main(int argc, const char *argv[]) {
         }
         out.put('\n');
     } else {
+        std::vector<aast::Statement *> analysed_statements;
         if (error_bucket.get_error_count() == 0) {
             Analyser analyser(&error_bucket);
             analyser.analyse(statements);
-            statements = analyser.finish();
+            analysed_statements = analyser.finish();
         }
 
         if (error_bucket.get_error_count() == 0) {
             if (emit_aast) {
-                for (auto s : statements) {
+                for (auto s : analysed_statements) {
                     out << s->print() << "\n\n";
                 }
                 out.put('\n');
             } else {
                 LLVM generator(input);
-                generator.generate_statements(statements);
+                generator.generate_statements(analysed_statements);
                 if (emit_llvm)
                     generator.dump_ir(output_path);
                 else
                     return generator.write_file(output_path, config);
             }
         }
+
+        std::for_each(analysed_statements.begin(), analysed_statements.end(), [](auto &p) { delete p; });
     }
 
     std::for_each(statements.begin(), statements.end(), [](auto &p) { delete p; });
