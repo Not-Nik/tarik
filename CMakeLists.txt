@@ -50,17 +50,13 @@ set(LLVM_LINK_COMPONENTS
         AArch64
         AMDGPU
         ARM
-        asmparser
         AVR
         BPF
         Core
-        ExecutionEngine
         Hexagon
-        Interpreter
         Lanai
         LoongArch
         MC
-        mcjit
         Mips
         MSP430
         nativecodegen
@@ -77,7 +73,6 @@ set(LLVM_LINK_COMPONENTS
         objcarcopts
         scalaropts
         transformutils
-        irreader
 )
 
 llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_LINK_COMPONENTS})
