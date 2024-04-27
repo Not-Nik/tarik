@@ -61,7 +61,7 @@ public:
     }
 };
 
-using IntExpression = PrimitiveExpression<long long int, I32, 0, INT_EXPR>;
+using IntExpression = PrimitiveExpression<long long int, U0, 0, INT_EXPR>;
 using BoolExpression = PrimitiveExpression<bool, BOOL, 0, BOOL_EXPR>;
 using RealExpression = PrimitiveExpression<double, F32, 0, REAL_EXPR>;
 using StringExpression = PrimitiveExpression<std::string, U8, 1, STR_EXPR>;
