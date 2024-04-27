@@ -393,13 +393,9 @@ Statement *Parser::parse_statement() {
 
             Token peek = lexer.peek();
 
-            if (peek.id == PAREN_OPEN) {
+            if (peek.id != NAME) {
                 lexer.rollback(state);
             } else {
-                bucket->iassert(peek.id == NAME,
-                                peek.origin,
-                                "expected a name found '{}' instead",
-                                lexer.peek().raw);
                 Token name = lexer.peek();
 
                 if (lexer.peek(1).id != EQUAL) {
