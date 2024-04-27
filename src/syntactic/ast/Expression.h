@@ -106,7 +106,7 @@ public:
     Expression *operand;
 
     explicit PrefixOperatorExpression(const LexerRange &lp, PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR, lp),
+        : Expression(PREFIX_EXPR, lp + op->origin),
           prefix_type(pt),
           operand(op) {}
 
