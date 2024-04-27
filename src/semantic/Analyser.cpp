@@ -829,6 +829,18 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             return new aast::StringExpression(expression->origin, ((ast::StringExpression *) expression)->n);
         case ast::BOOL_EXPR:
             return new aast::BoolExpression(expression->origin, ((ast::BoolExpression *) expression)->n);
+        case ast::PATH_EXPR: {
+            bucket->error(expression->origin, "unexpected path expression");
+            Path path = Path::from_expression(expression);
+
+            if (is_func_declared(path)) {
+                bucket->note(expression->origin, "did you mean to call '{}'?", path.str());
+            }
+            if (is_struct_declared(path)) {
+                bucket->note(expression->origin, "did you mean to create a variable with type '{}'?", path.str());
+            }
+            break;
+        }
         default:
             // todo: do more analysis here:
             //  if it's a path, put an error after the expression: if the path points to a valid function, suggest
