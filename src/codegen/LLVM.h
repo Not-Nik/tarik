@@ -41,7 +41,7 @@ public:
             Object
         } output = Output::Object;
 
-        llvm::CodeGenOpt::Level optimisation_level = llvm::CodeGenOpt::None;
+        llvm::CodeGenOptLevel optimisation_level = llvm::CodeGenOptLevel::None;
         bool pic = false;
         std::optional<llvm::CodeModel::Model> code_model;
     };

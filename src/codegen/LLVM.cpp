@@ -73,7 +73,9 @@ int LLVM::write_file(const std::string &to, Config config) {
                                                       cpu,
                                                       features,
                                                       opt,
-                                                      config.pic ? llvm::Reloc::Model::PIC_ : llvm::Reloc::Model::Static,
+                                                      config.pic
+                                                      ? llvm::Reloc::Model::PIC_
+                                                      : llvm::Reloc::Model::Static,
                                                       config.code_model,
                                                       config.optimisation_level);
 
@@ -84,7 +86,9 @@ int LLVM::write_file(const std::string &to, Config config) {
     llvm::raw_fd_ostream stream(to, EC, llvm::sys::fs::CD_CreateAlways);
 
     llvm::legacy::PassManager pass;
-    auto file_type = config.output == Config::Output::Assembly ? llvm::CGFT_AssemblyFile : llvm::CGFT_ObjectFile;
+    auto file_type = config.output == Config::Output::Assembly
+                     ? llvm::CodeGenFileType::AssemblyFile
+                     : llvm::CodeGenFileType::ObjectFile;
 
     if (target_machine->addPassesToEmitFile(pass, stream, nullptr, file_type)) {
         // damn
@@ -474,7 +478,8 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             } else if (ae->left->expression_type == aast::MEM_ACC_EXPR) {
                 dest = generate_member_access((aast::BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
-            } else if (ae->left->expression_type == aast::PREFIX_EXPR && ((aast::PrefixOperatorExpression *) ae->left)->prefix_type
+            } else if (ae->left->expression_type == aast::PREFIX_EXPR && ((aast::PrefixOperatorExpression *) ae->left)->
+                prefix_type
                 == aast::DEREF) {
                 auto deref = (aast::PrefixOperatorExpression *) ae->left;
                 dest = generate_expression(deref->operand);

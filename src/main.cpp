@@ -87,13 +87,13 @@ int main(int argc, const char *argv[]) {
                 std::cerr << "error: Unknown code model '" << option.argument << "'\n";
         } else if (option == optimise) {
             if (option.argument == "0")
-                config.optimisation_level = llvm::CodeGenOpt::None;
+                config.optimisation_level = llvm::CodeGenOptLevel::None;
             else if (option.argument == "1")
-                config.optimisation_level = llvm::CodeGenOpt::Less;
+                config.optimisation_level = llvm::CodeGenOptLevel::Less;
             else if (option.argument == "2")
-                config.optimisation_level = llvm::CodeGenOpt::Default;
+                config.optimisation_level = llvm::CodeGenOptLevel::Default;
             else if (option.argument == "3")
-                config.optimisation_level = llvm::CodeGenOpt::Aggressive;
+                config.optimisation_level = llvm::CodeGenOptLevel::Aggressive;
             else
                 std::cerr << "error: Unknown optimisation level '" << option.argument << "'\n";
         } else if (option == pic) {
