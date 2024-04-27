@@ -611,9 +611,9 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             Type expression_type;
             if (expression->expression_type == ast::EQ_EXPR || expression->expression_type == ast::COMP_EXPR)
                 expression_type = Type(BOOL);
+            else
                 // Todo: this is wrong; we generate LLVM code that casts to float if either operand is a float and
                 //  to the highest bit width of the two operand
-            else
                 expression_type = left.value()->type;
 
             aast::BinOpType bot;
