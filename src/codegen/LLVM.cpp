@@ -353,11 +353,9 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             bool fp = false;
             llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
-            if (left->getType()->isFloatingPointTy() && !right->getType()->isFloatingPointTy()) {
+            // After validation, implicit casts are from float to integer or vice versa
+            if (left->getType()->isFloatingPointTy()) {
                 right = generate_cast(right, left->getType(), ce->right->type.is_signed_int());
-                fp = true;
-            } else if (right->getType()->isFloatingPointTy()) {
-                left = generate_cast(left, right->getType(), ce->left->type.is_signed_int());
                 fp = true;
             } else {
                 if (left->getType()->getIntegerBitWidth() > right->getType()->getIntegerBitWidth())
