@@ -201,9 +201,7 @@ void LLVM::generate_if(aast::IfStatement *if_, bool is_last) {
     llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(context, "endif_block");
     llvm::BasicBlock *else_block = nullptr;
 
-    llvm::Value *condition = generate_cast(generate_expression(if_->condition),
-                                           llvm::Type::getIntNTy(context, 1),
-                                           false);
+    llvm::Value *condition = generate_expression(if_->condition);
 
     if (if_->else_statement) {
         else_block = llvm::BasicBlock::Create(context, "else_block", current_function);
@@ -254,9 +252,7 @@ void LLVM::generate_while(aast::WhileStatement *while_, bool is_last) {
     current_function->insert(current_function->end(), while_comp_block);
     builder.SetInsertPoint(while_comp_block);
 
-    llvm::Value *condition = generate_cast(generate_expression(while_->condition),
-                                           llvm::Type::getIntNTy(context, 1),
-                                           false);
+    llvm::Value *condition = generate_expression(while_->condition);
     builder.CreateCondBr(condition, while_block, is_last ? nullptr : endwhile_block);
 
     current_function->insert(current_function->end(), while_block);
