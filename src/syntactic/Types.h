@@ -151,25 +151,21 @@ public:
         if (pointer_level != t.pointer_level)
             return false;
 
+        // Pointers only stay valid if they're the same type.
+        // F32 and F64 can't be cast 'trivially' and even
+        // integer types can't, if we target a big endian
+        // system
+        if (pointer_level > 0)
+            return type == t.type;
+
         // Early bail if we're assigning primitive -> user/user -> primitve
         if (type.index() != t.type.index())
             return false;
 
         if (is_primitive()) {
-            // Pointers only stay valid if they're the same type.
-            // F32 and F64 can't be cast 'trivially' and even
-            // integer types can't if we target a big endian
-            // system (this is unrealistic, idk)
-            if (pointer_level > 0)
-                return type == t.type;
-
-            // Casting from an integer to a float always works, it just looses precision
-            if (is_float() && !t.is_float())
-                return true;
-
-            // The same is true for float casts
-            if (is_float() && t.is_float())
-                return true;
+            // Casting from or to a float should always be explicit
+            if (is_float() != t.is_float())
+                return false;
 
             // Casting from a signed int could fail if cast into an unsigned int, no matter the uint's size
             if (is_unsigned_int() && t.is_signed_int())
