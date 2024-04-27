@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <string>
+#include "lexical/Token.h"
 
 namespace ast
 {
@@ -22,7 +23,9 @@ class Path {
     bool global = false;
 
 public:
-    explicit Path(std::vector<std::string> parts);
+    LexerRange origin;
+
+    explicit Path(std::vector<std::string> parts, LexerRange origin = {});
 
     static Path from_expression(ast::Expression *path);
 

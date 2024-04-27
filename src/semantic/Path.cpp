@@ -30,7 +30,7 @@ std::vector<std::string> flatten_path(ast::Expression *path) {
     return {};
 }
 
-Path::Path(std::vector<std::string> parts) : parts(parts) {
+Path::Path(std::vector<std::string> parts, LexerRange origin) : parts(parts), origin(origin) {
     if (!this->parts.empty() && this->parts.front().empty()) {
         this->parts.erase(this->parts.begin());
         global = true;
@@ -38,7 +38,7 @@ Path::Path(std::vector<std::string> parts) : parts(parts) {
 }
 
 Path Path::from_expression(ast::Expression *path) {
-    return Path(flatten_path(path));
+    return Path(flatten_path(path), path->origin);
 }
 
 std::string Path::str() const {

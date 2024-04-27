@@ -110,7 +110,11 @@ public:
         return std::get<TypeSize>(type);
     }
 
-    [[nodiscard]] Path get_user() const {
+    [[nodiscard]] Path &get_user() {
+        return std::get<Path>(type);
+    }
+
+    [[nodiscard]] const Path &get_user() const {
         return std::get<Path>(type);
     }
 

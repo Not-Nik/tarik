@@ -43,7 +43,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
             if (func->member_of.has_value()) {
                 name = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
             } else {
-                name = Path({func->name.raw}).with_prefix(path);
+                name = Path({func->name.raw}, func->name.origin).with_prefix(path);
             }
 
             std::vector<aast::VariableStatement *> arguments;
@@ -226,18 +226,18 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
     if (func->member_of.has_value()) {
         func_path = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
     } else {
-        func_path = Path({func->name.raw}).with_prefix(path);
+        func_path = Path({func->name.raw}, func->name.origin).with_prefix(path);
     }
 
     for (auto registered : functions) {
         if (func_path != registered->path)
             continue;
         bucket->error(func->name.origin, "redefinition of '{}'", func->name.raw);
-        bucket->note(registered->origin, "previous definition here");
+        bucket->note(registered->path.origin, "previous definition here");
     }
 
     bucket->iassert(func->return_type == Type(VOID) || does_always_return(func),
-                    func->origin,
+                    func->return_type.origin,
                     "function with return type doesn't always return");
     std::vector<aast::VariableStatement *> arguments;
 
@@ -381,7 +381,7 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
     if (type.value().is_primitive()) {
         sem = new PrimitiveVariable(new_var);
     } else {
-        aast::StructStatement *st = get_struct(Path(type.value().get_user()));
+        aast::StructStatement *st = get_struct(type.value().get_user());
 
         std::vector<SemanticVariable *> member_states;
         for (auto member : st->members) {
@@ -402,13 +402,13 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
 
 std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatement *struct_) {
     std::vector<std::string> registered;
-    Path struct_path = Path({struct_->name.raw}).with_prefix(path);
+    Path struct_path = Path({struct_->name.raw}, struct_->name.origin).with_prefix(path);
 
     for (auto [path, registered] : structures) {
         if (path != struct_path)
             continue;
         bucket->error(struct_->name.origin, "redefinition of '{}'", struct_->name.raw);
-        bucket->note(registered->origin, "previous definition here");
+        bucket->note(registered->path.origin, "previous definition here");
     }
 
     std::vector<aast::VariableStatement *> members;
@@ -519,7 +519,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 }
 
                 if (callee_parent.has_value()) {
-                    func_path = Path(callee_parent.value()->type.get_path());
+                    func_path = callee_parent.value()->type.get_path();
                     func_path = func_path.create_member(((ast::NameExpression *) mem->right)->name);
                 } else {
                     return {};
@@ -678,12 +678,12 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                  left.value()->type.str()))
                 return {};
             auto struct_name = left.value()->type.get_user();
-            if (!bucket->iassert(is_struct_declared(Path(struct_name)),
+            if (!bucket->iassert(is_struct_declared(struct_name),
                                  left.value()->origin,
                                  "undefined structure '{}'",
                                  left.value()->type.str()))
                 return {};
-            aast::StructStatement *s = get_struct(Path(struct_name));
+            aast::StructStatement *s = get_struct(struct_name);
 
             if (!bucket->iassert(mae->right->expression_type == ast::NAME_EXPR,
                                  mae->right->origin,
@@ -839,7 +839,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 
 std::optional<Type> Analyser::verify_type(Type type) {
     if (!type.is_primitive()) {
-        auto path = type.get_user();
+        Path path = type.get_user();
         if (!path.is_global()) {
             // global_path here, means global path to local struct
             // precisely, type->get_user() contains a local path
@@ -854,10 +854,10 @@ std::optional<Type> Analyser::verify_type(Type type) {
             }
         }
 
-        bucket->iassert(is_struct_declared(Path(path)),
+        bucket->iassert(is_struct_declared(path),
                         type.origin,
                         "undefied type '{}'",
-                        Path(path).str());
+                        path.str());
 
         type.set_user(path);
     }
@@ -890,7 +890,7 @@ bool Analyser::is_func_declared(Path path) {
         return declarations.contains(path);
     }
 
-    return declarations.contains(path) || declarations.contains(path.with_prefix(Path(this->path)));
+    return declarations.contains(path) || declarations.contains(path.with_prefix(this->path));
 }
 
 bool Analyser::is_struct_declared(Path path) {
@@ -910,7 +910,7 @@ aast::FuncStCommon *Analyser::get_func_decl(Path path) {
         return declarations[path];
     }
 
-    Path local = path.with_prefix(Path(this->path));
+    Path local = path.with_prefix(this->path);
 
     if (declarations.contains(local))
         return declarations[local];
@@ -923,7 +923,7 @@ aast::StructStatement *Analyser::get_struct(Path path) {
         return structures[path];
     }
 
-    Path local = path.with_prefix(Path(this->path));
+    Path local = path.with_prefix(this->path);
 
     if (structures.contains(local))
         return structures[local];

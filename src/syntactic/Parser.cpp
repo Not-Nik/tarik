@@ -76,6 +76,8 @@ std::optional<Type> Parser::type() {
 
     // fixme: this is incredibly inefficient
     t.origin = lexer.peek().origin + lexer.peek(peek_distance).origin;
+    if (!t.is_primitive())
+    t.get_user().origin = t.origin;
 
     for (int _ = 0; _ < peek_distance; _++)
         lexer.consume();
