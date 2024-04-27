@@ -753,7 +753,8 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     pe_type.pointer_level--;
                     break;
                 case ast::GLOBAL:
-                    bucket->error(pe->origin, "internal: unhandled global path prefix");
+                    bucket->error(pe->origin, "unexpected global path prefix");
+                    bucket->note(pe->origin, "did you mean to call a function? ('{}()')", pe->print());
                     break;
             }
 
