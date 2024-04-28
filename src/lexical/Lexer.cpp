@@ -256,12 +256,3 @@ Token Lexer::consume() {
 
     return Token(type, tok, range);
 }
-
-void Lexer::read_until(std::vector<char> d) {
-    char p = peek_stream();
-    while (std::find(d.begin(), d.end(), p) == d.end()) {
-        read_stream();
-        p = peek_stream();
-    }
-    p = peek_stream();
-}

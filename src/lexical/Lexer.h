@@ -43,8 +43,6 @@ public:
     Token peek(int dist = 0);
 
     Token consume();
-
-    void read_until(std::vector<char> d);
 };
 
 #endif //TARIK_SRC_LEXICAL_LEXER_H_
