@@ -501,6 +501,8 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             auto ce = (ast::CallExpression *) expression;
 
             Path func_path = Path({});
+            std::vector<aast::Expression *> arguments;
+
             if (auto *gl = (ast::PrefixExpression *) ce->callee;
                 ce->callee->expression_type == ast::NAME_EXPR || ce->callee->expression_type == ast::PATH_EXPR ||
                 (ce->callee->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL)) {
@@ -519,14 +521,13 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     return {};
                 }
 
-                if (callee_parent.has_value()) {
-                    func_path = callee_parent.value()->type.get_path();
-                    func_path = func_path.create_member(((ast::NameExpression *) mem->right)->name);
-                } else {
+                if (!callee_parent.has_value())
                     return {};
-                }
 
-                ce->arguments.insert(ce->arguments.begin(), mem->left);
+                func_path = callee_parent.value()->type.get_path();
+                func_path = func_path.create_member(((ast::NameExpression *) mem->right)->name);
+
+                arguments.push_back(callee_parent.value());
                 mem->left = nullptr;
             } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
                 Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
@@ -581,28 +582,34 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             aast::FuncStCommon *func = get_func_decl(func_path);
 
             size_t i = 0;
-            if (is_struct_declared(func->path.get_parent()) && func->path.get_parts().back() != "$constructor" &&
-                (func->arguments.empty() || func->arguments[0]->name.raw != "this"))
-                // constructors are in the scope of a struct, but aren't called by a member expression.
-                // Otherwise the function is static, but we always put in the this argument
-                ce->arguments.erase(ce->arguments.begin());
+            if (is_struct_declared(func->path.get_parent())) {
+                if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
+                    bucket->iassert(func->arguments[0]->type.is_assignable_from(arguments[0]->type),
+                                    arguments[0]->origin,
+                                    "passing value of type '{}' to argument of type '{}'",
+                                    arguments[0]->type.str(),
+                                    func->arguments[0]->type.str());
+                    i = 1;
+                }
+                else if (func->path.get_parts().back() != "$constructor")
+                    // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
+                    // function is static, but we always put in the this argument
+                    arguments.erase(arguments.begin());
+            }
 
-
-            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size(),
+            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size()-i,
                                  ce->origin,
                                  "too few arguments, expected {} found {}.",
                                  func->arguments.size(),
                                  ce->arguments.size()))
                 return {};
 
-            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size(),
+            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size()-i,
                                  ce->origin,
                                  "too many arguments, expected {} found {}.",
                                  func->arguments.size(),
                                  ce->arguments.size()))
                 return {};
-
-            std::vector<aast::Expression *> arguments;
 
             for (; i < std::min(func->arguments.size(), ce->arguments.size()); i++) {
                 aast::VariableStatement *arg_var = func->arguments[i];

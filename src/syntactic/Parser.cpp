@@ -77,7 +77,7 @@ std::optional<Type> Parser::type() {
     // fixme: this is incredibly inefficient
     t.origin = lexer.peek().origin + lexer.peek(peek_distance).origin;
     if (!t.is_primitive())
-    t.get_user().origin = t.origin;
+        t.get_user().origin = t.origin;
 
     for (int _ = 0; _ < peek_distance; _++)
         lexer.consume();
@@ -262,7 +262,7 @@ Statement *Parser::parse_statement() {
         } else {
             if (member_of.has_value() && lexer.peek().raw == "this") {
                 Token this_tok = lexer.consume();
-                args.push_back(new VariableStatement(this_tok.origin, member_of.value(), this_tok));
+                args.push_back(new VariableStatement(this_tok.origin, member_of.value().get_pointer_to(), this_tok));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
