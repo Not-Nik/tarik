@@ -88,6 +88,7 @@ std::optional<Type> Parser::type() {
 void Parser::init_parslets() {
     // Trivial expressions
     prefix_parslets.emplace(NAME, new NameParselet());
+    prefix_parslets.emplace(MACRO_NAME, new MacroNameParselet());
     prefix_parslets.emplace(INTEGER, new IntParselet());
     prefix_parslets.emplace(REAL, new RealParselet());
     prefix_parslets.emplace(STRING, new StringParselet());

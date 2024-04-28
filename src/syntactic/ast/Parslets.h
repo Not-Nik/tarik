@@ -38,11 +38,9 @@ using BoolParselet = SimpleParselet<ast::BoolExpression>;
 using RealParselet = SimpleParselet<ast::RealExpression>;
 using StringParselet = SimpleParselet<ast::StringExpression>;
 
-class NameParselet : public PrefixParselet {
-    ast::Expression *parse(Parser *, const Token &token) override {
-        return new ast::NameExpression(token.origin, token.raw);
-    }
-};
+using NameParselet = SimpleParselet<ast::NameExpression>;
+using MacroNameParselet = SimpleParselet<ast::MacroNameExpression>;
+
 
 template <ast::PrefixType prefix_type, ast::Precedence precedence = ast::PREFIX>
 class PrefixOperatorParselet : public PrefixParselet {

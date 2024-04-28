@@ -71,6 +71,7 @@ enum ExprType {
     MEM_ACC_EXPR,
     PREFIX_EXPR,
     ASSIGN_EXPR,
+    MACRO_NAME_EXPR,
     NAME_EXPR,
     INT_EXPR,
     BOOL_EXPR,

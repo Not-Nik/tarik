@@ -26,6 +26,19 @@ public:
     }
 };
 
+class MacroNameExpression : public Expression {
+public:
+    std::string name;
+
+    explicit MacroNameExpression(const LexerRange &lp, std::string n)
+        : Expression(MACRO_NAME_EXPR, lp),
+          name(std::move(n)) {}
+
+    [[nodiscard]] std::string print() const override {
+        return name;
+    }
+};
+
 template <class To, class = decltype(std::string(std::declval<To>()))>
 std::string smart_cast_from_string(const std::string &n) {
     return n;
