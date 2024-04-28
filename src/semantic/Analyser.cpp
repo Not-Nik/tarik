@@ -16,7 +16,8 @@
 #include "Variables.h"
 
 Analyser::Analyser(Bucket *bucket)
-    : bucket(bucket), macros({{"as!", new CastMacro()}}) {}
+    : bucket(bucket),
+      macros({{"as!", new CastMacro()}}) {}
 
 std::vector<aast::Statement *> Analyser::finish() {
     std::vector<aast::Statement *> res;
@@ -580,14 +581,12 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             aast::FuncStCommon *func = get_func_decl(func_path);
 
             size_t i = 0;
-            if (is_struct_declared(func->path.get_parent())) {
-                if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this")
-                    i = 1;
-                else if (func->path.get_parts().back() != "$constructor")
-                    // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
-                    // function is static, but we always put in the this argument
-                    ce->arguments.erase(ce->arguments.begin());
-            }
+            if (is_struct_declared(func->path.get_parent()) && func->path.get_parts().back() != "$constructor" &&
+                (func->arguments.empty() || func->arguments[0]->name.raw != "this"))
+                // constructors are in the scope of a struct, but aren't called by a member expression.
+                // Otherwise the function is static, but we always put in the this argument
+                ce->arguments.erase(ce->arguments.begin());
+
 
             if (!bucket->iassert(ce->arguments.size() >= func->arguments.size(),
                                  ce->origin,
