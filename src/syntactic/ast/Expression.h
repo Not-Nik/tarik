@@ -237,6 +237,25 @@ public:
     }
 };
 
+class CastExpression : public Expression {
+public:
+    Expression *expression;
+    Type target_type;
+
+    CastExpression(const LexerRange &lp, Expression *expr, Type tt)
+        : Expression(CAST_EXPR, lp),
+          expression(expr),
+          target_type(tt) {}
+
+    ~CastExpression() override {
+        delete expression;
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return expression->print() + ".as!(" + target_type.str() + ")";
+    }
+};
+
 class CallExpression : public Expression {
 public:
     Expression *callee;

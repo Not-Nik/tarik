@@ -80,6 +80,7 @@ enum ExprType {
     TYPE_EXPR,
     PATH_EXPR,
     EMPTY_EXPR,
+    CAST_EXPR
 };
 
 class Expression : public Statement {
