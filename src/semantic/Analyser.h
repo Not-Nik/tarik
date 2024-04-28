@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include "Macro.h"
 #include "error/Bucket.h"
 #include "semantic/ast/Statements.h"
 #include "syntactic/ast/Statements.h"
@@ -18,6 +19,8 @@ class Analyser {
     std::vector<aast::FuncStatement *> functions;
     std::unordered_map<Path, aast::StructStatement *> structures;
     std::unordered_map<Path, aast::FuncDeclareStatement *> declarations;
+
+    std::unordered_map<std::string, Macro*> macros;
 
     Path path = Path({});
 

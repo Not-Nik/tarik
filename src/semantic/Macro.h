@@ -21,7 +21,14 @@ public:
 
     std::vector<ArgumentType> arguments;
 
-    virtual ast::Expression *apply(std::vector<ast::Expression> arguments) = 0;
+    virtual ast::Expression *apply(ast::Expression *macro_call, std::vector<ast::Expression *> arguments) = 0;
+};
+
+class CastMacro : public Macro {
+public:
+    CastMacro();
+
+    ast::Expression *apply(ast::Expression *macro_call, std::vector<ast::Expression *> arguments) override;
 };
 
 #endif //TARIK_SRC_SEMANTIC_MACRO_H_

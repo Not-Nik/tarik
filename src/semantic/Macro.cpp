@@ -5,3 +5,15 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "Macro.h"
+
+#include "syntactic/ast/Expression.h"
+
+CastMacro::CastMacro() {
+    arguments = {EXPRESSION, TYPE};
+}
+
+ast::Expression *CastMacro::apply(ast::Expression *macro_call, std::vector<ast::Expression *> arguments) {
+    Type target = ((ast::TypeExpression *) arguments[1])->type;
+
+    return new ast::CastExpression(macro_call->origin, arguments[0], target);
+}

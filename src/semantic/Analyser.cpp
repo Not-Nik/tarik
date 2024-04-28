@@ -16,7 +16,7 @@
 #include "Variables.h"
 
 Analyser::Analyser(Bucket *bucket)
-    : bucket(bucket) {}
+    : bucket(bucket), macros({{"as!", new CastMacro()}}) {}
 
 std::vector<aast::Statement *> Analyser::finish() {
     std::vector<aast::Statement *> res;
@@ -284,10 +284,10 @@ std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
         // implicitely compare to 0 if condition isn't a bool already
         if (condition.value()->type != Type(BOOL, 0)) {
             condition = new aast::BinaryExpression(if_->condition->origin,
-                                                           Type(BOOL),
-                                                           aast::NEQ,
-                                                           condition.value(),
-                                                           new aast::IntExpression(if_->condition->origin, 0));
+                                                   Type(BOOL),
+                                                   aast::NEQ,
+                                                   condition.value(),
+                                                   new aast::IntExpression(if_->condition->origin, 0));
         }
 
         std::vector block = std::move(scope.value()->block);
@@ -338,10 +338,10 @@ std::optional<aast::WhileStatement *> Analyser::verify_while(ast::WhileStatement
         // implicitely compare to 0 if condition isn't a bool already
         if (condition.value()->type != Type(BOOL, 0)) {
             condition = new aast::BinaryExpression(while_->condition->origin,
-                                                           Type(BOOL),
-                                                           aast::NEQ,
-                                                           condition.value(),
-                                                           new aast::IntExpression(while_->condition->origin, 0));
+                                                   Type(BOOL),
+                                                   aast::NEQ,
+                                                   condition.value(),
+                                                   new aast::IntExpression(while_->condition->origin, 0));
         }
 
         std::vector block = std::move(scope.value()->block);
@@ -432,20 +432,20 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
             ctor_args.push_back(new ast::VariableStatement(struct_->origin, member_type.value(), member->name));
 
             auto *member_access = new ast::BinaryExpression(struct_->origin,
-                                                                    ast::MEM_ACC,
-                                                                    new ast::NameExpression(
-                                                                        struct_->origin,
-                                                                        "_instance"),
-                                                                    new ast::NameExpression(
-                                                                        struct_->origin,
-                                                                        member->name.raw));
+                                                            ast::MEM_ACC,
+                                                            new ast::NameExpression(
+                                                                struct_->origin,
+                                                                "_instance"),
+                                                            new ast::NameExpression(
+                                                                struct_->origin,
+                                                                member->name.raw));
 
             body.push_back(new ast::BinaryExpression(struct_->origin,
-                                                             ast::ASSIGN,
-                                                             member_access,
-                                                             new ast::NameExpression(
-                                                                 struct_->origin,
-                                                                 member->name.raw)));
+                                                     ast::ASSIGN,
+                                                     member_access,
+                                                     new ast::NameExpression(
+                                                         struct_->origin,
+                                                         member->name.raw)));
         }
     }
     body.push_back(new ast::ReturnStatement(struct_->origin, new ast::NameExpression(struct_->origin, "_instance")));
@@ -527,6 +527,42 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 
                 ce->arguments.insert(ce->arguments.begin(), mem->left);
                 mem->left = nullptr;
+            } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
+                Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
+
+                if (!bucket->iassert(ce->arguments.size() >= macro->arguments.size(),
+                                     ce->origin,
+                                     "too few arguments, expected {} found {}.",
+                                     macro->arguments.size(),
+                                     ce->arguments.size()))
+                    return {};
+
+                if (!bucket->iassert(ce->arguments.size() <= macro->arguments.size(),
+                                     ce->origin,
+                                     "too many arguments, expected {} found {}.",
+                                     macro->arguments.size(),
+                                     ce->arguments.size()))
+                    return {};
+
+                for (int i = 0; i < macro->arguments.size(); i++) {
+                    ast::Expression *arg = ce->arguments[i];
+                    if (macro->arguments[i] == Macro::IDENTIFIER) {
+                        if (!bucket->iassert(arg->expression_type == ast::NAME_EXPR ||
+                                             arg->expression_type == ast::PATH_EXPR || (arg->expression_type ==
+                                                 ast::PREFIX_EXPR && (
+                                                     (ast::PrefixExpression *) arg)->prefix_type == ast::GLOBAL),
+                                             arg->origin,
+                                             "Expected identifier"))
+                            return {};
+                    } else if (macro->arguments[i] == Macro::TYPE) {
+                        if (!bucket->iassert(arg->expression_type == ast::TYPE_EXPR,
+                                             arg->origin,
+                                             "Expected type"))
+                            return {};
+                    }
+                }
+
+                return verify_expression(macro->apply(ce, ce->arguments));
             } else {
                 bucket->error(ce->callee->origin, "calling of expressions is unimplemented");
                 return {};
@@ -687,10 +723,10 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             }
 
             return new aast::BinaryExpression(ae->origin,
-                                                      expression_type,
-                                                      bot,
-                                                      left.value(),
-                                                      right.value());
+                                              expression_type,
+                                              bot,
+                                              left.value(),
+                                              right.value());
         }
         case ast::MEM_ACC_EXPR: {
             auto mae = (ast::BinaryExpression *) expression;
@@ -738,11 +774,11 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             }
 
             return new aast::BinaryExpression(mae->origin,
-                                                      member_type,
-                                                      aast::MEM_ACC,
-                                                      left.value(),
-                                                      new
-                                                      aast::NameExpression(mae->right->origin, Type(), member_name));
+                                              member_type,
+                                              aast::MEM_ACC,
+                                              left.value(),
+                                              new
+                                              aast::NameExpression(mae->right->origin, Type(), member_name));
         }
         case ast::PREFIX_EXPR: {
             auto pe = (ast::PrefixExpression *) expression;
@@ -868,6 +904,14 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 bucket->note(expression->origin, "did you mean to create a variable with type '{}'?", path.str());
             }
             break;
+        }
+        case ast::CAST_EXPR: {
+            auto *ce = (ast::CastExpression *) expression;
+            std::optional expr = verify_expression(ce->expression);
+
+            if (expr.has_value())
+                return new aast::CastExpression(expression->origin, expr.value(), ce->target_type);
+            return {};
         }
         default:
             // todo: do more analysis here:
