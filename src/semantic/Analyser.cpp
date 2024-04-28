@@ -307,7 +307,7 @@ std::optional<aast::ReturnStatement *> Analyser::verify_return(ast::ReturnStatem
     if (return_->value) {
         std::optional value = verify_expression(return_->value);
         if (value.has_value()) {
-            bucket->iassert(return_type.is_compatible(value.value()->type),
+            bucket->iassert(return_type.is_assignable_from(value.value()->type),
                             return_->value->origin,
                             "can't return value of type '{}' in function with return type '{}'",
                             value.value()->type.str(),
@@ -578,7 +578,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 if (argument.has_value()) {
                     arguments.push_back(argument.value());
 
-                    bucket->iassert(arg_var->type.is_compatible(argument.value()->type),
+                    bucket->iassert(arg_var->type.is_assignable_from(argument.value()->type),
                                     arg->origin,
                                     "passing value of type '{}' to argument of type '{}'",
                                     argument.value()->type.str(),
@@ -602,11 +602,39 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             if (!left.has_value() || !right.has_value())
                 return {};
 
-            bucket->iassert(left.value()->type.is_compatible(right.value()->type),
-                            ae->right->origin,
-                            "can't assign to type '{}' from '{}'",
-                            left.value()->type.str(),
-                            right.value()->type.str());
+            if (left.value()->type.is_float() && right.value()->expression_type == aast::INT_EXPR) {
+                auto *real = new aast::RealExpression(right.value()->origin,
+                                                      (double) ((aast::IntExpression *) right.value())->n);
+                delete right.value();
+                right = real;
+            }
+
+            if (right.value()->type.is_float() && left.value()->expression_type == aast::INT_EXPR) {
+                auto *real = new aast::RealExpression(left.value()->origin,
+                                                      (double) ((aast::IntExpression *) left.value())->n);
+                delete left.value();
+                left = real;
+            }
+
+            if (ae->expression_type == ast::ASSIGN_EXPR) {
+                bucket->iassert(left.value()->type.is_assignable_from(right.value()->type),
+                                ae->right->origin,
+                                "can't assign to type '{}' from '{}'",
+                                left.value()->type.str(),
+                                right.value()->type.str());
+            } else if (ae->expression_type == ast::EQ_EXPR || ae->expression_type == ast::COMP_EXPR) {
+                bucket->iassert(left.value()->type.is_comparable(right.value()->type),
+                                ae->origin,
+                                "invalid operands to binary expression '{}' and '{}'",
+                                left.value()->type.str(),
+                                right.value()->type.str());
+            } else /*if (math expression)*/ {
+                bucket->iassert(left.value()->type.is_compatible(right.value()->type),
+                                ae->origin,
+                                "invalid operands to binary expression '{}' and '{}'",
+                                left.value()->type.str(),
+                                right.value()->type.str());
+            }
 
             Type expression_type;
             if (expression->expression_type == ast::EQ_EXPR || expression->expression_type == ast::COMP_EXPR)

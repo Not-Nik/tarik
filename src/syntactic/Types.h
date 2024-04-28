@@ -137,8 +137,102 @@ public:
         return type.index() == 0;
     }
 
-    // does t fit into this
+    [[nodiscard]] Type get_result(const Type &t) const {
+        if (pointer_level > 0 || !is_primitive())
+            return *this;
+
+        if (!is_float() && !is_bool()) {
+            TypeSize unsigned_type = VOID, signed_type = VOID;
+            if (is_unsigned_int() && t.is_signed_int()) {
+                unsigned_type = get_primitive();
+                signed_type = t.get_primitive();
+            } else if (is_signed_int() && t.is_unsigned_int()) {
+                unsigned_type = t.get_primitive();
+                signed_type = get_primitive();
+            }
+
+            if (unsigned_type == U0)
+                signed_type = I64;
+            else if (unsigned_type == U8)
+                signed_type = std::max(signed_type, I16);
+            else if (unsigned_type == U16)
+                signed_type = std::max(signed_type, I32);
+            else
+                if (unsigned_type == U32)
+                    signed_type = std::max(signed_type, I64);
+
+            if (unsigned_type != VOID)
+                return Type(signed_type);
+        }
+
+        return Type(std::max(get_primitive(), t.get_primitive()));
+    }
+
     [[nodiscard]] bool is_compatible(const Type &t) const {
+        if (operator==(Type(VOID)) || t == Type(VOID))
+            return false;
+
+        // Early bail if the types are the same
+        if (*this == t)
+            return true;
+
+        // Pointer arithmetic can never be implicit
+        if (pointer_level > 0 || t.pointer_level > 0)
+            return false;
+
+        if (is_bool() || t.is_bool())
+            return false;
+
+        if (is_float() != t.is_float())
+            return false;
+
+        if (is_unsigned_int()) {
+            // either the other type is also unsigned, or we can cast
+            // this one to a signed type without losing information
+            return t.is_unsigned_int() || get_integer_bitwidth() < 64;
+        }
+        return !t.is_unsigned_int() || t.get_integer_bitwidth() < 64;
+    }
+
+    [[nodiscard]] bool is_comparable(const Type &t) const {
+        // Comparing with a void always fails
+        if (operator==(Type(VOID)) || t == Type(VOID))
+            return false;
+
+        // Early bail if the types are the same
+        if (*this == t)
+            return true;
+
+        // Two pointers can always be compared, regardless of level
+        if (pointer_level > 0 && t.pointer_level > 0)
+            return true;
+
+        if (pointer_level != t.pointer_level) {
+            // Pointers are treated as unsigned ints in comparisons
+            return (pointer_level == 0 && !is_unsigned_int()) || (t.pointer_level == 0 && !is_unsigned_int());
+        }
+        // At this point both types aren't pointers
+
+        // User types can't be compared
+        if (!is_primitive() || !t.is_primitive())
+            return false;
+
+        if (is_float() != t.is_float())
+            return false;
+
+        if (is_bool() != t.is_bool())
+            return false;
+
+        if (is_unsigned_int()) {
+            // either the other type is also unsigned, or we can cast
+            // this one to a signed type without losing information
+            return t.is_unsigned_int() || get_integer_bitwidth() < 64;
+        }
+        return !t.is_unsigned_int() || t.get_integer_bitwidth() < 64;
+    }
+
+    // does t fit into this
+    [[nodiscard]] bool is_assignable_from(const Type &t) const {
         // Assigning to and from a void always fails
         if (operator==(Type(VOID)) || t == Type(VOID))
             return false;
@@ -170,16 +264,20 @@ public:
             // Casting from a signed int could fail if cast into an unsigned int, no matter the uint's size
             if (is_unsigned_int() && t.is_signed_int())
                 return false;
-            // Casting from an unsigned int could fail if the signed type isn't bigger
+                // Casting from an unsigned int could fail if the signed type isn't bigger
             else if (is_signed_int() && t.is_unsigned_int())
                 return get_integer_bitwidth() > t.get_integer_bitwidth();
-            // Casting without changing signedness only requires the at least same bitwidth
+                // Casting without changing signedness only requires the at least same bitwidth
             else
                 return get_integer_bitwidth() >= t.get_integer_bitwidth();
         } else {
             // User types always have to be the same to be compatible
             return type == t.type;
         }
+    }
+
+    [[nodiscard]] bool is_bool() const {
+        return is_primitive() && std::get<TypeSize>(type) == BOOL;
     }
 
     [[nodiscard]] bool is_float() const {

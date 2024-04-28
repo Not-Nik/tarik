@@ -350,19 +350,17 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
         case aast::EQ_EXPR:
         case aast::COMP_EXPR: {
             auto ce = (aast::BinaryOperatorExpression *) expression;
-            bool fp = false;
+
             llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
-            // After validation, implicit casts are from float to integer or vice versa
-            if (left->getType()->isFloatingPointTy()) {
-                right = generate_cast(right, left->getType(), ce->right->type.is_signed_int());
-                fp = true;
-            } else {
-                if (left->getType()->getIntegerBitWidth() > right->getType()->getIntegerBitWidth())
-                    right = generate_cast(right, left->getType(), ce->left->type.is_signed_int());
-                else
-                    left = generate_cast(left, right->getType(), ce->right->type.is_signed_int());
-            }
+            // After validation, implicit casts are never from float to integer or vice versa
+            llvm::Type *result_type = make_llvm_type(ce->left->type.get_result(ce->right->type));
+            bool fp = result_type->isFloatingPointTy();
+
+            // signed_int parameter doesn't matter, because we never cast from float to int or vice versa implicitly
+            left = generate_cast(left, result_type);
+            right = generate_cast(right, result_type);
+
             switch (ce->bin_op_type) {
                 case aast::ADD:
                     if (fp)
@@ -472,9 +470,8 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             } else if (ae->left->expression_type == aast::MEM_ACC_EXPR) {
                 dest = generate_member_access((aast::BinaryOperatorExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
-            } else if (ae->left->expression_type == aast::PREFIX_EXPR && ((aast::PrefixOperatorExpression *) ae->left)->
-                prefix_type
-                == aast::DEREF) {
+            } else if (ae->left->expression_type == aast::PREFIX_EXPR &&
+                ((aast::PrefixOperatorExpression *) ae->left)->prefix_type == aast::DEREF) {
                 auto deref = (aast::PrefixOperatorExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
