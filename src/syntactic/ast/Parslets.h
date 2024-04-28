@@ -105,10 +105,42 @@ class AssignParselet : public InfixParselet {
 
 class CallParselet : public InfixParselet {
     ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
+        if (left->expression_type == ast::MACRO_NAME_EXPR)
+            return parse_macro(parser, token, left);
+
         std::vector<ast::Expression *> args;
 
         while (!parser->is_peek(END) && !parser->is_peek(PAREN_CLOSE)) {
             args.push_back(parser->parse_expression());
+
+            if (!parser->is_peek(PAREN_CLOSE))
+                parser->expect(COMMA);
+        }
+        parser->expect(PAREN_CLOSE);
+
+        return new ast::CallExpression(token.origin, left, args);
+    }
+
+    ast::Expression *parse_macro(Parser *parser, const Token &token, ast::Expression *left) {
+        std::vector<ast::Expression *> args;
+
+        while (!parser->is_peek(END) && !parser->is_peek(PAREN_CLOSE)) {
+            Lexer::State state = parser->lexer.checkpoint();
+            std::optional type = parser->type();
+
+
+            if ((!parser->is_peek(PAREN_CLOSE) && !parser->is_peek(COMMA)) ||
+                (type.has_value() && type.value().pointer_level == 0 && !type.value().is_primitive() &&
+                    type.value().get_user().get_parts().size() == 1)) {
+                // Either the argument isn't done or the argument was too simple to definitely be a type
+                parser->lexer.rollback(state);
+                type = {};
+            }
+
+            if (!type.has_value())
+                args.push_back(parser->parse_expression());
+            else
+                args.push_back(new ast::TypeExpression(type.value()));
 
             if (!parser->is_peek(PAREN_CLOSE))
                 parser->expect(COMMA);

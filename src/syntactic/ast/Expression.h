@@ -12,7 +12,6 @@
 
 namespace ast
 {
-
 class NameExpression : public Expression {
 public:
     std::string name;
@@ -89,6 +88,19 @@ using IntExpression = PrimitiveExpression<long long int, INT_EXPR>;
 using BoolExpression = PrimitiveExpression<bool, BOOL_EXPR>;
 using RealExpression = PrimitiveExpression<double, REAL_EXPR>;
 using StringExpression = PrimitiveExpression<std::string, STR_EXPR>;
+
+class TypeExpression : public Expression {
+public:
+    Type type;
+
+    TypeExpression(Type t)
+        : Expression(TYPE_EXPR, t.origin),
+          type(t) {}
+
+    [[nodiscard]] std::string print() const override {
+        return type.str();
+    }
+};
 
 enum PrefixType {
     NEG,
@@ -258,8 +270,7 @@ public:
 class EmptyExpression : public Expression {
 public:
     EmptyExpression(const LexerRange &lp)
-        : Expression(EMPTY_EXPR, lp) {
-    }
+        : Expression(EMPTY_EXPR, lp) {}
 
     [[nodiscard]] std::string print() const override {
         return "empty";
