@@ -107,13 +107,13 @@ class CallParselet : public InfixParselet {
     ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
         std::vector<ast::Expression *> args;
 
-        while (parser->lexer.peek().id != END && parser->lexer.peek().id != PAREN_CLOSE) {
+        while (!parser->is_peek(END) && !parser->is_peek(PAREN_CLOSE)) {
             args.push_back(parser->parse_expression());
 
-            if (parser->lexer.peek().id != PAREN_CLOSE)
+            if (!parser->is_peek(PAREN_CLOSE))
                 parser->expect(COMMA);
         }
-        parser->lexer.consume();
+        parser->expect(PAREN_CLOSE);
 
         return new ast::CallExpression(token.origin, left, args);
     }

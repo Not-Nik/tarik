@@ -23,8 +23,6 @@ class PrefixParselet;
 class InfixParselet;
 
 class Parser {
-    friend class CallParselet;
-
     static std::vector<std::filesystem::path> imported;
 
     Lexer lexer;
