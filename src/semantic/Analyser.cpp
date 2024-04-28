@@ -808,15 +808,6 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     break;
                 case ast::REF: {
                     pe_type.pointer_level++;
-                    ast::ExprType etype = pe->operand->expression_type;
-
-                    if (!bucket->iassert(etype == ast::NAME_EXPR || etype == ast::MEM_ACC_EXPR,
-                                         pe->operand->origin,
-                                         "cannot take reference of temporary value")) {
-                        bucket->note(pe->operand->origin,
-                                     "'{}' produces a temporary value",
-                                     pe->operand->print());
-                    }
                     break;
                 }
                 case ast::DEREF:
