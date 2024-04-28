@@ -107,7 +107,8 @@ public:
 
     explicit Type(Path p, int pl = 0)
         : type(std::move(p)),
-          pointer_level(pl) {}
+          pointer_level(pl),
+          origin(p.origin) {}
 
     [[nodiscard]] TypeSize get_primitive() const {
         return std::get<TypeSize>(type);
@@ -157,9 +158,8 @@ public:
                 signed_type = std::max(signed_type, I16);
             else if (unsigned_type == U16)
                 signed_type = std::max(signed_type, I32);
-            else
-                if (unsigned_type == U32)
-                    signed_type = std::max(signed_type, I64);
+            else if (unsigned_type == U32)
+                signed_type = std::max(signed_type, I64);
 
             if (unsigned_type != VOID)
                 return Type(signed_type);
