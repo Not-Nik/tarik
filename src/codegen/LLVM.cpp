@@ -503,6 +503,13 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             auto be = (aast::BoolExpression *) expression;
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
         }
+        case aast::CAST_EXPR: {
+            auto ce = (aast::CastExpression *) expression;
+            return generate_cast(generate_expression(ce->expression),
+                                 make_llvm_type(ce->type),
+                                 ce->expression->type.is_signed_int()
+                                 || ce->type.is_signed_int());
+        }
     }
     return nullptr;
 }

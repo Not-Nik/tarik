@@ -66,7 +66,7 @@ enum ExprType {
     BOOL_EXPR,
     REAL_EXPR,
     STR_EXPR,
-    PATH_EXPR,
+    CAST_EXPR,
 };
 
 class Expression : public Statement {

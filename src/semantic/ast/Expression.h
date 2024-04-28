@@ -12,7 +12,6 @@
 
 namespace aast
 {
-
 class NameExpression : public Expression {
 public:
     std::string name;
@@ -200,6 +199,23 @@ public:
 
     std::string flatten_to_member_access() const override {
         return left->flatten_to_member_access() + "." + right->flatten_to_member_access();
+    }
+};
+
+class CastExpression : public Expression {
+public:
+    Expression *expression;
+
+    CastExpression(const LexerRange &lp, Expression *expr, Type target_type)
+        : Expression(CAST_EXPR, lp, target_type),
+          expression(expr) {}
+
+    ~CastExpression() override {
+        delete expression;
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return expression->print() + ".as!(" + type.str() + ")";
     }
 };
 
