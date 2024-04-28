@@ -17,6 +17,7 @@ enum TokenType {
     REAL,
     STRING,
     NAME,
+    MACRO_NAME,
     PLUS,
     MINUS,
     ASTERISK,

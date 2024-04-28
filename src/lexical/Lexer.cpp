@@ -12,8 +12,7 @@
 #include <algorithm>
 
 Lexer::Lexer(std::istream *s)
-    : stream(s) {
-}
+    : stream(s) {}
 
 Lexer::Lexer(const std::filesystem::path &f)
     : Lexer(new std::ifstream(f)) {
@@ -125,6 +124,10 @@ std::string post_process_string(std::string s) {
 Token Lexer::consume() {
     std::string tok;
     bool num = false, real = false, op = false, string = false;
+
+    while (isspace(peek_stream()))
+        read_stream();
+
     LexerPos actual_pos = pos;
 
     while (!stream->eof()) {
@@ -151,9 +154,10 @@ Token Lexer::consume() {
                 c = read_stream();
             while (isspace(peek_stream()))
                 read_stream();
-            if (tok.empty())
+            if (tok.empty()) {
+                actual_pos = pos;
                 continue;
-            else
+            } else
                 break;
         }
 
@@ -224,15 +228,6 @@ Token Lexer::consume() {
         }
     }
 
-    LexerRange range = actual_pos - pos;
-
-    while (isspace(peek_stream()))
-        read_stream();
-
-    if (stream->eof() && tok.empty()) {
-        return Token(END, "", range);
-    }
-
     TokenType type;
     if (op && operators.count(tok)) {
         type = operators[tok];
@@ -247,6 +242,18 @@ Token Lexer::consume() {
     } else {
         type = NAME;
     }
+
+    if (type == NAME && peek_stream() == '!') {
+        tok += read_stream();
+        type = MACRO_NAME;
+    }
+
+    LexerRange range = actual_pos - pos;
+
+    if (stream->eof() && tok.empty()) {
+        return Token(END, "", range);
+    }
+
     return Token(type, tok, range);
 }
 
