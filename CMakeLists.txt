@@ -33,6 +33,8 @@ add_executable(tarik
         src/semantic/ast/Statements.h
         src/semantic/Analyser.cpp
         src/semantic/Analyser.h
+        src/semantic/Macro.cpp
+        src/semantic/Macro.h
         src/semantic/Path.cpp
         src/semantic/Path.h
         src/semantic/Variables.cpp
