@@ -283,7 +283,7 @@ std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
     if (condition.has_value() && scope.has_value()) {
         // implicitely compare to 0 if condition isn't a bool already
         if (condition.value()->type != Type(BOOL, 0)) {
-            condition = new aast::BinaryOperatorExpression(if_->condition->origin,
+            condition = new aast::BinaryExpression(if_->condition->origin,
                                                            Type(BOOL),
                                                            aast::NEQ,
                                                            condition.value(),
@@ -337,7 +337,7 @@ std::optional<aast::WhileStatement *> Analyser::verify_while(ast::WhileStatement
     if (condition.has_value() && scope.has_value()) {
         // implicitely compare to 0 if condition isn't a bool already
         if (condition.value()->type != Type(BOOL, 0)) {
-            condition = new aast::BinaryOperatorExpression(while_->condition->origin,
+            condition = new aast::BinaryExpression(while_->condition->origin,
                                                            Type(BOOL),
                                                            aast::NEQ,
                                                            condition.value(),
@@ -431,7 +431,7 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
             members.push_back(new aast::VariableStatement(member->origin, member_type.value(), member->name));
             ctor_args.push_back(new ast::VariableStatement(struct_->origin, member_type.value(), member->name));
 
-            auto *member_access = new ast::BinaryOperatorExpression(struct_->origin,
+            auto *member_access = new ast::BinaryExpression(struct_->origin,
                                                                     ast::MEM_ACC,
                                                                     new ast::NameExpression(
                                                                         struct_->origin,
@@ -440,7 +440,7 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
                                                                         struct_->origin,
                                                                         member->name.raw));
 
-            body.push_back(new ast::BinaryOperatorExpression(struct_->origin,
+            body.push_back(new ast::BinaryExpression(struct_->origin,
                                                              ast::ASSIGN,
                                                              member_access,
                                                              new ast::NameExpression(
@@ -500,7 +500,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             auto ce = (ast::CallExpression *) expression;
 
             Path func_path = Path({});
-            if (auto *gl = (ast::PrefixOperatorExpression *) ce->callee;
+            if (auto *gl = (ast::PrefixExpression *) ce->callee;
                 ce->callee->expression_type == ast::NAME_EXPR || ce->callee->expression_type == ast::PATH_EXPR ||
                 (ce->callee->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL)) {
                 func_path = Path::from_expression(ce->callee);
@@ -510,7 +510,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     // TODO: check if there exists a function with the same name
                 }
             } else if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
-                auto *mem = (ast::BinaryOperatorExpression *) ce->callee;
+                auto *mem = (ast::BinaryExpression *) ce->callee;
                 std::optional callee_parent = verify_expression(mem->left);
 
                 if (mem->right->expression_type != ast::NAME_EXPR) {
@@ -594,7 +594,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
         case ast::EQ_EXPR:
         case ast::COMP_EXPR:
         case ast::ASSIGN_EXPR: {
-            auto ae = (ast::BinaryOperatorExpression *) expression;
+            auto ae = (ast::BinaryExpression *) expression;
 
             std::optional left = verify_expression(ae->left, expression->expression_type == ast::ASSIGN_EXPR);
             std::optional right = verify_expression(ae->right);
@@ -686,14 +686,14 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     break;
             }
 
-            return new aast::BinaryOperatorExpression(ae->origin,
+            return new aast::BinaryExpression(ae->origin,
                                                       expression_type,
                                                       bot,
                                                       left.value(),
                                                       right.value());
         }
         case ast::MEM_ACC_EXPR: {
-            auto mae = (ast::BinaryOperatorExpression *) expression;
+            auto mae = (ast::BinaryExpression *) expression;
 
             std::optional left = verify_expression(mae->left, assigned_to, true);
 
@@ -737,7 +737,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 delete name;
             }
 
-            return new aast::BinaryOperatorExpression(mae->origin,
+            return new aast::BinaryExpression(mae->origin,
                                                       member_type,
                                                       aast::MEM_ACC,
                                                       left.value(),
@@ -745,7 +745,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                                       aast::NameExpression(mae->right->origin, Type(), member_name));
         }
         case ast::PREFIX_EXPR: {
-            auto pe = (ast::PrefixOperatorExpression *) expression;
+            auto pe = (ast::PrefixExpression *) expression;
             std::optional operand = verify_expression(pe->operand);
 
             if (!operand.has_value())
@@ -805,7 +805,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     break;
             }
 
-            return new aast::PrefixOperatorExpression(pe->origin, pe_type, pt, operand.value());
+            return new aast::PrefixExpression(pe->origin, pe_type, pt, operand.value());
         }
         case ast::NAME_EXPR: {
             auto ne = (ast::NameExpression *) expression;

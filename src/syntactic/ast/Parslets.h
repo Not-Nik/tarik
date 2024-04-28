@@ -49,7 +49,7 @@ class PrefixOperatorParselet : public PrefixParselet {
     ast::Expression *parse(Parser *parser, const Token &token) override {
         ast::Expression *right = parser->parse_expression(precedence);
 
-        return new ast::PrefixOperatorExpression(token.origin, prefix_type, right);
+        return new ast::PrefixExpression(token.origin, prefix_type, right);
     }
 };
 
@@ -64,7 +64,7 @@ class BinaryOperatorParselet : public InfixParselet {
     ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
         ast::Expression *right = parser->parse_expression(prec);
 
-        return new ast::BinaryOperatorExpression(token.origin, bot, left, right);
+        return new ast::BinaryExpression(token.origin, bot, left, right);
     }
 
     ast::Precedence get_type() override {
@@ -97,7 +97,7 @@ class AssignParselet : public InfixParselet {
     ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
         ast::Expression *right = parser->parse_expression(ast::ASSIGNMENT - 1);
 
-        return new ast::BinaryOperatorExpression(token.origin, ast::ASSIGN, left, right);
+        return new ast::BinaryExpression(token.origin, ast::ASSIGN, left, right);
     }
 
     ast::Precedence get_type() override {

@@ -12,14 +12,14 @@ std::vector<std::string> flatten_path(ast::Expression *path) {
     if (path->expression_type == ast::NAME_EXPR) {
         return {((ast::NameExpression *) path)->name};
     } else if (path->expression_type == ast::PATH_EXPR) {
-        auto *concat = (ast::BinaryOperatorExpression *) path;
+        auto *concat = (ast::BinaryExpression *) path;
         std::vector<std::string> part1 = flatten_path(concat->left);
         std::vector<std::string> part2 = flatten_path(concat->right);
 
         part1.insert(part1.end(), part2.begin(), part2.end());
 
         return part1;
-    } else if (auto *gl = (ast::PrefixOperatorExpression *) path;
+    } else if (auto *gl = (ast::PrefixExpression *) path;
         path->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL) {
         std::vector<std::string> path = flatten_path(gl->operand);
         path.insert(path.begin(), "");

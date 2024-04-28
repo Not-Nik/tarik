@@ -86,7 +86,7 @@ protected:
 
     llvm::Type *make_llvm_type(const Type &t);
     llvm::FunctionType *make_llvm_function_type(aast::FuncStCommon *func);
-    llvm::Value *generate_member_access(aast::BinaryOperatorExpression *mae);
+    llvm::Value *generate_member_access(aast::BinaryExpression *mae);
 };
 
 #endif //TARIK_SRC_CODEGEN_LLVM_H_

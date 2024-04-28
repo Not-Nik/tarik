@@ -349,7 +349,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
         case aast::DOT_EXPR:
         case aast::EQ_EXPR:
         case aast::COMP_EXPR: {
-            auto ce = (aast::BinaryOperatorExpression *) expression;
+            auto ce = (aast::BinaryExpression *) expression;
 
             llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
@@ -426,19 +426,19 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             break;
         }
         case aast::MEM_ACC_EXPR: {
-            auto mae = (aast::BinaryOperatorExpression *) expression;
+            auto mae = (aast::BinaryExpression *) expression;
             llvm::Value *gep = generate_member_access(mae);
             return builder.CreateLoad(make_llvm_type(mae->type), gep, "deref_temp");
         }
         case aast::PREFIX_EXPR: {
-            auto pe = (aast::PrefixOperatorExpression *) expression;
+            auto pe = (aast::PrefixExpression *) expression;
 
             if (pe->prefix_type == aast::REF) {
                 if (pe->operand->expression_type == aast::NAME_EXPR) {
                     return variables.at(((aast::NameExpression *) pe->operand)->name).first;
                 }
                 if (pe->operand->expression_type == aast::MEM_ACC_EXPR) {
-                    return generate_member_access((aast::BinaryOperatorExpression *) expression);
+                    return generate_member_access((aast::BinaryExpression *) expression);
                 }
             }
 
@@ -460,7 +460,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             break;
         }
         case aast::ASSIGN_EXPR: {
-            auto ae = (aast::BinaryOperatorExpression *) expression;
+            auto ae = (aast::BinaryExpression *) expression;
             llvm::Value *dest;
             llvm::Type *dest_type;
             if (ae->left->expression_type == aast::NAME_EXPR) {
@@ -468,11 +468,11 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
                 dest = var;
                 dest_type = type;
             } else if (ae->left->expression_type == aast::MEM_ACC_EXPR) {
-                dest = generate_member_access((aast::BinaryOperatorExpression *) ae->left);
+                dest = generate_member_access((aast::BinaryExpression *) ae->left);
                 dest_type = make_llvm_type(ae->left->type);
             } else if (ae->left->expression_type == aast::PREFIX_EXPR &&
-                ((aast::PrefixOperatorExpression *) ae->left)->prefix_type == aast::DEREF) {
-                auto deref = (aast::PrefixOperatorExpression *) ae->left;
+                ((aast::PrefixExpression *) ae->left)->prefix_type == aast::DEREF) {
+                auto deref = (aast::PrefixExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
             } else {
@@ -583,7 +583,7 @@ llvm::FunctionType *LLVM::make_llvm_function_type(aast::FuncStCommon *func) {
     return func_type;
 }
 
-llvm::Value *LLVM::generate_member_access(aast::BinaryOperatorExpression *mae) {
+llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
     std::string member_name = ((aast::NameExpression *) mae->right)->name;
 
     llvm::Value *left;

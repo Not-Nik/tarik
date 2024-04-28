@@ -86,17 +86,17 @@ inline std::string to_string(PrefixType pt) {
     }
 }
 
-class PrefixOperatorExpression : public Expression {
+class PrefixExpression : public Expression {
 public:
     PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixOperatorExpression(const LexerRange &lp, Type type, PrefixType pt, Expression *op)
+    explicit PrefixExpression(const LexerRange &lp, Type type, PrefixType pt, Expression *op)
         : Expression(PREFIX_EXPR, lp, type),
           prefix_type(pt),
           operand(op) {}
 
-    ~PrefixOperatorExpression() override {
+    ~PrefixExpression() override {
         delete operand;
     }
 
@@ -172,18 +172,18 @@ inline std::string to_string(BinOpType bot) {
     }
 }
 
-class BinaryOperatorExpression : public Expression {
+class BinaryExpression : public Expression {
 public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryOperatorExpression(const LexerRange &lp, Type type, BinOpType bot, Expression *l, Expression *r)
+    BinaryExpression(const LexerRange &lp, Type type, BinOpType bot, Expression *l, Expression *r)
         : Expression(to_expr_type(bot), l->origin + r->origin, type),
           bin_op_type(bot),
           left(l),
           right(r) {}
 
-    ~BinaryOperatorExpression() override {
+    ~BinaryExpression() override {
         delete left;
         delete right;
     }
