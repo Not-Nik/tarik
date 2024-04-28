@@ -528,7 +528,6 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 func_path = func_path.create_member(((ast::NameExpression *) mem->right)->name);
 
                 arguments.push_back(callee_parent.value());
-                mem->left = nullptr;
             } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
                 Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
 
@@ -584,27 +583,32 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             size_t i = 0;
             if (is_struct_declared(func->path.get_parent())) {
                 if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
+                    if (func->arguments[0]->type.pointer_level > 0)
+                        arguments[0] = new aast::PrefixExpression(arguments[0]->origin,
+                                                                  arguments[0]->type.get_pointer_to(),
+                                                                  aast::REF,
+                                                                  arguments[0]);
+
                     bucket->iassert(func->arguments[0]->type.is_assignable_from(arguments[0]->type),
                                     arguments[0]->origin,
                                     "passing value of type '{}' to argument of type '{}'",
                                     arguments[0]->type.str(),
                                     func->arguments[0]->type.str());
                     i = 1;
-                }
-                else if (func->path.get_parts().back() != "$constructor")
+                } else if (func->path.get_parts().back() != "$constructor")
                     // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
                     // function is static, but we always put in the this argument
                     arguments.erase(arguments.begin());
             }
 
-            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size()-i,
+            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size() - i,
                                  ce->origin,
                                  "too few arguments, expected {} found {}.",
                                  func->arguments.size(),
                                  ce->arguments.size()))
                 return {};
 
-            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size()-i,
+            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size() - i,
                                  ce->origin,
                                  "too many arguments, expected {} found {}.",
                                  func->arguments.size(),

@@ -244,7 +244,7 @@ Statement *Parser::parse_statement() {
                 if (bucket->iassert(
                     !member_of.value().is_primitive() && member_of.value().get_user().get_parts().size() == 1,
                     member_of.value().origin,
-                    "Expected function name")) {
+                    "expected function name")) {
                     name = Token::name(member_of.value().get_user().get_parts()[0], member_of.value().origin);
                     member_of = {};
                 }
@@ -260,9 +260,16 @@ Statement *Parser::parse_statement() {
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE)
                 lexer.consume();
         } else {
-            if (member_of.has_value() && lexer.peek().raw == "this") {
+            if (member_of.has_value() && (lexer.peek().raw == "this" ||
+                (lexer.peek().id == ASTERISK && lexer.peek(1).raw == "this"))) {
                 Token this_tok = lexer.consume();
-                args.push_back(new VariableStatement(this_tok.origin, member_of.value().get_pointer_to(), this_tok));
+                Type this_type = member_of.value();
+                if (this_tok.id == ASTERISK) {
+                    this_tok = lexer.consume();
+                    this_type = this_type.get_pointer_to();
+                }
+
+                args.push_back(new VariableStatement(this_tok.origin, this_type, this_tok));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
