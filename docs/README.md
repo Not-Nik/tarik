@@ -8,7 +8,7 @@ developers, rather than end users.
 
 ### [Statements](statements)
 
- - Types
+ - [Types](statements/Types.md)
  - Functions
  - Structures
  - Scopes
