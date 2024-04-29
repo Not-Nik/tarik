@@ -14,7 +14,7 @@ developers, rather than end users.
  - Scopes
  - If
  - While
- - Imports
+ - [Imports](statements/Imports.md)
  - Variables
 
 ### [Expressions](expressions)
