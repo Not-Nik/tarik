@@ -168,11 +168,8 @@ void LLVM::generate_function(aast::FuncStatement *func) {
 
     auto it = func->arguments.begin();
     for (auto &arg : llvm_func->args()) {
-        arg.setName("arg_" + (*it)->name.raw);
-        auto arg_var = builder.CreateAlloca(arg.getType(), 0u, nullptr, "stack_" + (*it)->name.raw);
-        builder.CreateStore(&arg, arg_var);
-        variables.emplace((*it)->name.raw, std::make_pair(arg_var, arg.getType()));
-        it++;
+        variables.emplace((*it)->name.raw, std::make_tuple(&arg, arg.getType(), true));
+        ++it;
     }
     return_type = func_type->getReturnType();
     if (return_type->isIntegerTy())
@@ -284,7 +281,10 @@ void LLVM::generate_continue(aast::ContinueStatement *) {
 
 void LLVM::generate_variable(aast::VariableStatement *var) {
     llvm::Type *type = make_llvm_type(var->type);
-    variables.emplace(var->name.raw, std::make_pair(builder.CreateAlloca(type, 0u, nullptr, var->name.raw), type));
+    variables.emplace(var->name.raw,
+                      std::make_tuple(builder.CreateAlloca(type, 0u, nullptr, var->name.raw),
+                                      type,
+                                      false));
 }
 
 void LLVM::generate_struct(aast::StructStatement *struct_) {
@@ -435,9 +435,9 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
 
             if (pe->prefix_type == aast::REF) {
                 if (pe->operand->expression_type == aast::NAME_EXPR) {
-                    return variables.at(((aast::NameExpression *) pe->operand)->name).first;
-                }
-                if (pe->operand->expression_type == aast::MEM_ACC_EXPR) {
+                    auto [var, type, is_arg] = get_var_on_stack(((aast::NameExpression *) pe->operand)->name);
+                    return var;
+                } else if (pe->operand->expression_type == aast::MEM_ACC_EXPR) {
                     return generate_member_access((aast::BinaryExpression *) expression);
                 }
                 llvm::Type *ty = make_llvm_type(pe->type);
@@ -468,7 +468,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             llvm::Value *dest;
             llvm::Type *dest_type;
             if (ae->left->expression_type == aast::NAME_EXPR) {
-                auto [var, type] = variables.at(((aast::NameExpression *) ae->left)->name);
+                auto [var, type, is_arg] = get_var_on_stack(((aast::NameExpression *) ae->left)->name);
                 dest = var;
                 dest_type = type;
             } else if (ae->left->expression_type == aast::MEM_ACC_EXPR) {
@@ -487,8 +487,11 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
         }
         case aast::NAME_EXPR: {
             auto ne = (aast::NameExpression *) expression;
-            auto [var, type] = variables.at(ne->name);
-            return builder.CreateLoad(type, var, "load_temp");
+            auto [var, type, is_arg] = variables.at(ne->name);
+            if (is_arg)
+                return var;
+            else
+                return builder.CreateLoad(type, var, "load_temp");
         }
         case aast::INT_EXPR: {
             auto ie = (aast::IntExpression *) expression;
@@ -538,6 +541,20 @@ llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed
             co = llvm::Instruction::FPToUI;
     }
     return builder.CreateCast(co, val, type, "cast_temp");
+}
+
+std::tuple<llvm::Value *, llvm::Type *, bool> LLVM::get_var_on_stack(std::string name) {
+    auto &[var, type, is_arg] = variables.at(name);
+
+    if (is_arg) {
+        auto alloca = builder.CreateAlloca(type, 0u, nullptr, "stack_" + name);
+        builder.CreateStore(var, alloca);
+
+        var = alloca;
+        is_arg = false;
+    }
+
+    return std::make_tuple(var, type, false);
 }
 
 llvm::Type *LLVM::make_llvm_type(const Type &t) {
@@ -602,17 +619,17 @@ llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
 
     if (mae->left->expression_type == aast::NAME_EXPR) {
         std::string var_name = ((aast::NameExpression *) mae->left)->name;
-        auto var = variables.at(var_name);
+        auto [var, type, is_arg] = variables.at(var_name);
 
         auto it = std::find_if(structures.begin(),
                                structures.end(),
-                               [var](auto pair) { return pair.second == var.second; });
+                               [type](auto pair) { return pair.second == type; });
         if (it == structures.end()) {
             /*jaix*/
             throw;
         }
 
-        left = var.first;
+        left = var;
         struct_ = it->first;
     } else {
         left = generate_expression(mae->left);

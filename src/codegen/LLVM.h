@@ -26,7 +26,7 @@ class LLVM {
     llvm::BasicBlock *last_loop_entry = nullptr, *last_loop_exit = nullptr;
     std::map<std::string, llvm::FunctionType *> functions;
     std::map<std::string, llvm::Function *> function_bodies;
-    std::map<std::string, std::pair<llvm::Value *, llvm::Type *>> variables;
+    std::map<std::string, std::tuple<llvm::Value *, llvm::Type *, bool>> variables;
     std::map<std::string, llvm::StructType *> structures;
     std::map<std::string, aast::StructStatement *> struct_statements;
 
@@ -84,6 +84,7 @@ protected:
     llvm::Value *generate_expression(aast::Expression *expression);
     static llvm::Value *generate_cast(llvm::Value *val, llvm::Type *type, bool signed_int = true);
 
+    std::tuple<llvm::Value *, llvm::Type *, bool> get_var_on_stack(std::string name);
     llvm::Type *make_llvm_type(const Type &t);
     llvm::FunctionType *make_llvm_function_type(aast::FuncStCommon *func);
     llvm::Value *generate_member_access(aast::BinaryExpression *mae);
