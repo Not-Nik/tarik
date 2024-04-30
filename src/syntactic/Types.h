@@ -71,7 +71,7 @@ inline std::string to_string(const TypeSize &ts) {
     if (ts == I64)
         return "i64";
     if (ts == U0)
-        return "u0";
+        return "{IntExpression}";
     if (ts == U8)
         return "u8";
     if (ts == U16)
