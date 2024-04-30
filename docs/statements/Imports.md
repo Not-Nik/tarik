@@ -21,7 +21,7 @@ directory::file::type variable;
 
 ```
 <path> ::= ["::"] <local-path>
-<local-path> ::= <id> ["::" <local-path>]
+<local-path> ::= <name> ["::" <local-path>]
 
 <import> ::= "import " <local-path> ";"
 ```
