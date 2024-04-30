@@ -585,12 +585,12 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                                  ast::PREFIX_EXPR && (
                                                      (ast::PrefixExpression *) arg)->prefix_type == ast::GLOBAL),
                                              arg->origin,
-                                             "Expected identifier"))
+                                             "expected identifier"))
                             return {};
                     } else if (macro->arguments[i] == Macro::TYPE) {
                         if (!bucket->iassert(arg->expression_type == ast::TYPE_EXPR,
                                              arg->origin,
-                                             "Expected type"))
+                                             "expected type"))
                             return {};
                     }
                 }
@@ -653,6 +653,13 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 std::optional argument = verify_expression(arg);
 
                 if (argument.has_value()) {
+                    if (arg_var->type.is_float() && argument.value()->expression_type == aast::INT_EXPR) {
+                        auto *real = new aast::RealExpression(argument.value()->origin,
+                                                              (double) ((aast::IntExpression *) argument.value())->n);
+                        delete argument.value();
+                        argument = real;
+                    }
+
                     arguments.push_back(argument.value());
 
                     bucket->iassert(arg_var->type.is_assignable_from(argument.value()->type),
