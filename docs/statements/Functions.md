@@ -21,6 +21,8 @@ fn no_return() {
 Functions can be declared as members of types, and then accessed using the member access syntax. This works on both 
 builtin and user types, regardless of in which file they are declared.
 
+> Currently, calling member functions of integer literals is unsupported, as is defining member functions of pointers
+
 ```
 fn u32.min(this, u32 other) u32 {
     if this > other {
@@ -28,6 +30,11 @@ fn u32.min(this, u32 other) u32 {
     }
     return this;
 }
+
+# ... in a function
+u32 an_int = 4;
+an_int.min(2); # 2
+an_int.min(6); # 4
 ```
 
 ## Syntax
