@@ -32,6 +32,7 @@ public:
     [[nodiscard]] std::string str() const;
     [[nodiscard]] std::vector<std::string> get_parts() const;
     [[nodiscard]] bool is_global() const;
+    [[nodiscard]] bool contains_pointer() const;
 
     Path create_member(std::string name) const;
     Path get_parent() const;

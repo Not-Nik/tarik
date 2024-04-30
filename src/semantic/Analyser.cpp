@@ -578,10 +578,12 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                  func_path.str()))
                 return {};
             aast::FuncStCommon *func = get_func_decl(func_path);
+            Path func_parent = func->path.get_parent();
 
             size_t i = 0;
-            if (is_struct_declared(func->path.get_parent()) ||
-                to_typesize(func->path.get_parent().str()) != (TypeSize) -1) {
+            if (is_struct_declared(func_parent) ||
+                to_typesize(func_parent.str()) != (TypeSize) -1 ||
+                func->path.contains_pointer()) {
                 if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
                     if (func->arguments[0]->type.pointer_level == arguments[0]->type.pointer_level + 1)
                         arguments[0] = new aast::PrefixExpression(arguments[0]->origin,

@@ -64,6 +64,10 @@ bool Path::is_global() const {
     return global;
 }
 
+bool Path::contains_pointer() const {
+    return std::find(parts.begin(), parts.end(), "*") != parts.end();
+}
+
 Path Path::create_member(std::string name) const {
     std::vector member_parts = parts;
     member_parts.push_back(name);

@@ -133,11 +133,17 @@ public:
     }
 
     [[nodiscard]] Path get_path() const {
+        Path path = Path({});
         if (is_primitive()) {
-            return Path({to_string(get_primitive())});
+            path = Path({to_string(get_primitive())});
         } else {
-            return get_user();
+            path = get_user();
         }
+
+        for (int i = 0; i < pointer_level; i++)
+            path = path.create_member("*");
+
+        return path;
     }
 
     void set_user(Path user) {
