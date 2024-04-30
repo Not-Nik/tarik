@@ -523,8 +523,41 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 if (!callee_parent.has_value())
                     return {};
 
+                std::string member_name = ((ast::NameExpression *) mem->right)->name;
+
+                if (callee_parent.value()->type.is_primitive() && callee_parent.value()->type.get_primitive() == U0) {
+                    std::vector possible_types = {U8, U16, U32, U64};
+                    auto *ie = (ast::IntExpression *) callee_parent.value();
+                    if (ie->n < 0)
+                        possible_types.insert(possible_types.end(), {I8, I16, I32, I64});
+
+                    std::vector<TypeSize> types_with_matching_functions;
+                    for (auto type : possible_types) {
+                        Type dummy = Type(type, callee_parent.value()->type.pointer_level);
+                        if (is_func_declared(dummy.get_path().create_member(member_name))) {
+                            types_with_matching_functions.push_back(type);
+                        }
+                    }
+
+                    if (!bucket->iassert(types_with_matching_functions.size() <= 1,
+                                         ce->origin,
+                                         "ambigious function call")) {
+                        for (auto type : types_with_matching_functions) {
+                            Type dummy = Type(type, callee_parent.value()->type.pointer_level);
+                            bucket->note(get_func_decl(dummy.get_path().create_member(member_name))->origin,
+                                         "possible candidate function here");
+                        }
+                        return {};
+                    }
+
+                    if (types_with_matching_functions.size() == 1) {
+                        callee_parent.value()->type = Type(types_with_matching_functions[0],
+                                                           callee_parent.value()->type.pointer_level);
+                    }
+                }
+
                 func_path = callee_parent.value()->type.get_path();
-                func_path = func_path.create_member(((ast::NameExpression *) mem->right)->name);
+                func_path = func_path.create_member(member_name);
 
                 arguments.push_back(callee_parent.value());
             } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
@@ -568,10 +601,6 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 return {};
             }
 
-            // fixme: this needs to be a path expression kind of thing
-            // fixme: in the very far future, this should have a function pointer type
-            auto *callee = new aast::NameExpression(ce->callee->origin, Type(), func_path.str());
-
             if (!bucket->iassert(is_func_declared(func_path),
                                  ce->callee->origin,
                                  "undefined function '{}'",
@@ -580,7 +609,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             aast::FuncStCommon *func = get_func_decl(func_path);
             Path func_parent = func->path.get_parent();
 
-            size_t i = 0;
+            size_t arg_offset = 0;
             if (is_struct_declared(func_parent) ||
                 to_typesize(func_parent.str()) != (TypeSize) -1 ||
                 func->path.contains_pointer()) {
@@ -596,30 +625,30 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                     "passing value of type '{}' to argument of type '{}'",
                                     arguments[0]->type.str(),
                                     func->arguments[0]->type.str());
-                    i = 1;
+                    arg_offset = 1;
                 } else if (func->path.get_parts().back() != "$constructor")
                     // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
                     // function is static, but we always put in the this argument
                     arguments.erase(arguments.begin());
             }
 
-            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size() - i,
+            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size() - arg_offset,
                                  ce->origin,
                                  "too few arguments, expected {} found {}.",
-                                 func->arguments.size() - i,
+                                 func->arguments.size() - arg_offset,
                                  ce->arguments.size()))
                 return {};
 
-            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size() - i,
+            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size() - arg_offset,
                                  ce->origin,
                                  "too many arguments, expected {} found {}.",
-                                 func->arguments.size() - i,
+                                 func->arguments.size() - arg_offset,
                                  ce->arguments.size()))
                 return {};
 
-            for (; i < std::min(func->arguments.size(), ce->arguments.size()); i++) {
+            for (int i = arg_offset; i < std::min(func->arguments.size(), ce->arguments.size() + arg_offset); i++) {
                 aast::VariableStatement *arg_var = func->arguments[i];
-                ast::Expression *arg = ce->arguments[i];
+                ast::Expression *arg = ce->arguments[i - arg_offset];
 
                 std::optional argument = verify_expression(arg);
 
@@ -634,6 +663,9 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 }
             }
 
+            // fixme: this needs to be a path expression kind of thing
+            // fixme: in the very far future, this should have a function pointer type
+            auto *callee = new aast::NameExpression(ce->callee->origin, Type(), func_path.str());
 
             return new aast::CallExpression(expression->origin, func->return_type, callee, arguments);
         }
@@ -993,7 +1025,7 @@ SemanticVariable *Analyser::get_variable(const std::string &name) {
                          });
 }
 
-aast::FuncStCommon *Analyser::get_func_decl(Path path) {
+aast::FuncDeclareStatement *Analyser::get_func_decl(Path path) {
     if (path.is_global()) {
         return declarations[path];
     }

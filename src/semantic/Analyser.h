@@ -64,7 +64,7 @@ protected:
     bool is_struct_declared(Path path);
 
     SemanticVariable *get_variable(const std::string &name);
-    aast::FuncStCommon *get_func_decl(Path path);
+    aast::FuncDeclareStatement *get_func_decl(Path path);
     aast::StructStatement *get_struct(Path path);
 };
 
