@@ -219,7 +219,6 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
     variables.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
-
     if (func->member_of.has_value())
         verify_type(func->member_of.value());
 
@@ -271,8 +270,8 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
 
             return functions.back();
         }
-    } else
-        return {};
+    }
+    return {};
 }
 
 std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
