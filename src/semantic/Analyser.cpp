@@ -583,7 +583,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             if (is_struct_declared(func->path.get_parent()) ||
                 to_typesize(func->path.get_parent().str()) != (TypeSize) -1) {
                 if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
-                    if (func->arguments[0]->type.pointer_level > 0)
+                    if (func->arguments[0]->type.pointer_level == arguments[0]->type.pointer_level + 1)
                         arguments[0] = new aast::PrefixExpression(arguments[0]->origin,
                                                                   arguments[0]->type.get_pointer_to(),
                                                                   aast::REF,
