@@ -42,10 +42,7 @@ std::optional<Type> Parser::type() {
     Type t;
 
     if (peek.id == TYPE) {
-        std::string type_name;
-        for (auto c : peek.raw)
-            type_name.push_back((char) toupper(c));
-        TypeSize size = to_typesize(type_name);
+        TypeSize size = to_typesize(peek.raw);
         bucket->iassert(size != (TypeSize) -1, peek.origin, "internal: couldn't find enum member for built-in type");
         t = Type(size);
     } else {

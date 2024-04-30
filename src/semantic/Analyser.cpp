@@ -580,7 +580,8 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             aast::FuncStCommon *func = get_func_decl(func_path);
 
             size_t i = 0;
-            if (is_struct_declared(func->path.get_parent())) {
+            if (is_struct_declared(func->path.get_parent()) ||
+                to_typesize(func->path.get_parent().str()) != (TypeSize) -1) {
                 if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
                     if (func->arguments[0]->type.pointer_level > 0)
                         arguments[0] = new aast::PrefixExpression(arguments[0]->origin,
@@ -603,14 +604,14 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             if (!bucket->iassert(ce->arguments.size() >= func->arguments.size() - i,
                                  ce->origin,
                                  "too few arguments, expected {} found {}.",
-                                 func->arguments.size(),
+                                 func->arguments.size() - i,
                                  ce->arguments.size()))
                 return {};
 
             if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size() - i,
                                  ce->origin,
                                  "too many arguments, expected {} found {}.",
-                                 func->arguments.size(),
+                                 func->arguments.size() - i,
                                  ce->arguments.size()))
                 return {};
 

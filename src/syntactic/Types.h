@@ -32,30 +32,32 @@ enum TypeSize : std::uint8_t {
 };
 
 inline TypeSize to_typesize(const std::string &s) {
-    if (s == "I8")
+    if (s == "i8")
         return I8;
-    if (s == "I16")
+    if (s == "i16")
         return I16;
-    if (s == "I32")
+    if (s == "i32")
         return I32;
-    if (s == "I64")
+    if (s == "i64")
         return I64;
-    if (s == "U0")
+    if (s == "u0")
         return U0;
-    if (s == "U8")
+    if (s == "u8")
         return U8;
-    if (s == "U16")
+    if (s == "u16")
         return U16;
-    if (s == "U32")
+    if (s == "u32")
         return U32;
-    if (s == "U64")
+    if (s == "u64")
         return U64;
-    if (s == "F32")
+    if (s == "f32")
         return F32;
-    if (s == "F64")
+    if (s == "f64")
         return F64;
-    if (s == "BOOL")
+    if (s == "bool")
         return BOOL;
+    if (s == "void")
+        return VOID;
     return (TypeSize) -1;
 }
 
