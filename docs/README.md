@@ -11,7 +11,7 @@ developers, rather than end users.
  - [Types](statements/Types.md)
  - [Functions](statements/Functions.md)
  - [Structures](statements/Structures.md)
- - Scopes
+ - [Scopes](statements/Scopes.md)
  - If
  - While
  - [Imports](statements/Imports.md)
