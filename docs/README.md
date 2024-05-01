@@ -10,7 +10,7 @@ developers, rather than end users.
 
  - [Types](statements/Types.md)
  - [Functions](statements/Functions.md)
- - Structures
+ - [Structures](statements/Structures.md)
  - Scopes
  - If
  - While
