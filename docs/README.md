@@ -1,8 +1,7 @@
 # Documentation
 
 This document sums up the most important aspects of tarik, but as the language is still in early development, anything
-is subject to change, especially details about the implementation. The documentation is mostly aimed at compiler
-developers, rather than end users.
+is subject to change, especially details about the implementation.
 
 ## Table of Contents
 
@@ -12,7 +11,7 @@ developers, rather than end users.
  - [Functions](statements/Functions.md)
  - [Structures](statements/Structures.md)
  - [Scopes](statements/Scopes.md)
- - If
+ - [If](statements/If.md)
  - While
  - [Imports](statements/Imports.md)
  - Variables
