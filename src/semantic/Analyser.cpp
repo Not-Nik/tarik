@@ -847,6 +847,9 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 
             switch (pe->prefix_type) {
                 case ast::NEG:
+                    bucket->iassert(pe_type.pointer_level == 0,
+                                    pe->operand->origin,
+                                    "invalid operand to unary expression");
                 case ast::LOG_NOT:
                     bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
                                     pe->operand->origin,
@@ -860,6 +863,10 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                     bucket->iassert(pe_type.pointer_level > 0,
                                     pe->operand->origin,
                                     "cannot dereference non-pointer type '{}'",
+                                    operand.value()->type.str());
+                    bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 1,
+                                    pe->operand->origin,
+                                    "cannot copy non-primitive type '{}'",
                                     operand.value()->type.str());
                     pe_type.pointer_level--;
                     break;
