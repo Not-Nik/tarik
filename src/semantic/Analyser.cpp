@@ -559,6 +559,27 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 func_path = callee_parent.value()->type.get_path();
                 func_path = func_path.create_member(member_name);
 
+                if (callee_parent.value()->type.pointer_level > 0) {
+                    Type dummy = callee_parent.value()->type.get_deref();
+                    Path deref_func = dummy.get_path().create_member(member_name);
+                    if (is_func_declared(deref_func)) {
+                        aast::FuncDeclareStatement *decl = get_func_decl(deref_func);
+                        if (decl->arguments[0]->name.raw == "this" &&
+                            decl->arguments[0]->type == callee_parent.value()->type) {
+                            if (!bucket->iassert(!is_func_declared(func_path),
+                                                                   ce->origin,
+                                                                   "ambigious function call")) {
+                                bucket->note(get_func_decl(func_path)->origin,
+                                         "possible candidate function here");
+                                bucket->note(decl->origin,
+                                         "possible candidate function here");
+                                return {};
+                            }
+                            func_path = deref_func;
+                        }
+                    }
+                }
+
                 arguments.push_back(callee_parent.value());
             } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
                 Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];

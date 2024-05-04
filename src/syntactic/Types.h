@@ -120,6 +120,14 @@ public:
         return t;
     }
 
+    [[nodiscard]] Type get_deref() const {
+        Type t;
+        t.type = type;
+        t.pointer_level = pointer_level-1;
+        t.origin = origin;
+        return t;
+    }
+
     [[nodiscard]] TypeSize get_primitive() const {
         return std::get<TypeSize>(type);
     }
