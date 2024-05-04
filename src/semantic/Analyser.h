@@ -67,6 +67,9 @@ protected:
     std::optional<aast::Expression *> verify_call_expression(ast::Expression *expression,
                                                                  AccessType access = NORMAL,
                                                                  bool member_acc = false);
+    std::optional<aast::Expression *> verify_macro_expression(ast::Expression *expression,
+                                                                 AccessType access = NORMAL,
+                                                                 bool member_acc = false);
     std::optional<aast::BinaryExpression *> verify_binary_expression(ast::Expression *expression,
                                                                      AccessType access = NORMAL,
                                                                      bool member_acc = false);

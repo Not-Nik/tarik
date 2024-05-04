@@ -215,7 +215,7 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        return expression->print() + ".as!(" + type.str() + ")";
+        return "as!(" + expression->print() + ", " + type.str() + ")";
     }
 };
 

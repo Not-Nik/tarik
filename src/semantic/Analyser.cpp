@@ -581,7 +581,9 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
         auto *mem = (ast::BinaryExpression *) ce->callee;
         std::optional callee_parent = verify_expression(mem->left);
 
-        if (mem->right->expression_type != ast::NAME_EXPR) {
+        if (mem->right->expression_type == ast::MACRO_NAME_EXPR) {
+            return verify_macro_expression(expression, access, member_acc);
+        } else if (mem->right->expression_type != ast::NAME_EXPR) {
             bucket->error(mem->right->origin, "expected function name");
             return {};
         }
@@ -648,41 +650,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
 
         arguments.push_back(callee_parent.value());
     } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
-        Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
-
-        if (!bucket->iassert(ce->arguments.size() >= macro->arguments.size(),
-                             ce->origin,
-                             "too few arguments, expected {} found {}.",
-                             macro->arguments.size(),
-                             ce->arguments.size()))
-            return {};
-
-        if (!bucket->iassert(ce->arguments.size() <= macro->arguments.size(),
-                             ce->origin,
-                             "too many arguments, expected {} found {}.",
-                             macro->arguments.size(),
-                             ce->arguments.size()))
-            return {};
-
-        for (int i = 0; i < macro->arguments.size(); i++) {
-            ast::Expression *arg = ce->arguments[i];
-            if (macro->arguments[i] == Macro::IDENTIFIER) {
-                if (!bucket->iassert(arg->expression_type == ast::NAME_EXPR ||
-                                     arg->expression_type == ast::PATH_EXPR || (arg->expression_type ==
-                                         ast::PREFIX_EXPR && (
-                                             (ast::PrefixExpression *) arg)->prefix_type == ast::GLOBAL),
-                                     arg->origin,
-                                     "expected identifier"))
-                    return {};
-            } else if (macro->arguments[i] == Macro::TYPE) {
-                if (!bucket->iassert(arg->expression_type == ast::TYPE_EXPR,
-                                     arg->origin,
-                                     "expected type"))
-                    return {};
-            }
-        }
-
-        return verify_expression(macro->apply(ce, ce->arguments));
+        return verify_macro_expression(expression, access, member_acc);
     } else {
         bucket->error(ce->callee->origin, "calling of expressions is unimplemented");
         return {};
@@ -767,6 +735,60 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
 
     return new aast::CallExpression(expression->origin, func->return_type, callee, arguments);
 }
+
+std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Expression *expression,
+                                                                    AccessType access,
+                                                                    bool member_acc) {
+    auto ce = (ast::CallExpression *) expression;
+    if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
+        auto *mem = (ast::BinaryExpression *) ce->callee;
+        ce->arguments.insert(ce->arguments.begin(), mem->left);
+
+        auto callee = mem->right;
+        mem->right = nullptr;
+        mem->left = nullptr;
+        delete mem;
+
+        ce->callee = callee;
+    }
+
+    Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
+
+    if (!bucket->iassert(ce->arguments.size() >= macro->arguments.size(),
+                         ce->origin,
+                         "too few arguments, expected {} found {}.",
+                         macro->arguments.size(),
+                         ce->arguments.size()))
+        return {};
+
+    if (!bucket->iassert(ce->arguments.size() <= macro->arguments.size(),
+                         ce->origin,
+                         "too many arguments, expected {} found {}.",
+                         macro->arguments.size(),
+                         ce->arguments.size()))
+        return {};
+
+    for (int i = 0; i < macro->arguments.size(); i++) {
+        ast::Expression *arg = ce->arguments[i];
+        if (macro->arguments[i] == Macro::IDENTIFIER) {
+            if (!bucket->iassert(arg->expression_type == ast::NAME_EXPR ||
+                                 arg->expression_type == ast::PATH_EXPR || (arg->expression_type ==
+                                     ast::PREFIX_EXPR && (
+                                         (ast::PrefixExpression *) arg)->prefix_type == ast::GLOBAL),
+                                 arg->origin,
+                                 "expected identifier"))
+                return {};
+        } else if (macro->arguments[i] == Macro::TYPE) {
+            if (!bucket->iassert(arg->expression_type == ast::TYPE_EXPR,
+                                 arg->origin,
+                                 "expected type"))
+                return {};
+        }
+    }
+
+    return verify_expression(macro->apply(ce, ce->arguments));
+}
+
 
 std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     ast::Expression *expression,

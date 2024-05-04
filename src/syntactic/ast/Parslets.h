@@ -105,7 +105,9 @@ class AssignParselet : public InfixParselet {
 
 class CallParselet : public InfixParselet {
     ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
-        if (left->expression_type == ast::MACRO_NAME_EXPR)
+        if (left->expression_type == ast::MACRO_NAME_EXPR ||
+            (left->expression_type == ast::MEM_ACC_EXPR &&
+                ((ast::BinaryExpression *) left)->right->expression_type == ast::MACRO_NAME_EXPR))
             return parse_macro(parser, token, left);
 
         std::vector<ast::Expression *> args;
