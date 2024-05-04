@@ -345,6 +345,7 @@ public:
 
     [[nodiscard]] std::string str() const;
     [[nodiscard]] std::string base() const;
+    [[nodiscard]] std::string func_name() const;
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_

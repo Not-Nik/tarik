@@ -534,8 +534,19 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             auto *ce = (ast::CastExpression *) expression;
             std::optional expr = verify_expression(ce->expression);
 
-            if (expr.has_value())
+            if (expr.has_value()) {
+                if (!bucket->iassert(expr.value()->type.is_primitive() &&
+                                     ce->target_type.is_primitive(),
+                                     expr.value()->origin,
+                                     "can't cast between compound types"))
+                    if (expr.value()->type.pointer_level == 0)
+                        bucket->note(expr.value()->origin,
+                                     "you should create an as_{} function in {} to perform this conversion",
+                                     ce->target_type.func_name(),
+                                     expr.value()->type.str());
+
                 return new aast::CastExpression(expression->origin, expr.value(), ce->target_type);
+            }
             return {};
         }
         default:
@@ -763,7 +774,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     bool member_acc) {
     auto ae = (ast::BinaryExpression *) expression;
 
-    AccessType access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
+    access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
     std::optional left = verify_expression(ae->left, access);
     std::optional right = verify_expression(ae->right);
 

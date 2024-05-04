@@ -29,3 +29,17 @@ std::string Type::base() const {
     }
     return res;
 }
+
+std::string Type::func_name() const {
+    std::string base_str = base();
+    std::string res;
+
+    for (auto c : base_str) {
+        if (isupper(c))
+            res.insert(res.end(), {'_', (char) tolower(c)});
+        else
+            res.push_back(c);
+    }
+
+    return res;
+}
