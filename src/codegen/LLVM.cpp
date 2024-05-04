@@ -483,7 +483,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
                 dest = generate_expression(ae->left);
                 dest_type = dest->getType();
             }
-            return builder.CreateStore(generate_cast(generate_expression(ae->right), dest_type), dest, "assign_temp");
+            return builder.CreateStore(generate_cast(generate_expression(ae->right), dest_type), dest);
         }
         case aast::NAME_EXPR: {
             auto ne = (aast::NameExpression *) expression;
@@ -616,21 +616,15 @@ llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
 
     llvm::Value *left;
     std::string struct_;
+    bool pointer = mae->left->type.pointer_level > 0;
 
     if (mae->left->expression_type == aast::NAME_EXPR) {
         std::string var_name = ((aast::NameExpression *) mae->left)->name;
         auto [var, type, is_arg] = variables.at(var_name);
 
-        auto it = std::find_if(structures.begin(),
-                               structures.end(),
-                               [type](auto pair) { return pair.second == type; });
-        if (it == structures.end()) {
-            /*jaix*/
-            throw;
-        }
-
         left = var;
-        struct_ = it->first;
+        struct_ = mae->left->type.base();
+        pointer = pointer && !is_arg;
     } else {
         left = generate_expression(mae->left);
         struct_ = mae->left->type.base();
@@ -642,6 +636,8 @@ llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
         llvm::Value *instance = builder.CreateAlloca(struct_type, 0u, nullptr, "instance_temp");
         builder.CreateStore(left, instance);
         left = instance;
+    } else if (pointer) {
+        left = builder.CreateLoad(struct_type->getPointerTo(), left, "deref_temp");
     }
 
     return builder.CreateStructGEP(struct_type, left, member_index, "member_load_temp");
