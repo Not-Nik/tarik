@@ -870,11 +870,11 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 case ast::NEG:
                     bucket->iassert(pe_type.pointer_level == 0,
                                     pe->operand->origin,
-                                    "invalid operand to unary expression");
+                                    "invalid operand to prefix expression");
                 case ast::LOG_NOT:
                     bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
                                     pe->operand->origin,
-                                    "invalid operand to unary expression");
+                                    "invalid operand to prefix expression");
                     break;
                 case ast::REF: {
                     pe_type.pointer_level++;
