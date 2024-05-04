@@ -6,6 +6,7 @@
 
 #ifndef VARIABLES_H
 #define VARIABLES_H
+
 #include <stack>
 
 #include "lexical/Token.h"
@@ -13,25 +14,28 @@
 
 class VariableState {
 protected:
-    bool is_undefined = true, was_defined = false, was_read = false;
-    LexerRange defined_pos, read_pos;
+    bool is_undefined = true, was_defined = false, was_moved = false;
+    LexerRange defined_pos, read_pos, moved_pos;
 
-    VariableState(bool undefined, bool defined, bool read, LexerRange defined_pos, LexerRange read_pos);
+    VariableState(bool undefined, bool defined, bool moved, LexerRange defined_pos, LexerRange read_pos);
 
 public:
     VariableState() = default;
 
     virtual void make_definitely_defined(LexerRange pos);
     virtual void make_definitely_read(LexerRange pos);
+    virtual void make_definitely_moved(LexerRange pos);
 
     virtual bool is_definitely_undefined() const;
     virtual bool is_definitely_defined() const;
+    virtual bool is_definitely_moved() const;
 
     virtual bool is_maybe_undefined() const;
     virtual bool is_maybe_defined() const;
+    virtual bool is_maybe_moved() const;
 
     virtual LexerRange get_defined_pos() const;
-    virtual LexerRange get_read_pos() const;
+    virtual LexerRange get_moved_pos() const;
 
     virtual VariableState operator||(const VariableState &other) const;
 };
@@ -54,15 +58,18 @@ struct CompoundState : VariableState {
 
     void make_definitely_defined(LexerRange pos) override;
     void make_definitely_read(LexerRange pos) override;
+    void make_definitely_moved(LexerRange pos) override;
 
     bool is_definitely_undefined() const override;
     bool is_definitely_defined() const override;
+    bool is_definitely_moved() const override;
 
     bool is_maybe_undefined() const override;
     bool is_maybe_defined() const override;
+    bool is_maybe_moved() const override;
 
     LexerRange get_defined_pos() const override;
-    LexerRange get_read_pos() const override;
+    LexerRange get_moved_pos() const override;
 
     VariableState operator||(const VariableState &other) const override;
 };

@@ -493,7 +493,7 @@ std::optional<aast::ImportStatement *> Analyser::verify_import(ast::ImportStatem
 }
 
 std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *expression,
-                                                              bool assigned_to,
+                                                              AccessType access,
                                                               bool member_acc) {
     switch (expression->expression_type) {
         case ast::CALL_EXPR: {
@@ -619,6 +619,10 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                                                   arguments[0]->type.get_pointer_to(),
                                                                   aast::REF,
                                                                   arguments[0]);
+                    else if (arguments[0]->flattens_to_member_access()) {
+                        get_variable(arguments[0]->flatten_to_member_access())->state()->make_definitely_moved(
+                            arguments[0]->origin);
+                    }
 
                     bucket->iassert(func->arguments[0]->type.is_assignable_from(arguments[0]->type),
                                     arguments[0]->origin,
@@ -650,7 +654,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 aast::VariableStatement *arg_var = func->arguments[i];
                 ast::Expression *arg = ce->arguments[i - arg_offset];
 
-                std::optional argument = verify_expression(arg);
+                std::optional argument = verify_expression(arg, MOVE);
 
                 if (argument.has_value()) {
                     if (arg_var->type.is_float() && argument.value()->expression_type == aast::INT_EXPR) {
@@ -683,7 +687,8 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
         case ast::ASSIGN_EXPR: {
             auto ae = (ast::BinaryExpression *) expression;
 
-            std::optional left = verify_expression(ae->left, expression->expression_type == ast::ASSIGN_EXPR);
+            AccessType access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
+            std::optional left = verify_expression(ae->left, access);
             std::optional right = verify_expression(ae->right);
 
             if (!left.has_value() || !right.has_value())
@@ -782,7 +787,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
         case ast::MEM_ACC_EXPR: {
             auto mae = (ast::BinaryExpression *) expression;
 
-            std::optional left = verify_expression(mae->left, assigned_to, true);
+            std::optional left = verify_expression(mae->left, access, true);
 
             if (!left.has_value())
                 return {};
@@ -820,7 +825,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                 auto *name = new ast::NameExpression(mae->origin,
                                                      left.value()->flatten_to_member_access() + "." + member_name);
 
-                verify_expression(name, assigned_to);
+                verify_expression(name, access);
                 delete name;
             }
 
@@ -903,7 +908,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             if (member_acc)
                 return new_expr;
 
-            if (assigned_to) {
+            if (access == ASSIGNMENT) {
                 if (var->state()->is_definitely_defined()) {
                     bucket->warning(var->state()->get_defined_pos(), "assigned value is immediately discarded");
                     bucket->note(expression->origin, "overwritten here");
@@ -916,13 +921,23 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             } else {
                 if (bucket->iassert(!var->state()->is_definitely_undefined(),
                                     expression->origin,
-                                    "value is still undefined")) {
+                                    "value is still undefined") &&
                     bucket->iassert(!var->state()->is_maybe_undefined(),
                                     expression->origin,
-                                    "value might be undefined");
+                                    "value might be undefined")) {
+                    if (!bucket->iassert(!var->state()->is_definitely_moved(),
+                                         expression->origin,
+                                         "value was moved") ||
+                        !bucket->iassert(!var->state()->is_maybe_moved(),
+                                         expression->origin,
+                                         "value might have been moved")) {
+                        bucket->note(var->state()->get_moved_pos(), "moved here");
+                    } else if (access == NORMAL) {
+                        var->state()->make_definitely_read(expression->origin);
+                    } else if (access == MOVE && !var->var->type.is_primitive() && var->var->type.pointer_level == 0) {
+                        var->state()->make_definitely_moved(expression->origin);
+                    }
                 }
-
-                var->state()->make_definitely_read(expression->origin);
             }
 
             return new_expr;
@@ -961,7 +976,9 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             //  calling it. if it points to a valid struct, suggest creating a variable with it
             bucket->error(expression->origin, "internal: unexpected, unhandled type of expression");
     }
-    return {};
+
+    return
+            {};
 }
 
 std::optional<Type> Analyser::verify_type(Type type) {

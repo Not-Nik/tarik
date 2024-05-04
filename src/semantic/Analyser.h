@@ -20,7 +20,7 @@ class Analyser {
     std::unordered_map<Path, aast::StructStatement *> structures;
     std::unordered_map<Path, aast::FuncDeclareStatement *> declarations;
 
-    std::unordered_map<std::string, Macro*> macros;
+    std::unordered_map<std::string, Macro *> macros;
 
     Path path = Path({});
 
@@ -39,6 +39,12 @@ public:
     void analyse(const std::vector<ast::Statement *> &statements);
 
 protected:
+    enum AccessType {
+        NORMAL,
+        ASSIGNMENT,
+        MOVE
+    };
+
     void analyse_import(const std::vector<ast::Statement *> &statements);
 
     std::optional<aast::Statement *> verify_statement(ast::Statement *statement);
@@ -54,8 +60,9 @@ protected:
     std::optional<SemanticVariable *> verify_variable(ast::VariableStatement *var);
     std::optional<aast::StructStatement *> verify_struct(ast::StructStatement *struct_);
     std::optional<aast::ImportStatement *> verify_import(ast::ImportStatement *import_);
-    std::optional<aast::Expression *> verify_expression(ast::Expression *expression, bool assigned_to = false, bool member_acc =
-    false);
+    std::optional<aast::Expression *> verify_expression(ast::Expression *expression,
+                                                        AccessType access = NORMAL,
+                                                        bool member_acc = false);
     std::optional<Type> verify_type(Type type);
 
     bool does_always_return(ast::ScopeStatement *scope);

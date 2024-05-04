@@ -6,37 +6,58 @@
 
 #include "Variables.h"
 
-VariableState::VariableState(bool undefined, bool defined, bool read, LexerRange defined_pos, LexerRange read_pos)
+VariableState::VariableState(bool undefined,
+                             bool defined,
+                             bool moved,
+                             LexerRange defined_pos,
+                             LexerRange
+                             read_pos)
     : is_undefined(undefined),
       was_defined(defined),
-      was_read(read),
+      was_moved(moved),
       defined_pos(defined_pos),
       read_pos(read_pos) {}
 
 void VariableState::make_definitely_defined(LexerRange pos) {
     is_undefined = false;
     was_defined = true;
-    was_read = false;
+    was_moved = false;
 
     defined_pos = pos;
     read_pos = LexerRange();
+    moved_pos = LexerRange();
 }
 
 void VariableState::make_definitely_read(LexerRange pos) {
     is_undefined = false;
     was_defined = false;
-    was_read = true;
+    was_moved = false;
 
     defined_pos = LexerRange();
     read_pos = pos;
+    moved_pos = LexerRange();
+}
+
+void VariableState::make_definitely_moved(LexerRange pos) {
+    is_undefined = false;
+    was_defined = false;
+    was_moved = true;
+
+    defined_pos = LexerRange();
+    read_pos = LexerRange();
+    moved_pos = pos;
 }
 
 bool VariableState::is_definitely_undefined() const {
-    return is_undefined && !was_defined && !was_read;
+    return is_undefined && !was_defined && !was_moved;
 }
 
 bool VariableState::is_definitely_defined() const {
-    return !is_undefined && was_defined && !was_read;
+    return !is_undefined && was_defined && !was_moved;
+}
+
+bool VariableState::is_definitely_moved() const {
+    return !is_undefined && !was_defined && was_moved;
 }
 
 bool VariableState::is_maybe_undefined() const {
@@ -47,18 +68,22 @@ bool VariableState::is_maybe_defined() const {
     return was_defined;
 }
 
+bool VariableState::is_maybe_moved() const {
+    return was_moved;
+}
+
 LexerRange VariableState::get_defined_pos() const {
     return defined_pos;
 }
 
-LexerRange VariableState::get_read_pos() const {
-    return read_pos;
+LexerRange VariableState::get_moved_pos() const {
+    return moved_pos;
 }
 
 VariableState VariableState::operator||(const VariableState &other) const {
     return VariableState(is_undefined || other.is_undefined,
                          was_defined || other.was_defined,
-                         was_read || other.was_read,
+                         was_moved || other.was_moved,
                          (defined_pos > other.defined_pos ? defined_pos : other.defined_pos),
                          (read_pos > other.read_pos ? read_pos : other.read_pos));
 }
@@ -68,26 +93,30 @@ CompoundState::CompoundState(const std::vector<SemanticVariable *> &states)
 
 
 void CompoundState::make_definitely_defined(LexerRange pos) {
-    defined_pos = pos;
+    VariableState::make_definitely_defined(pos);
     for (auto child : children) {
         child->state()->make_definitely_defined(pos);
     }
 }
 
 void CompoundState::make_definitely_read(LexerRange pos) {
-    read_pos = pos;
+    VariableState::make_definitely_read(pos);
     for (auto child : children) {
         child->state()->make_definitely_read(pos);
     }
 }
 
-bool CompoundState::is_definitely_undefined() const {
-    // empty structs are always defined
-    if (children.empty()) return false;
-
-    bool state = true;
+void CompoundState::make_definitely_moved(LexerRange pos) {
+    VariableState::make_definitely_moved(pos);
     for (auto child : children) {
-        state = state && child->state()->is_definitely_undefined();
+        child->state()->make_definitely_moved(pos);
+    }
+}
+
+bool CompoundState::is_definitely_undefined() const {
+    bool state = false;
+    for (auto child : children) {
+        state = state || child->state()->is_definitely_undefined();
     }
     return state;
 }
@@ -108,6 +137,16 @@ bool CompoundState::is_definitely_defined() const {
     return state;
 }
 
+bool CompoundState::is_definitely_moved() const {
+    bool state = VariableState::is_definitely_moved();
+    // if any of the structs children were moved, the struct is also
+    // moved or, more specifically, is not available for moving anymore
+    for (auto child : children) {
+        state = state || child->state()->is_definitely_moved();
+    }
+    return state;
+}
+
 bool CompoundState::is_maybe_undefined() const {
     bool state = false;
     for (auto child : children) {
@@ -124,12 +163,27 @@ bool CompoundState::is_maybe_defined() const {
     return state;
 }
 
+bool CompoundState::is_maybe_moved() const {
+    bool state = was_moved;
+    for (auto child : children) {
+        state = state || child->state()->is_maybe_moved();
+    }
+    return state;
+}
+
 LexerRange CompoundState::get_defined_pos() const {
     return defined_pos;
 }
 
-LexerRange CompoundState::get_read_pos() const {
-    return read_pos;
+LexerRange CompoundState::get_moved_pos() const {
+    LexerRange pos = moved_pos;
+    for (auto child : children) {
+        if (!child->state()->is_maybe_moved()) continue;
+        LexerRange child_pos = child->state()->get_moved_pos();
+        if (child->state()->get_moved_pos() > pos)
+            pos = child_pos;
+    }
+    return pos;
 }
 
 VariableState CompoundState::operator||(const VariableState &other) const {
