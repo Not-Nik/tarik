@@ -63,6 +63,23 @@ protected:
     std::optional<aast::Expression *> verify_expression(ast::Expression *expression,
                                                         AccessType access = NORMAL,
                                                         bool member_acc = false);
+
+    std::optional<aast::Expression *> verify_call_expression(ast::Expression *expression,
+                                                                 AccessType access = NORMAL,
+                                                                 bool member_acc = false);
+    std::optional<aast::BinaryExpression *> verify_binary_expression(ast::Expression *expression,
+                                                                     AccessType access = NORMAL,
+                                                                     bool member_acc = false);
+    std::optional<aast::BinaryExpression *> verify_member_access_expression(ast::Expression *expression,
+                                                                            AccessType access = NORMAL,
+                                                                            bool member_acc = false);
+    std::optional<aast::PrefixExpression *> verify_prefix_expression(ast::Expression *expression,
+                                                                     AccessType access = NORMAL,
+                                                                     bool member_acc = false);
+    std::optional<aast::NameExpression *> verify_name_expression(ast::Expression *expression,
+                                                                     AccessType access = NORMAL,
+                                                                     bool member_acc = false);
+
     std::optional<Type> verify_type(Type type);
 
     bool does_always_return(ast::ScopeStatement *scope);

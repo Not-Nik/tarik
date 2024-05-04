@@ -496,480 +496,20 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                                               AccessType access,
                                                               bool member_acc) {
     switch (expression->expression_type) {
-        case ast::CALL_EXPR: {
-            auto ce = (ast::CallExpression *) expression;
-
-            Path func_path = Path({});
-            std::vector<aast::Expression *> arguments;
-
-            if (auto *gl = (ast::PrefixExpression *) ce->callee;
-                ce->callee->expression_type == ast::NAME_EXPR || ce->callee->expression_type == ast::PATH_EXPR ||
-                (ce->callee->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL)) {
-                func_path = Path::from_expression(ce->callee);
-
-                if (is_struct_declared(func_path)) {
-                    func_path = func_path.create_member("$constructor");
-                    // TODO: check if there exists a function with the same name
-                }
-            } else if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
-                auto *mem = (ast::BinaryExpression *) ce->callee;
-                std::optional callee_parent = verify_expression(mem->left);
-
-                if (mem->right->expression_type != ast::NAME_EXPR) {
-                    bucket->error(mem->right->origin, "expected function name");
-                    return {};
-                }
-
-                if (!callee_parent.has_value())
-                    return {};
-
-                std::string member_name = ((ast::NameExpression *) mem->right)->name;
-
-                if (callee_parent.value()->type.is_primitive() && callee_parent.value()->type.get_primitive() == U0) {
-                    std::vector possible_types = {U8, U16, U32, U64};
-                    auto *ie = (ast::IntExpression *) callee_parent.value();
-                    if (ie->n < 0)
-                        possible_types.insert(possible_types.end(), {I8, I16, I32, I64});
-
-                    std::vector<TypeSize> types_with_matching_functions;
-                    for (auto type : possible_types) {
-                        Type dummy = Type(type, callee_parent.value()->type.pointer_level);
-                        if (is_func_declared(dummy.get_path().create_member(member_name))) {
-                            types_with_matching_functions.push_back(type);
-                        }
-                    }
-
-                    if (!bucket->iassert(types_with_matching_functions.size() <= 1,
-                                         ce->origin,
-                                         "ambigious function call")) {
-                        for (auto type : types_with_matching_functions) {
-                            Type dummy = Type(type, callee_parent.value()->type.pointer_level);
-                            bucket->note(get_func_decl(dummy.get_path().create_member(member_name))->origin,
-                                         "possible candidate function here");
-                        }
-                        return {};
-                    }
-
-                    if (types_with_matching_functions.size() == 1) {
-                        callee_parent.value()->type = Type(types_with_matching_functions[0],
-                                                           callee_parent.value()->type.pointer_level);
-                    }
-                }
-
-                func_path = callee_parent.value()->type.get_path();
-                func_path = func_path.create_member(member_name);
-
-                if (callee_parent.value()->type.pointer_level > 0) {
-                    Type dummy = callee_parent.value()->type.get_deref();
-                    Path deref_func = dummy.get_path().create_member(member_name);
-                    if (is_func_declared(deref_func)) {
-                        aast::FuncDeclareStatement *decl = get_func_decl(deref_func);
-                        if (decl->arguments[0]->name.raw == "this" &&
-                            decl->arguments[0]->type == callee_parent.value()->type) {
-                            if (!bucket->iassert(!is_func_declared(func_path),
-                                                                   ce->origin,
-                                                                   "ambigious function call")) {
-                                bucket->note(get_func_decl(func_path)->origin,
-                                         "possible candidate function here");
-                                bucket->note(decl->origin,
-                                         "possible candidate function here");
-                                return {};
-                            }
-                            func_path = deref_func;
-                        }
-                    }
-                }
-
-                arguments.push_back(callee_parent.value());
-            } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
-                Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
-
-                if (!bucket->iassert(ce->arguments.size() >= macro->arguments.size(),
-                                     ce->origin,
-                                     "too few arguments, expected {} found {}.",
-                                     macro->arguments.size(),
-                                     ce->arguments.size()))
-                    return {};
-
-                if (!bucket->iassert(ce->arguments.size() <= macro->arguments.size(),
-                                     ce->origin,
-                                     "too many arguments, expected {} found {}.",
-                                     macro->arguments.size(),
-                                     ce->arguments.size()))
-                    return {};
-
-                for (int i = 0; i < macro->arguments.size(); i++) {
-                    ast::Expression *arg = ce->arguments[i];
-                    if (macro->arguments[i] == Macro::IDENTIFIER) {
-                        if (!bucket->iassert(arg->expression_type == ast::NAME_EXPR ||
-                                             arg->expression_type == ast::PATH_EXPR || (arg->expression_type ==
-                                                 ast::PREFIX_EXPR && (
-                                                     (ast::PrefixExpression *) arg)->prefix_type == ast::GLOBAL),
-                                             arg->origin,
-                                             "expected identifier"))
-                            return {};
-                    } else if (macro->arguments[i] == Macro::TYPE) {
-                        if (!bucket->iassert(arg->expression_type == ast::TYPE_EXPR,
-                                             arg->origin,
-                                             "expected type"))
-                            return {};
-                    }
-                }
-
-                return verify_expression(macro->apply(ce, ce->arguments));
-            } else {
-                bucket->error(ce->callee->origin, "calling of expressions is unimplemented");
-                return {};
-            }
-
-            if (!bucket->iassert(is_func_declared(func_path),
-                                 ce->callee->origin,
-                                 "undefined function '{}'",
-                                 func_path.str()))
-                return {};
-            aast::FuncStCommon *func = get_func_decl(func_path);
-            Path func_parent = func->path.get_parent();
-
-            size_t arg_offset = 0;
-            if (is_struct_declared(func_parent) ||
-                to_typesize(func_parent.str()) != (TypeSize) -1 ||
-                func->path.contains_pointer()) {
-                if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
-                    if (func->arguments[0]->type.pointer_level == arguments[0]->type.pointer_level + 1)
-                        arguments[0] = new aast::PrefixExpression(arguments[0]->origin,
-                                                                  arguments[0]->type.get_pointer_to(),
-                                                                  aast::REF,
-                                                                  arguments[0]);
-                    else if (arguments[0]->flattens_to_member_access()) {
-                        get_variable(arguments[0]->flatten_to_member_access())->state()->make_definitely_moved(
-                            arguments[0]->origin);
-                    }
-
-                    bucket->iassert(func->arguments[0]->type.is_assignable_from(arguments[0]->type),
-                                    arguments[0]->origin,
-                                    "passing value of type '{}' to argument of type '{}'",
-                                    arguments[0]->type.str(),
-                                    func->arguments[0]->type.str());
-                    arg_offset = 1;
-                } else if (func->path.get_parts().back() != "$constructor")
-                    // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
-                    // function is static, but we always put in the this argument
-                    arguments.erase(arguments.begin());
-            }
-
-            if (!bucket->iassert(ce->arguments.size() >= func->arguments.size() - arg_offset,
-                                 ce->origin,
-                                 "too few arguments, expected {} found {}.",
-                                 func->arguments.size() - arg_offset,
-                                 ce->arguments.size()))
-                return {};
-
-            if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size() - arg_offset,
-                                 ce->origin,
-                                 "too many arguments, expected {} found {}.",
-                                 func->arguments.size() - arg_offset,
-                                 ce->arguments.size()))
-                return {};
-
-            for (int i = arg_offset; i < std::min(func->arguments.size(), ce->arguments.size() + arg_offset); i++) {
-                aast::VariableStatement *arg_var = func->arguments[i];
-                ast::Expression *arg = ce->arguments[i - arg_offset];
-
-                std::optional argument = verify_expression(arg, MOVE);
-
-                if (argument.has_value()) {
-                    if (arg_var->type.is_float() && argument.value()->expression_type == aast::INT_EXPR) {
-                        auto *real = new aast::RealExpression(argument.value()->origin,
-                                                              (double) ((aast::IntExpression *) argument.value())->n);
-                        delete argument.value();
-                        argument = real;
-                    }
-
-                    arguments.push_back(argument.value());
-
-                    bucket->iassert(arg_var->type.is_assignable_from(argument.value()->type),
-                                    arg->origin,
-                                    "passing value of type '{}' to argument of type '{}'",
-                                    argument.value()->type.str(),
-                                    arg_var->type.str());
-                }
-            }
-
-            // fixme: this needs to be a path expression kind of thing
-            // fixme: in the very far future, this should have a function pointer type
-            auto *callee = new aast::NameExpression(ce->callee->origin, Type(), func_path.str());
-
-            return new aast::CallExpression(expression->origin, func->return_type, callee, arguments);
-        }
+        case ast::CALL_EXPR:
+            return verify_call_expression(expression, access, member_acc);
         case ast::DASH_EXPR:
         case ast::DOT_EXPR:
         case ast::EQ_EXPR:
         case ast::COMP_EXPR:
-        case ast::ASSIGN_EXPR: {
-            auto ae = (ast::BinaryExpression *) expression;
-
-            AccessType access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
-            std::optional left = verify_expression(ae->left, access);
-            std::optional right = verify_expression(ae->right);
-
-            if (!left.has_value() || !right.has_value())
-                return {};
-
-            if (left.value()->type.is_float() && right.value()->expression_type == aast::INT_EXPR) {
-                auto *real = new aast::RealExpression(right.value()->origin,
-                                                      (double) ((aast::IntExpression *) right.value())->n);
-                delete right.value();
-                right = real;
-            }
-
-            if (right.value()->type.is_float() && left.value()->expression_type == aast::INT_EXPR) {
-                auto *real = new aast::RealExpression(left.value()->origin,
-                                                      (double) ((aast::IntExpression *) left.value())->n);
-                delete left.value();
-                left = real;
-            }
-
-            if (ae->expression_type == ast::ASSIGN_EXPR) {
-                bucket->iassert(left.value()->type.is_assignable_from(right.value()->type),
-                                ae->right->origin,
-                                "can't assign to type '{}' from '{}'",
-                                left.value()->type.str(),
-                                right.value()->type.str());
-            } else if (ae->expression_type == ast::EQ_EXPR || ae->expression_type == ast::COMP_EXPR) {
-                bucket->iassert(left.value()->type.is_comparable(right.value()->type),
-                                ae->origin,
-                                "invalid operands to binary expression '{}' and '{}'",
-                                left.value()->type.str(),
-                                right.value()->type.str());
-            } else /*if (math expression)*/ {
-                bucket->iassert(left.value()->type.is_compatible(right.value()->type),
-                                ae->origin,
-                                "invalid operands to binary expression '{}' and '{}'",
-                                left.value()->type.str(),
-                                right.value()->type.str());
-            }
-
-            Type expression_type;
-            if (expression->expression_type == ast::EQ_EXPR || expression->expression_type == ast::COMP_EXPR)
-                expression_type = Type(BOOL);
-            else if (expression->expression_type == ast::ASSIGN_EXPR)
-                expression_type = left.value()->type;
-            else
-                expression_type = left.value()->type.get_result(right.value()->type);
-
-            aast::BinOpType bot;
-
-            switch (ae->bin_op_type) {
-                case ast::PATH:
-                    break;
-                case ast::ADD:
-                    bot = aast::ADD;
-                    break;
-                case ast::SUB:
-                    bot = aast::SUB;
-                    break;
-                case ast::MUL:
-                    bot = aast::MUL;
-                    break;
-                case ast::DIV:
-                    bot = aast::DIV;
-                    break;
-                case ast::EQ:
-                    bot = aast::EQ;
-                    break;
-                case ast::NEQ:
-                    bot = aast::NEQ;
-                    break;
-                case ast::SM:
-                    bot = aast::SM;
-                    break;
-                case ast::GR:
-                    bot = aast::GR;
-                    break;
-                case ast::SME:
-                    bot = aast::SME;
-                    break;
-                case ast::GRE:
-                    bot = aast::GRE;
-                    break;
-                case ast::MEM_ACC:
-                    break;
-                case ast::ASSIGN:
-                    bot = aast::ASSIGN;
-                    break;
-            }
-
-            return new aast::BinaryExpression(ae->origin,
-                                              expression_type,
-                                              bot,
-                                              left.value(),
-                                              right.value());
-        }
-        case ast::MEM_ACC_EXPR: {
-            auto mae = (ast::BinaryExpression *) expression;
-
-            std::optional left = verify_expression(mae->left, access, true);
-
-            if (!left.has_value())
-                return {};
-
-            if (!bucket->iassert(!left.value()->type.is_primitive(),
-                                 left.value()->origin,
-                                 "'{}' is not a structure",
-                                 left.value()->type.str()))
-                return {};
-            auto struct_name = left.value()->type.get_user();
-            if (!bucket->iassert(is_struct_declared(struct_name),
-                                 left.value()->origin,
-                                 "undefined structure '{}'",
-                                 left.value()->type.str()))
-                return {};
-            aast::StructStatement *s = get_struct(struct_name);
-
-            if (!bucket->iassert(mae->right->expression_type == ast::NAME_EXPR,
-                                 mae->right->origin,
-                                 "expected identifier"))
-                return {};
-
-            std::string member_name = ((ast::NameExpression *) mae->right)->name;
-
-            if (!bucket->iassert(s->has_member(member_name),
-                                 mae->right->origin,
-                                 "no member named '{}' in '{}'",
-                                 member_name,
-                                 left.value()->type.str()))
-                return {};
-
-            Type member_type = s->get_member_type(member_name);
-
-            if (left.value()->flattens_to_member_access()) {
-                auto *name = new ast::NameExpression(mae->origin,
-                                                     left.value()->flatten_to_member_access() + "." + member_name);
-
-                verify_expression(name, access);
-                delete name;
-            }
-
-            return new aast::BinaryExpression(mae->origin,
-                                              member_type,
-                                              aast::MEM_ACC,
-                                              left.value(),
-                                              new
-                                              aast::NameExpression(mae->right->origin, Type(), member_name));
-        }
-        case ast::PREFIX_EXPR: {
-            auto pe = (ast::PrefixExpression *) expression;
-            std::optional operand = verify_expression(pe->operand);
-
-            if (!operand.has_value())
-                return {};
-
-            Type pe_type = operand.value()->type;
-
-            switch (pe->prefix_type) {
-                case ast::NEG:
-                    bucket->iassert(pe_type.pointer_level == 0,
-                                    pe->operand->origin,
-                                    "invalid operand to prefix expression");
-                case ast::LOG_NOT:
-                    bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
-                                    pe->operand->origin,
-                                    "invalid operand to prefix expression");
-                    break;
-                case ast::REF: {
-                    pe_type.pointer_level++;
-                    break;
-                }
-                case ast::DEREF:
-                    bucket->iassert(pe_type.pointer_level > 0,
-                                    pe->operand->origin,
-                                    "cannot dereference non-pointer type '{}'",
-                                    operand.value()->type.str());
-                    bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 1,
-                                    pe->operand->origin,
-                                    "cannot copy non-primitive type '{}'",
-                                    operand.value()->type.str());
-                    pe_type.pointer_level--;
-                    break;
-                case ast::GLOBAL:
-                    bucket->error(pe->origin, "unexpected global path prefix");
-                    bucket->note(pe->origin, "did you mean to call a function? ('{}()')", pe->print());
-                    break;
-            }
-
-            aast::PrefixType pt;
-
-            switch (pe->prefix_type) {
-                case ast::NEG:
-                    pt = aast::NEG;
-                    break;
-                case ast::REF:
-                    pt = aast::REF;
-                    break;
-                case ast::DEREF:
-                    pt = aast::DEREF;
-                    break;
-                case ast::LOG_NOT:
-                    pt = aast::LOG_NOT;
-                    break;
-                case ast::GLOBAL:
-                    break;
-            }
-
-            return new aast::PrefixExpression(pe->origin, pe_type, pt, operand.value());
-        }
-        case ast::NAME_EXPR: {
-            auto ne = (ast::NameExpression *) expression;
-            if (!bucket->iassert(is_var_declared(ne->name),
-                                 expression->origin,
-                                 "undefined variable '{}'",
-                                 ne->name))
-                return {};
-
-            SemanticVariable *var = get_variable(ne->name);
-
-            Type variable_type = var->var->type;
-
-            auto *new_expr = new aast::NameExpression(ne->origin, variable_type, ne->name);
-
-            // don't do variable state checking if we are in a (pure) member access
-            if (member_acc)
-                return new_expr;
-
-            if (access == ASSIGNMENT) {
-                if (var->state()->is_definitely_defined()) {
-                    bucket->warning(var->state()->get_defined_pos(), "assigned value is immediately discarded");
-                    bucket->note(expression->origin, "overwritten here");
-                } else if (var->state()->is_maybe_defined()) {
-                    bucket->warning(expression->origin,
-                                    "value might overwrite previous assignment without reading it");
-                }
-
-                var->state()->make_definitely_defined(expression->origin);
-            } else {
-                if (bucket->iassert(!var->state()->is_definitely_undefined(),
-                                    expression->origin,
-                                    "value is still undefined") &&
-                    bucket->iassert(!var->state()->is_maybe_undefined(),
-                                    expression->origin,
-                                    "value might be undefined")) {
-                    if (!bucket->iassert(!var->state()->is_definitely_moved(),
-                                         expression->origin,
-                                         "value was moved") ||
-                        !bucket->iassert(!var->state()->is_maybe_moved(),
-                                         expression->origin,
-                                         "value might have been moved")) {
-                        bucket->note(var->state()->get_moved_pos(), "moved here");
-                    } else if (access == NORMAL) {
-                        var->state()->make_definitely_read(expression->origin);
-                    } else if (access == MOVE && !var->var->type.is_primitive() && var->var->type.pointer_level == 0) {
-                        var->state()->make_definitely_moved(expression->origin);
-                    }
-                }
-            }
-
-            return new_expr;
-        }
+        case ast::ASSIGN_EXPR:
+            return verify_binary_expression(expression, access, member_acc);
+        case ast::MEM_ACC_EXPR:
+            return verify_member_access_expression(expression, access, member_acc);
+        case ast::PREFIX_EXPR:
+            return verify_prefix_expression(expression, access, member_acc);
+        case ast::NAME_EXPR:
+            return verify_name_expression(expression, access, member_acc);
         case ast::INT_EXPR:
             return new aast::IntExpression(expression->origin, ((ast::IntExpression *) expression)->n);
         case ast::REAL_EXPR:
@@ -1007,6 +547,494 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 
     return
             {};
+}
+
+std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expression *expression,
+                                                                   AccessType access,
+                                                                   bool member_acc) {
+    auto ce = (ast::CallExpression *) expression;
+
+    Path func_path = Path({});
+    std::vector<aast::Expression *> arguments;
+
+    if (auto *gl = (ast::PrefixExpression *) ce->callee;
+        ce->callee->expression_type == ast::NAME_EXPR || ce->callee->expression_type == ast::PATH_EXPR ||
+        (ce->callee->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL)) {
+        func_path = Path::from_expression(ce->callee);
+
+        if (is_struct_declared(func_path)) {
+            func_path = func_path.create_member("$constructor");
+            // TODO: check if there exists a function with the same name
+        }
+    } else if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
+        auto *mem = (ast::BinaryExpression *) ce->callee;
+        std::optional callee_parent = verify_expression(mem->left);
+
+        if (mem->right->expression_type != ast::NAME_EXPR) {
+            bucket->error(mem->right->origin, "expected function name");
+            return {};
+        }
+
+        if (!callee_parent.has_value())
+            return {};
+
+        std::string member_name = ((ast::NameExpression *) mem->right)->name;
+
+        if (callee_parent.value()->type.is_primitive() && callee_parent.value()->type.get_primitive() == U0) {
+            std::vector possible_types = {U8, U16, U32, U64};
+            auto *ie = (ast::IntExpression *) callee_parent.value();
+            if (ie->n < 0)
+                possible_types.insert(possible_types.end(), {I8, I16, I32, I64});
+
+            std::vector<TypeSize> types_with_matching_functions;
+            for (auto type : possible_types) {
+                Type dummy = Type(type, callee_parent.value()->type.pointer_level);
+                if (is_func_declared(dummy.get_path().create_member(member_name))) {
+                    types_with_matching_functions.push_back(type);
+                }
+            }
+
+            if (!bucket->iassert(types_with_matching_functions.size() <= 1,
+                                 ce->origin,
+                                 "ambigious function call")) {
+                for (auto type : types_with_matching_functions) {
+                    Type dummy = Type(type, callee_parent.value()->type.pointer_level);
+                    bucket->note(get_func_decl(dummy.get_path().create_member(member_name))->origin,
+                                 "possible candidate function here");
+                }
+                return {};
+            }
+
+            if (types_with_matching_functions.size() == 1) {
+                callee_parent.value()->type = Type(types_with_matching_functions[0],
+                                                   callee_parent.value()->type.pointer_level);
+            }
+        }
+
+        func_path = callee_parent.value()->type.get_path();
+        func_path = func_path.create_member(member_name);
+
+        if (callee_parent.value()->type.pointer_level > 0) {
+            Type dummy = callee_parent.value()->type.get_deref();
+            Path deref_func = dummy.get_path().create_member(member_name);
+            if (is_func_declared(deref_func)) {
+                aast::FuncDeclareStatement *decl = get_func_decl(deref_func);
+                if (decl->arguments[0]->name.raw == "this" &&
+                    decl->arguments[0]->type == callee_parent.value()->type) {
+                    if (!bucket->iassert(!is_func_declared(func_path),
+                                         ce->origin,
+                                         "ambigious function call")) {
+                        bucket->note(get_func_decl(func_path)->origin,
+                                     "possible candidate function here");
+                        bucket->note(decl->origin,
+                                     "possible candidate function here");
+                        return {};
+                    }
+                    func_path = deref_func;
+                }
+            }
+        }
+
+        arguments.push_back(callee_parent.value());
+    } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
+        Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
+
+        if (!bucket->iassert(ce->arguments.size() >= macro->arguments.size(),
+                             ce->origin,
+                             "too few arguments, expected {} found {}.",
+                             macro->arguments.size(),
+                             ce->arguments.size()))
+            return {};
+
+        if (!bucket->iassert(ce->arguments.size() <= macro->arguments.size(),
+                             ce->origin,
+                             "too many arguments, expected {} found {}.",
+                             macro->arguments.size(),
+                             ce->arguments.size()))
+            return {};
+
+        for (int i = 0; i < macro->arguments.size(); i++) {
+            ast::Expression *arg = ce->arguments[i];
+            if (macro->arguments[i] == Macro::IDENTIFIER) {
+                if (!bucket->iassert(arg->expression_type == ast::NAME_EXPR ||
+                                     arg->expression_type == ast::PATH_EXPR || (arg->expression_type ==
+                                         ast::PREFIX_EXPR && (
+                                             (ast::PrefixExpression *) arg)->prefix_type == ast::GLOBAL),
+                                     arg->origin,
+                                     "expected identifier"))
+                    return {};
+            } else if (macro->arguments[i] == Macro::TYPE) {
+                if (!bucket->iassert(arg->expression_type == ast::TYPE_EXPR,
+                                     arg->origin,
+                                     "expected type"))
+                    return {};
+            }
+        }
+
+        return verify_expression(macro->apply(ce, ce->arguments));
+    } else {
+        bucket->error(ce->callee->origin, "calling of expressions is unimplemented");
+        return {};
+    }
+
+    if (!bucket->iassert(is_func_declared(func_path),
+                         ce->callee->origin,
+                         "undefined function '{}'",
+                         func_path.str()))
+        return {};
+    aast::FuncStCommon *func = get_func_decl(func_path);
+    Path func_parent = func->path.get_parent();
+
+    size_t arg_offset = 0;
+    if (is_struct_declared(func_parent) ||
+        to_typesize(func_parent.str()) != (TypeSize) -1 ||
+        func->path.contains_pointer()) {
+        if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
+            if (func->arguments[0]->type.pointer_level == arguments[0]->type.pointer_level + 1)
+                arguments[0] = new aast::PrefixExpression(arguments[0]->origin,
+                                                          arguments[0]->type.get_pointer_to(),
+                                                          aast::REF,
+                                                          arguments[0]);
+            else if (arguments[0]->flattens_to_member_access()) {
+                get_variable(arguments[0]->flatten_to_member_access())->state()->make_definitely_moved(
+                    arguments[0]->origin);
+            }
+
+            bucket->iassert(func->arguments[0]->type.is_assignable_from(arguments[0]->type),
+                            arguments[0]->origin,
+                            "passing value of type '{}' to argument of type '{}'",
+                            arguments[0]->type.str(),
+                            func->arguments[0]->type.str());
+            arg_offset = 1;
+        } else if (func->path.get_parts().back() != "$constructor")
+            // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
+            // function is static, but we always put in the this argument
+            arguments.erase(arguments.begin());
+    }
+
+    if (!bucket->iassert(ce->arguments.size() >= func->arguments.size() - arg_offset,
+                         ce->origin,
+                         "too few arguments, expected {} found {}.",
+                         func->arguments.size() - arg_offset,
+                         ce->arguments.size()))
+        return {};
+
+    if (!bucket->iassert(func->var_arg || ce->arguments.size() <= func->arguments.size() - arg_offset,
+                         ce->origin,
+                         "too many arguments, expected {} found {}.",
+                         func->arguments.size() - arg_offset,
+                         ce->arguments.size()))
+        return {};
+
+    for (int i = arg_offset; i < std::min(func->arguments.size(), ce->arguments.size() + arg_offset); i++) {
+        aast::VariableStatement *arg_var = func->arguments[i];
+        ast::Expression *arg = ce->arguments[i - arg_offset];
+
+        std::optional argument = verify_expression(arg, MOVE);
+
+        if (argument.has_value()) {
+            if (arg_var->type.is_float() && argument.value()->expression_type == aast::INT_EXPR) {
+                auto *real = new aast::RealExpression(argument.value()->origin,
+                                                      (double) ((aast::IntExpression *) argument.value())->n);
+                delete argument.value();
+                argument = real;
+            }
+
+            arguments.push_back(argument.value());
+
+            bucket->iassert(arg_var->type.is_assignable_from(argument.value()->type),
+                            arg->origin,
+                            "passing value of type '{}' to argument of type '{}'",
+                            argument.value()->type.str(),
+                            arg_var->type.str());
+        }
+    }
+
+    // fixme: this needs to be a path expression kind of thing
+    // fixme: in the very far future, this should have a function pointer type
+    auto *callee = new aast::NameExpression(ce->callee->origin, Type(), func_path.str());
+
+    return new aast::CallExpression(expression->origin, func->return_type, callee, arguments);
+}
+
+std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
+    ast::Expression *expression,
+    AccessType access,
+    bool member_acc) {
+    auto ae = (ast::BinaryExpression *) expression;
+
+    AccessType access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
+    std::optional left = verify_expression(ae->left, access);
+    std::optional right = verify_expression(ae->right);
+
+    if (!left.has_value() || !right.has_value())
+        return {};
+
+    if (left.value()->type.is_float() && right.value()->expression_type == aast::INT_EXPR) {
+        auto *real = new aast::RealExpression(right.value()->origin,
+                                              (double) ((aast::IntExpression *) right.value())->n);
+        delete right.value();
+        right = real;
+    }
+
+    if (right.value()->type.is_float() && left.value()->expression_type == aast::INT_EXPR) {
+        auto *real = new aast::RealExpression(left.value()->origin,
+                                              (double) ((aast::IntExpression *) left.value())->n);
+        delete left.value();
+        left = real;
+    }
+
+    if (ae->expression_type == ast::ASSIGN_EXPR) {
+        bucket->iassert(left.value()->type.is_assignable_from(right.value()->type),
+                        ae->right->origin,
+                        "can't assign to type '{}' from '{}'",
+                        left.value()->type.str(),
+                        right.value()->type.str());
+    } else if (ae->expression_type == ast::EQ_EXPR || ae->expression_type == ast::COMP_EXPR) {
+        bucket->iassert(left.value()->type.is_comparable(right.value()->type),
+                        ae->origin,
+                        "invalid operands to binary expression '{}' and '{}'",
+                        left.value()->type.str(),
+                        right.value()->type.str());
+    } else /*if (math expression)*/ {
+        bucket->iassert(left.value()->type.is_compatible(right.value()->type),
+                        ae->origin,
+                        "invalid operands to binary expression '{}' and '{}'",
+                        left.value()->type.str(),
+                        right.value()->type.str());
+    }
+
+    Type expression_type;
+    if (expression->expression_type == ast::EQ_EXPR || expression->expression_type == ast::COMP_EXPR)
+        expression_type = Type(BOOL);
+    else if (expression->expression_type == ast::ASSIGN_EXPR)
+        expression_type = left.value()->type;
+    else
+        expression_type = left.value()->type.get_result(right.value()->type);
+
+    aast::BinOpType bot;
+
+    switch (ae->bin_op_type) {
+        case ast::PATH:
+            break;
+        case ast::ADD:
+            bot = aast::ADD;
+            break;
+        case ast::SUB:
+            bot = aast::SUB;
+            break;
+        case ast::MUL:
+            bot = aast::MUL;
+            break;
+        case ast::DIV:
+            bot = aast::DIV;
+            break;
+        case ast::EQ:
+            bot = aast::EQ;
+            break;
+        case ast::NEQ:
+            bot = aast::NEQ;
+            break;
+        case ast::SM:
+            bot = aast::SM;
+            break;
+        case ast::GR:
+            bot = aast::GR;
+            break;
+        case ast::SME:
+            bot = aast::SME;
+            break;
+        case ast::GRE:
+            bot = aast::GRE;
+            break;
+        case ast::MEM_ACC:
+            break;
+        case ast::ASSIGN:
+            bot = aast::ASSIGN;
+            break;
+    }
+
+    return new aast::BinaryExpression(ae->origin,
+                                      expression_type,
+                                      bot,
+                                      left.value(),
+                                      right.value());
+}
+
+std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expression(
+    ast::Expression *expression,
+    AccessType access,
+    bool member_acc) {
+    auto mae = (ast::BinaryExpression *) expression;
+
+    std::optional left = verify_expression(mae->left, access, true);
+
+    if (!left.has_value())
+        return {};
+
+    if (!bucket->iassert(!left.value()->type.is_primitive(),
+                         left.value()->origin,
+                         "'{}' is not a structure",
+                         left.value()->type.str()))
+        return {};
+    auto struct_name = left.value()->type.get_user();
+    if (!bucket->iassert(is_struct_declared(struct_name),
+                         left.value()->origin,
+                         "undefined structure '{}'",
+                         left.value()->type.str()))
+        return {};
+    aast::StructStatement *s = get_struct(struct_name);
+
+    if (!bucket->iassert(mae->right->expression_type == ast::NAME_EXPR,
+                         mae->right->origin,
+                         "expected identifier"))
+        return {};
+
+    std::string member_name = ((ast::NameExpression *) mae->right)->name;
+
+    if (!bucket->iassert(s->has_member(member_name),
+                         mae->right->origin,
+                         "no member named '{}' in '{}'",
+                         member_name,
+                         left.value()->type.str()))
+        return {};
+
+    Type member_type = s->get_member_type(member_name);
+
+    if (left.value()->flattens_to_member_access()) {
+        auto *name = new ast::NameExpression(mae->origin,
+                                             left.value()->flatten_to_member_access() + "." + member_name);
+
+        verify_name_expression(name, access);
+        delete name;
+    }
+
+    return new aast::BinaryExpression(mae->origin,
+                                      member_type,
+                                      aast::MEM_ACC,
+                                      left.value(),
+                                      new
+                                      aast::NameExpression(mae->right->origin, Type(), member_name));
+}
+
+std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
+    ast::Expression *expression,
+    AccessType access,
+    bool member_acc) {
+    auto pe = (ast::PrefixExpression *) expression;
+    std::optional operand = verify_expression(pe->operand);
+
+    if (!operand.has_value())
+        return {};
+
+    Type pe_type = operand.value()->type;
+
+    switch (pe->prefix_type) {
+        case ast::NEG:
+            bucket->iassert(pe_type.pointer_level == 0,
+                            pe->operand->origin,
+                            "invalid operand to prefix expression");
+        case ast::LOG_NOT:
+            bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 0,
+                            pe->operand->origin,
+                            "invalid operand to prefix expression");
+            break;
+        case ast::REF: {
+            pe_type.pointer_level++;
+            break;
+        }
+        case ast::DEREF:
+            bucket->iassert(pe_type.pointer_level > 0,
+                            pe->operand->origin,
+                            "cannot dereference non-pointer type '{}'",
+                            operand.value()->type.str());
+            bucket->iassert(pe_type.is_primitive() || pe_type.pointer_level > 1,
+                            pe->operand->origin,
+                            "cannot copy non-primitive type '{}'",
+                            operand.value()->type.str());
+            pe_type.pointer_level--;
+            break;
+        case ast::GLOBAL:
+            bucket->error(pe->origin, "unexpected global path prefix");
+            bucket->note(pe->origin, "did you mean to call a function? ('{}()')", pe->print());
+            break;
+    }
+
+    aast::PrefixType pt;
+
+    switch (pe->prefix_type) {
+        case ast::NEG:
+            pt = aast::NEG;
+            break;
+        case ast::REF:
+            pt = aast::REF;
+            break;
+        case ast::DEREF:
+            pt = aast::DEREF;
+            break;
+        case ast::LOG_NOT:
+            pt = aast::LOG_NOT;
+            break;
+        case ast::GLOBAL:
+            break;
+    }
+
+    return new aast::PrefixExpression(pe->origin, pe_type, pt, operand.value());
+}
+
+std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expression *expression,
+                                                                       AccessType access,
+                                                                       bool member_acc) {
+    auto ne = (ast::NameExpression *) expression;
+    if (!bucket->iassert(is_var_declared(ne->name),
+                         expression->origin,
+                         "undefined variable '{}'",
+                         ne->name))
+        return {};
+
+    SemanticVariable *var = get_variable(ne->name);
+
+    Type variable_type = var->var->type;
+
+    auto *new_expr = new aast::NameExpression(ne->origin, variable_type, ne->name);
+
+    // don't do variable state checking if we are in a (pure) member access
+    if (member_acc)
+        return new_expr;
+
+    if (access == ASSIGNMENT) {
+        if (var->state()->is_definitely_defined()) {
+            bucket->warning(var->state()->get_defined_pos(), "assigned value is immediately discarded");
+            bucket->note(expression->origin, "overwritten here");
+        } else if (var->state()->is_maybe_defined()) {
+            bucket->warning(expression->origin,
+                            "value might overwrite previous assignment without reading it");
+        }
+
+        var->state()->make_definitely_defined(expression->origin);
+    } else {
+        if (bucket->iassert(!var->state()->is_definitely_undefined(),
+                            expression->origin,
+                            "value is still undefined") &&
+            bucket->iassert(!var->state()->is_maybe_undefined(),
+                            expression->origin,
+                            "value might be undefined")) {
+            if (!bucket->iassert(!var->state()->is_definitely_moved(),
+                                 expression->origin,
+                                 "value was moved") ||
+                !bucket->iassert(!var->state()->is_maybe_moved(),
+                                 expression->origin,
+                                 "value might have been moved")) {
+                bucket->note(var->state()->get_moved_pos(), "moved here");
+            } else if (access == NORMAL) {
+                var->state()->make_definitely_read(expression->origin);
+            } else if (access == MOVE && !var->var->type.is_primitive() && var->var->type.pointer_level == 0) {
+                var->state()->make_definitely_moved(expression->origin);
+            }
+        }
+    }
+
+    return new_expr;
 }
 
 std::optional<Type> Analyser::verify_type(Type type) {
