@@ -146,9 +146,13 @@ Parser::~Parser() {
 
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
-    Token peek = lexer.peek();
-    bucket->iassert(peek.id == raw, peek.origin, "expected a {} found '{}' instead", s, peek.raw);
-    return lexer.consume();
+    Token peek = lexer.consume();
+    if (!bucket->iassert(peek.id == raw, peek.origin, "expected a {} found '{}' instead", s, peek.raw)) {
+        while (peek.id != raw && peek.id != END) {
+            peek = lexer.consume();
+        }
+    }
+    return peek;
 }
 
 bool Parser::check_expect(TokenType raw) {
