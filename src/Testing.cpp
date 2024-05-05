@@ -40,7 +40,11 @@ bool test() {
     Bucket error_bucket;
     BEGIN_TEST
 
-    FIRST_TEST(lexer)
+    FIRST_TEST(utility)
+
+        ASSERT_STR_EQ(Type(Path({"ÜberÄnderung"})).func_name(), "über_änderung")
+
+    MID_TEST(lexer)
 
         ss c("hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 . ... \"a string\"# comment should be ignored\nback");
         Lexer lexer(&c);

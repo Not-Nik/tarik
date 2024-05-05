@@ -9,6 +9,7 @@
 #include <numeric>
 
 #include "ast/Statements.h"
+#include "utf/Utf.h"
 
 std::string Type::str() const {
     std::string res = base();
@@ -31,15 +32,20 @@ std::string Type::base() const {
 }
 
 std::string Type::func_name() const {
-    std::string base_str = base();
-    std::string res;
+    std::u32string base_str = to_utf(base());
+    std::u32string res;
+
+    std::locale en_US_UTF_8("en_US.UTF-8");
 
     for (auto c : base_str) {
-        if (isupper(c))
-            res.insert(res.end(), {'_', (char) tolower(c)});
-        else
+        // Todo: this does not work on Windows
+        if (std::isupper((wchar_t)c, en_US_UTF_8)) {
+            if (!res.empty())
+                res.push_back('_');
+            res.push_back(std::tolower((wchar_t)c, en_US_UTF_8));
+        } else
             res.push_back(c);
     }
 
-    return res;
+    return to_string(res);
 }

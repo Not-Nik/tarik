@@ -46,7 +46,9 @@ add_executable(tarik
         src/syntactic/ast/Base.h
         src/syntactic/ast/Expression.h
         src/syntactic/ast/Parslets.h
-        src/syntactic/ast/Statements.h)
+        src/syntactic/ast/Statements.h
+        src/utf/Utf.cpp
+        src/utf/Utf.h)
 
 set(LLVM_LINK_COMPONENTS
         AArch64
