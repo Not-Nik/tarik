@@ -286,6 +286,33 @@ public:
     }
 };
 
+class ListExpression : public Expression {
+public:
+    std::vector<Expression *> elements;
+
+    ListExpression(const LexerRange &lp, std::vector<Expression *> elems)
+        : Expression(LIST_EXPR, lp),
+          elements(elems) {}
+
+    ~ListExpression() override {
+        for (auto *elem : elements) {
+            delete elem;
+        }
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string arg_string = "[";
+        for (auto *arg : elements) {
+            arg_string += arg->print() + ", ";
+        }
+        if (!arg_string.empty()) {
+            arg_string.pop_back();
+            arg_string.pop_back();
+        }
+        return arg_string + "]";
+    }
+};
+
 class EmptyExpression : public Expression {
 public:
     EmptyExpression(const LexerRange &lp)

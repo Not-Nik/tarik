@@ -80,7 +80,8 @@ enum ExprType {
     TYPE_EXPR,
     PATH_EXPR,
     EMPTY_EXPR,
-    CAST_EXPR
+    CAST_EXPR,
+    LIST_EXPR,
 };
 
 class Expression : public Statement {
@@ -89,10 +90,10 @@ public:
 
     Expression()
         : Statement(),
-          expression_type(NAME_EXPR) {
-    }
+          expression_type(NAME_EXPR) {}
 
-    explicit Expression(ExprType t, const LexerRange &lp) : Statement(EXPR_STMT, lp) { expression_type = t; }
+    explicit Expression(ExprType t, const LexerRange &lp)
+        : Statement(EXPR_STMT, lp) { expression_type = t; }
 };
 } // namespace ast
 
