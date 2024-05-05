@@ -57,7 +57,7 @@ int LLVM::dump_ir(const std::string &to) {
 
 int LLVM::write_file(const std::string &to, Config config) {
     std::string error;
-    auto target = llvm::TargetRegistry::lookupTarget(config.triple, error);
+    const llvm::Target *target = llvm::TargetRegistry::lookupTarget(config.triple, error);
 
     if (!target) {
         // probably an invalid triple
@@ -65,19 +65,19 @@ int LLVM::write_file(const std::string &to, Config config) {
         return 1;
     }
 
-    auto cpu = "generic";
-    auto features = "";
+    const char *cpu = "generic";
+    const char *features = "";
 
     llvm::TargetOptions opt;
-    auto target_machine = target->createTargetMachine(config.triple,
-                                                      cpu,
-                                                      features,
-                                                      opt,
-                                                      config.pic
-                                                      ? llvm::Reloc::Model::PIC_
-                                                      : llvm::Reloc::Model::Static,
-                                                      config.code_model,
-                                                      config.optimisation_level);
+    auto *target_machine = target->createTargetMachine(config.triple,
+                                                       cpu,
+                                                       features,
+                                                       opt,
+                                                       config.pic
+                                                       ? llvm::Reloc::Model::PIC_
+                                                       : llvm::Reloc::Model::Static,
+                                                       config.code_model,
+                                                       config.optimisation_level);
 
     module->setDataLayout(target_machine->createDataLayout());
     module->setTargetTriple(config.triple);
@@ -86,9 +86,9 @@ int LLVM::write_file(const std::string &to, Config config) {
     llvm::raw_fd_ostream stream(to, EC, llvm::sys::fs::CD_CreateAlways);
 
     llvm::legacy::PassManager pass;
-    auto file_type = config.output == Config::Output::Assembly
-                     ? llvm::CodeGenFileType::AssemblyFile
-                     : llvm::CodeGenFileType::ObjectFile;
+    llvm::CodeGenFileType file_type = config.output == Config::Output::Assembly
+                                      ? llvm::CodeGenFileType::AssemblyFile
+                                      : llvm::CodeGenFileType::ObjectFile;
 
     if (target_machine->addPassesToEmitFile(pass, stream, nullptr, file_type)) {
         // damn
@@ -289,7 +289,7 @@ void LLVM::generate_variable(aast::VariableStatement *var) {
 
 void LLVM::generate_struct(aast::StructStatement *struct_) {
     std::vector<llvm::Type *> members;
-    for (auto member : struct_->members) {
+    for (auto *member : struct_->members) {
         members.push_back(make_llvm_type(member->type));
     }
 
@@ -317,7 +317,7 @@ int roundUp(T numToRound, T multiple) {
 llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
     switch (expression->expression_type) {
         case aast::CALL_EXPR: {
-            auto ce = (aast::CallExpression *) expression;
+            auto *ce = (aast::CallExpression *) expression;
             llvm::FunctionCallee function;
 
             if (ce->callee->expression_type == aast::NAME_EXPR) {
@@ -329,7 +329,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
 
             std::vector<llvm::Value *> arg_values;
             size_t arg_i = 0;
-            for (auto arg : ce->arguments) {
+            for (auto *arg : ce->arguments) {
                 // Check if we are past the regular, non-variable arguments,
                 // and don't try to cast if we are
                 if (arg_i >= function.getFunctionType()->getNumParams()) {
@@ -349,7 +349,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
         case aast::DOT_EXPR:
         case aast::EQ_EXPR:
         case aast::COMP_EXPR: {
-            auto ce = (aast::BinaryExpression *) expression;
+            auto *ce = (aast::BinaryExpression *) expression;
 
             llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
@@ -426,12 +426,12 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             break;
         }
         case aast::MEM_ACC_EXPR: {
-            auto mae = (aast::BinaryExpression *) expression;
+            auto *mae = (aast::BinaryExpression *) expression;
             llvm::Value *gep = generate_member_access(mae);
             return builder.CreateLoad(make_llvm_type(mae->type), gep, "deref_temp");
         }
         case aast::PREFIX_EXPR: {
-            auto pe = (aast::PrefixExpression *) expression;
+            auto *pe = (aast::PrefixExpression *) expression;
 
             if (pe->prefix_type == aast::REF) {
                 if (pe->operand->expression_type == aast::NAME_EXPR) {
@@ -464,7 +464,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             break;
         }
         case aast::ASSIGN_EXPR: {
-            auto ae = (aast::BinaryExpression *) expression;
+            auto *ae = (aast::BinaryExpression *) expression;
             llvm::Value *dest;
             llvm::Type *dest_type;
             if (ae->left->expression_type == aast::NAME_EXPR) {
@@ -476,7 +476,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
                 dest_type = make_llvm_type(ae->left->type);
             } else if (ae->left->expression_type == aast::PREFIX_EXPR &&
                 ((aast::PrefixExpression *) ae->left)->prefix_type == aast::DEREF) {
-                auto deref = (aast::PrefixExpression *) ae->left;
+                auto *deref = (aast::PrefixExpression *) ae->left;
                 dest = generate_expression(deref->operand);
                 dest_type = make_llvm_type(deref->type);
             } else {
@@ -486,7 +486,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             return builder.CreateStore(generate_cast(generate_expression(ae->right), dest_type), dest);
         }
         case aast::NAME_EXPR: {
-            auto ne = (aast::NameExpression *) expression;
+            auto *ne = (aast::NameExpression *) expression;
             auto [var, type, is_arg] = variables.at(ne->name);
             if (is_arg)
                 return var;
@@ -494,24 +494,24 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
                 return builder.CreateLoad(type, var, "load_temp");
         }
         case aast::INT_EXPR: {
-            auto ie = (aast::IntExpression *) expression;
+            auto *ie = (aast::IntExpression *) expression;
             size_t width = std::max(8, roundUp((size_t) std::bit_width((size_t) ie->n), size_t(8)));
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
         }
         case aast::REAL_EXPR: {
-            auto re = (aast::RealExpression *) expression;
+            auto *re = (aast::RealExpression *) expression;
             return llvm::ConstantFP::get(llvm::Type::getDoubleTy(context), re->n);
         }
         case aast::STR_EXPR: {
-            auto se = (aast::StringExpression *) expression;
+            auto *se = (aast::StringExpression *) expression;
             return builder.CreateGlobalStringPtr(se->n, "string_value");
         }
         case aast::BOOL_EXPR: {
-            auto be = (aast::BoolExpression *) expression;
+            auto *be = (aast::BoolExpression *) expression;
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
         }
         case aast::CAST_EXPR: {
-            auto ce = (aast::CastExpression *) expression;
+            auto *ce = (aast::CastExpression *) expression;
             return generate_cast(generate_expression(ce->expression),
                                  make_llvm_type(ce->type),
                                  ce->expression->type.is_signed_int()
@@ -547,7 +547,7 @@ std::tuple<llvm::Value *, llvm::Type *, bool> LLVM::get_var_on_stack(std::string
     auto &[var, type, is_arg] = variables.at(name);
 
     if (is_arg) {
-        auto alloca = builder.CreateAlloca(type, 0u, nullptr, "stack_" + name);
+        llvm::AllocaInst *alloca = builder.CreateAlloca(type, 0u, nullptr, "stack_" + name);
         builder.CreateStore(var, alloca);
 
         var = alloca;
@@ -604,7 +604,7 @@ llvm::FunctionType *LLVM::make_llvm_function_type(aast::FuncStCommon *func) {
     llvm::Type *rt = make_llvm_type(func->return_type);
     std::vector<llvm::Type *> argument_types;
     argument_types.reserve(func->arguments.size());
-    for (auto arg : func->arguments) {
+    for (auto *arg : func->arguments) {
         argument_types.push_back(make_llvm_type(arg->type));
     }
     llvm::FunctionType *func_type = llvm::FunctionType::get(rt, argument_types, func->var_arg);

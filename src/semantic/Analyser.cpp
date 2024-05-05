@@ -26,7 +26,7 @@ std::vector<aast::Statement *> Analyser::finish() {
         res.push_back(st);
     for (auto [_, dc] : declarations)
         res.push_back(dc);
-    for (auto fn : functions)
+    for (auto *fn : functions)
         res.push_back(fn);
     return res;
 }
@@ -37,9 +37,9 @@ void Analyser::analyse(const std::vector<ast::Statement *> &statements) {
 }
 
 void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
-    for (auto statement : statements) {
+    for (auto *statement : statements) {
         if (statement->statement_type == ast::FUNC_STMT) {
-            auto func = reinterpret_cast<ast::FuncStatement *>(statement);
+            auto *func = (ast::FuncStatement *)(statement);
             Path name = Path({});
             if (func->member_of.has_value()) {
                 name = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
@@ -133,7 +133,7 @@ std::optional<std::vector<aast::Statement *>> Analyser::verify_statements(
     const std::vector<ast::Statement *> &statements) {
     std::vector<aast::Statement *> res;
 
-    for (auto statement : statements) {
+    for (auto *statement : statements) {
         std::optional verified = verify_statement(statement);
         if (verified.has_value())
             res.push_back(verified.value());
@@ -144,7 +144,7 @@ std::optional<std::vector<aast::Statement *>> Analyser::verify_statements(
 std::optional<aast::ScopeStatement *> Analyser::verify_scope(ast::ScopeStatement *scope, std::string name) {
     size_t old_var_count = variables.size();
 
-    for (auto var : variables) {
+    for (auto *var : variables) {
         var->push_state(*var->state());
     }
 
@@ -160,7 +160,7 @@ std::optional<aast::ScopeStatement *> Analyser::verify_scope(ast::ScopeStatement
         variables.pop_back();
 
     // todo: for loops this doesn't catch all cases where defines at the start immediately follow defines at the end
-    for (auto var : variables) {
+    for (auto *var : variables) {
         VariableState old_definite_state = *var->state();
         var->pop_state();
 
@@ -229,7 +229,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
         func_path = Path({func->name.raw}, func->name.origin).with_prefix(path);
     }
 
-    for (auto registered : functions) {
+    for (auto *registered : functions) {
         if (func_path != registered->path)
             continue;
         bucket->error(func->name.origin, "redefinition of '{}'", func->name.raw);
@@ -241,8 +241,8 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
                     "function with return type doesn't always return");
     std::vector<aast::VariableStatement *> arguments;
 
-    for (auto arg : func->arguments) {
-        auto sem = verify_variable(arg);
+    for (auto *arg : func->arguments) {
+        std::optional sem = verify_variable(arg);
 
         if (sem.has_value())
             sem.value()->state()->make_definitely_defined(arg->origin);
@@ -365,7 +365,7 @@ std::optional<aast::ContinueStatement *> Analyser::verify_continue(ast::Continue
 std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStatement *var) {
     std::optional type = verify_type(var->type);
 
-    for (auto variable : variables) {
+    for (auto *variable : variables) {
         if (var->name.raw == variable->var->name.raw) {
             bucket->error(var->name.origin, "redefinition of '{}'", var->name.raw);
             bucket->note(variable->var->name.origin, "previous definition here");
@@ -384,12 +384,12 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
         aast::StructStatement *st = get_struct(type.value().get_user());
 
         std::vector<SemanticVariable *> member_states;
-        for (auto member : st->members) {
+        for (auto *member : st->members) {
             auto *temp = new ast::VariableStatement(var->origin,
                                                     member->type,
                                                     Token::name(var->name.raw + "." + member->name.raw));
 
-            auto semantic_member = verify_variable(temp);
+            std::optional semantic_member = verify_variable(temp);
             if (semantic_member.has_value())
                 member_states.push_back(semantic_member.value());
         }
@@ -418,7 +418,7 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
     auto *instance = new ast::VariableStatement(struct_->origin, struct_->get_type(path), Token::name("_instance"));
     body.push_back(instance);
 
-    for (auto member : struct_->members) {
+    for (auto *member : struct_->members) {
         bucket->iassert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end(),
                         member->name.origin,
                         "duplicate member '{}'",
@@ -563,7 +563,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expression *expression,
                                                                    AccessType access,
                                                                    bool member_acc) {
-    auto ce = (ast::CallExpression *) expression;
+    auto *ce = (ast::CallExpression *) expression;
 
     Path func_path = Path({});
     std::vector<aast::Expression *> arguments;
@@ -739,12 +739,12 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
 std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Expression *expression,
                                                                     AccessType access,
                                                                     bool member_acc) {
-    auto ce = (ast::CallExpression *) expression;
+    auto *ce = (ast::CallExpression *) expression;
     if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
         auto *mem = (ast::BinaryExpression *) ce->callee;
         ce->arguments.insert(ce->arguments.begin(), mem->left);
 
-        auto callee = mem->right;
+        ast::Expression *callee = mem->right;
         mem->right = nullptr;
         mem->left = nullptr;
         delete mem;
@@ -794,7 +794,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     ast::Expression *expression,
     AccessType access,
     bool member_acc) {
-    auto ae = (ast::BinaryExpression *) expression;
+    auto *ae = (ast::BinaryExpression *) expression;
 
     access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
     std::optional left = verify_expression(ae->left, access);
@@ -898,7 +898,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
     ast::Expression *expression,
     AccessType access,
     bool member_acc) {
-    auto mae = (ast::BinaryExpression *) expression;
+    auto *mae = (ast::BinaryExpression *) expression;
 
     std::optional left = verify_expression(mae->left, access, true);
 
@@ -910,7 +910,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
                          "'{}' is not a structure",
                          left.value()->type.str()))
         return {};
-    auto struct_name = left.value()->type.get_user();
+    Path struct_name = left.value()->type.get_user();
     if (!bucket->iassert(is_struct_declared(struct_name),
                          left.value()->origin,
                          "undefined structure '{}'",
@@ -954,7 +954,7 @@ std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
     ast::Expression *expression,
     AccessType access,
     bool member_acc) {
-    auto pe = (ast::PrefixExpression *) expression;
+    auto *pe = (ast::PrefixExpression *) expression;
     std::optional operand = verify_expression(pe->operand);
 
     if (!operand.has_value())
@@ -1018,7 +1018,7 @@ std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
 std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expression *expression,
                                                                        AccessType access,
                                                                        bool member_acc) {
-    auto ne = (ast::NameExpression *) expression;
+    auto *ne = (ast::NameExpression *) expression;
     if (!bucket->iassert(is_var_declared(ne->name),
                          expression->origin,
                          "undefined variable '{}'",

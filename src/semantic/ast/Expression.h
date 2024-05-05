@@ -238,7 +238,7 @@ public:
 
     [[nodiscard]] std::string print() const override {
         std::string arg_string;
-        for (auto arg : arguments) {
+        for (auto *arg : arguments) {
             arg_string += arg->print() + ", ";
         }
         if (!arg_string.empty()) {

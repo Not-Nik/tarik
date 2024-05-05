@@ -128,7 +128,7 @@ bool test() {
         // Functions
         {
             Parser p(&(c = ss("fn test_func(i32 arg1, f64 arg2) i8 {} test_func(1, 2.3);")), &error_bucket);
-            auto func = (ast::FuncStatement *) p.parse_statement();
+            auto *func = (ast::FuncStatement *) p.parse_statement();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_EQ(func->statement_type, ast::FUNC_STMT)
             ASSERT_STR_EQ(func->name.raw, "test_func")
@@ -139,7 +139,7 @@ bool test() {
             ASSERT_EQ(func->arguments[1]->type, Type(F64))
             ASSERT_EQ(func->return_type, Type(I8))
 
-            auto call = (ast::CallExpression *) p.parse_statement();
+            auto *call = (ast::CallExpression *) p.parse_statement();
             ASSERT_NO_ERROR(error_bucket)
             ASSERT_STR_EQ(call->callee->print(), "test_func")
 
@@ -202,7 +202,7 @@ bool test() {
 
         ASSERT_EQ(if_stmt->condition->statement_type, ast::EXPR_STMT)
 
-        auto if_cond = (ast::Expression *) if_stmt->condition;
+        auto *if_cond = (ast::Expression *) if_stmt->condition;
 
         ASSERT_EQ(if_cond->expression_type, ast::NAME_EXPR)
 

@@ -186,7 +186,7 @@ int main(int argc, const char *argv[]) {
 
     std::ofstream out(output_path);
     if (emit_ast) {
-        for (auto s : statements) {
+        for (auto *s : statements) {
             out << s->print() << "\n\n";
         }
         out.put('\n');
@@ -200,7 +200,7 @@ int main(int argc, const char *argv[]) {
 
         if (error_bucket.get_error_count() == 0) {
             if (emit_aast) {
-                for (auto s : analysed_statements) {
+                for (auto *s : analysed_statements) {
                     out << s->print() << "\n\n";
                 }
                 out.put('\n');

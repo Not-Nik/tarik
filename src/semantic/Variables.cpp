@@ -94,28 +94,28 @@ CompoundState::CompoundState(const std::vector<SemanticVariable *> &states)
 
 void CompoundState::make_definitely_defined(LexerRange pos) {
     VariableState::make_definitely_defined(pos);
-    for (auto child : children) {
+    for (auto *child : children) {
         child->state()->make_definitely_defined(pos);
     }
 }
 
 void CompoundState::make_definitely_read(LexerRange pos) {
     VariableState::make_definitely_read(pos);
-    for (auto child : children) {
+    for (auto *child : children) {
         child->state()->make_definitely_read(pos);
     }
 }
 
 void CompoundState::make_definitely_moved(LexerRange pos) {
     VariableState::make_definitely_moved(pos);
-    for (auto child : children) {
+    for (auto *child : children) {
         child->state()->make_definitely_moved(pos);
     }
 }
 
 bool CompoundState::is_definitely_undefined() const {
     bool state = false;
-    for (auto child : children) {
+    for (auto *child : children) {
         state = state || child->state()->is_definitely_undefined();
     }
     return state;
@@ -131,7 +131,7 @@ bool CompoundState::is_definitely_defined() const {
     //                             # is_maybe_defined() = false
     // similarly empty structs can be read when they are returned
     bool state = true;
-    for (auto child : children) {
+    for (auto *child : children) {
         state = state && child->state()->is_definitely_defined();
     }
     return state;
@@ -141,7 +141,7 @@ bool CompoundState::is_definitely_moved() const {
     bool state = VariableState::is_definitely_moved();
     // if any of the structs children were moved, the struct is also
     // moved or, more specifically, is not available for moving anymore
-    for (auto child : children) {
+    for (auto *child : children) {
         state = state || child->state()->is_definitely_moved();
     }
     return state;
@@ -149,7 +149,7 @@ bool CompoundState::is_definitely_moved() const {
 
 bool CompoundState::is_maybe_undefined() const {
     bool state = false;
-    for (auto child : children) {
+    for (auto *child : children) {
         state = state || child->state()->is_maybe_undefined();
     }
     return state;
@@ -157,7 +157,7 @@ bool CompoundState::is_maybe_undefined() const {
 
 bool CompoundState::is_maybe_defined() const {
     bool state = false;
-    for (auto child : children) {
+    for (auto *child : children) {
         state = state || child->state()->is_maybe_defined();
     }
     return state;
@@ -165,7 +165,7 @@ bool CompoundState::is_maybe_defined() const {
 
 bool CompoundState::is_maybe_moved() const {
     bool state = was_moved;
-    for (auto child : children) {
+    for (auto *child : children) {
         state = state || child->state()->is_maybe_moved();
     }
     return state;
@@ -177,7 +177,7 @@ LexerRange CompoundState::get_defined_pos() const {
 
 LexerRange CompoundState::get_moved_pos() const {
     LexerRange pos = moved_pos;
-    for (auto child : children) {
+    for (auto *child : children) {
         if (!child->state()->is_maybe_moved()) continue;
         LexerRange child_pos = child->state()->get_moved_pos();
         if (child->state()->get_moved_pos() > pos)

@@ -29,7 +29,12 @@ Lexer::~Lexer() {
 }
 
 bool Lexer::operator_startswith(char c) {
-    return std::any_of(operators.begin(), operators.end(), [c](auto op) { return op.first[0] == c; });
+    return std::any_of(operators.begin(),
+                       operators.end(),
+                       [c](std::pair<std::string, TokenType> op) {
+                           return op.first[0] ==
+                                   c;
+                       });
 }
 
 bool Lexer::operator_startswith(std::string c) {

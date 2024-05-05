@@ -179,7 +179,7 @@ public:
 
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + name.raw + "(";
-        for (auto arg : arguments) {
+        for (auto *arg : arguments) {
             res += arg->type.str() + " " + arg->name.raw + ", ";
         }
         if (res.back() != '(')
@@ -189,7 +189,7 @@ public:
 
     [[nodiscard]] std::string signature() const {
         std::string res = "(";
-        for (auto arg : arguments) {
+        for (auto *arg : arguments) {
             res += arg->type.str() + ", ";
         }
         if (res.back() != '(')
@@ -219,7 +219,7 @@ public:
     }
 
     bool has_member(const std::string &n) {
-        for (auto mem : members) {
+        for (auto *mem : members) {
             if (mem->name.raw == n)
                 return true;
         }
@@ -231,7 +231,7 @@ public:
     }
 
     Type get_member_type(const std::string &n) {
-        for (auto mem : members) {
+        for (auto *mem : members) {
             if (mem->name.raw == n)
                 return mem->type;
         }

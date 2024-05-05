@@ -320,7 +320,7 @@ public:
         if (!is_primitive())
             return 0;
 
-        auto size = std::get<TypeSize>(type);
+        TypeSize size = std::get<TypeSize>(type);
 
         if (size == I8 || size == U8)
             return 8;

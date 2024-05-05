@@ -36,7 +36,7 @@ std::vector<Statement *> Parser::block() {
 std::optional<Type> Parser::type() {
     int peek_distance = 0;
 
-    auto peek = lexer.peek(peek_distance++);
+    Token peek = lexer.peek(peek_distance++);
     if (peek.id != TYPE && peek.id != NAME && peek.id != DOUBLE_COLON)
         return {};
     Type t;
@@ -138,10 +138,10 @@ Parser::Parser(const std::filesystem::path &f, Bucket *bucket, std::vector<std::
 }
 
 Parser::~Parser() {
-    for (auto pre : prefix_parslets)
-        delete pre.second;
-    for (auto in : infix_parslets)
-        delete in.second;
+    for (auto [type, parselet] : prefix_parslets)
+        delete parselet;
+    for (auto [type, parselet] : infix_parslets)
+        delete parselet;
 }
 
 Token Parser::expect(TokenType raw) {
@@ -312,9 +312,9 @@ Statement *Parser::parse_statement() {
         return s;
     } else if (token.id == IF) {
         lexer.consume();
-        auto is = new IfStatement(token.origin, parse_expression(), block());
+        auto *is = new IfStatement(token.origin, parse_expression(), block());
         if (lexer.peek().id == ELSE) {
-            auto es = parse_statement();
+            Statement *es = parse_statement();
             bucket->iassert(es->statement_type == ELSE_STMT,
                             es->origin,
                             "internal: next token is 'else', but parsed statement isn't. report this as a bug");
@@ -363,7 +363,7 @@ Statement *Parser::parse_statement() {
     } else if (token.id == IMPORT) {
         lexer.consume();
 
-        auto import_path = find_import();
+        std::filesystem::path import_path = find_import();
         std::vector<Statement *> statements;
         if (exists(import_path)) {
             if (std::find(imported.begin(), imported.end(), absolute(import_path)) == imported.end()) {
