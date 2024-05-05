@@ -158,4 +158,20 @@ class CallParselet : public InfixParselet {
     }
 };
 
+class ListParselet : public PrefixParselet {
+    ast::Expression *parse(Parser *parser, const Token &left) override {
+        std::vector<ast::Expression *> elements;
+        while (!parser->is_peek(BRACKET_CLOSE) && !parser->is_peek(END)) {
+            elements.push_back(parser->parse_expression());
+
+            if (!parser->is_peek(COMMA))
+                break;
+            parser->expect(COMMA);
+        }
+        Token close = parser->expect(BRACKET_CLOSE);
+
+        return new ast::ListExpression(left.origin + close.origin, elements);
+    }
+};
+
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_PARSLETS_H_

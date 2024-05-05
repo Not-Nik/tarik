@@ -100,6 +100,7 @@ void Parser::init_parslets() {
     prefix_parslets.emplace(NOT, new NotParselet());
     prefix_parslets.emplace(DOUBLE_COLON, new GlobalParselet());
     prefix_parslets.emplace(PAREN_OPEN, new GroupParselet());
+    prefix_parslets.emplace(BRACKET_OPEN, new ListParselet());
 
     // Binary expressions
     infix_parslets.emplace(DOUBLE_COLON, new PathParselet());
