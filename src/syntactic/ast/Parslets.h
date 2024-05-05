@@ -115,8 +115,9 @@ class CallParselet : public InfixParselet {
         while (!parser->is_peek(END) && !parser->is_peek(PAREN_CLOSE)) {
             args.push_back(parser->parse_expression());
 
-            if (!parser->is_peek(PAREN_CLOSE))
-                parser->expect(COMMA);
+            if (!parser->is_peek(COMMA))
+                break;
+            parser->expect(COMMA);
         }
         parser->expect(PAREN_CLOSE);
 
@@ -129,7 +130,6 @@ class CallParselet : public InfixParselet {
         while (!parser->is_peek(END) && !parser->is_peek(PAREN_CLOSE)) {
             Lexer::State state = parser->lexer.checkpoint();
             std::optional type = parser->type();
-
 
             if ((!parser->is_peek(PAREN_CLOSE) && !parser->is_peek(COMMA)) ||
                 (type.has_value() && type.value().pointer_level == 0 && !type.value().is_primitive() &&
@@ -144,8 +144,9 @@ class CallParselet : public InfixParselet {
             else
                 args.push_back(new ast::TypeExpression(type.value()));
 
-            if (!parser->is_peek(PAREN_CLOSE))
-                parser->expect(COMMA);
+            if (!parser->is_peek(COMMA))
+                break;
+            parser->expect(COMMA);
         }
         parser->expect(PAREN_CLOSE);
 
