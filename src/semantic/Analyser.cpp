@@ -247,7 +247,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
         if (sem.has_value())
             sem.value()->state()->make_definitely_defined(arg->origin);
 
-        arguments.push_back(new aast::VariableStatement(arg->origin, arg->type, arg->name));
+        arguments.push_back(sem.value()->var);
     }
 
     if (func->var_arg)
@@ -1030,6 +1030,7 @@ std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expr
     Type variable_type = var->var->type;
 
     auto *new_expr = new aast::NameExpression(ne->origin, variable_type, ne->name);
+
 
     // don't do variable state checking if we are in a (pure) member access
     if (member_acc)
