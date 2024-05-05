@@ -139,6 +139,7 @@ class VariableStatement : public Statement {
 public:
     Type type;
     Token name;
+    bool written_to = false;
 
     VariableStatement(const LexerRange &o, Type t, Token n)
         : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
