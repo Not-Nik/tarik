@@ -184,6 +184,7 @@ int main(int argc, const char *argv[]) {
     } while (statements.back());
     statements.pop_back();
 
+    int result = 0;
     std::ofstream out(output_path);
     if (emit_ast) {
         for (auto *s : statements) {
@@ -210,7 +211,7 @@ int main(int argc, const char *argv[]) {
                 if (emit_llvm)
                     generator.dump_ir(output_path);
                 else
-                    return generator.write_file(output_path, config);
+                    result = generator.write_file(output_path, config);
             }
         }
 
@@ -220,5 +221,5 @@ int main(int argc, const char *argv[]) {
     std::for_each(statements.begin(), statements.end(), [](auto &p) { delete p; });
     error_bucket.print_errors();
 
-    return endfile() ? 0 : 1;
+    return endfile() ? result : 1;
 }
