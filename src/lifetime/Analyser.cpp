@@ -12,6 +12,16 @@ Lifetime::Lifetime(std::size_t at)
       death(at),
       last_death(at) {}
 
+Lifetime::Lifetime(std::size_t birth, std::size_t deaths)
+    : birth(birth),
+      death(deaths),
+      last_death(deaths) {}
+
+
+Lifetime Lifetime::static_() {
+    return {0, std::numeric_limits<std::size_t>::max()};
+}
+
 Variable::Variable()
     : lifetimes({}) {}
 
@@ -34,6 +44,35 @@ void Variable::add(Lifetime lifetime) {
     lifetimes.push_back(lifetime);
 }
 
+Lifetime Variable::current(std::size_t at) {
+    std::optional<Lifetime> candidate = {};
+    for (auto &lifetime : lifetimes) {
+        if (lifetime.birth <= at) {
+            if (lifetime.death >= at)
+                return lifetime;
+            if (lifetime.last_death > at)
+                candidate = lifetime;
+        }
+    }
+    return candidate.value();
+}
+
+Lifetime Variable::current_continous(std::size_t at) {
+    Lifetime res = Lifetime(0);
+    bool found_current = false;
+
+    for (auto &lifetime : lifetimes) {
+        if (lifetime.birth <= at && lifetime.death >= at) {
+            res = lifetime;
+            found_current = true;
+        } else if (found_current && res.death == lifetime.birth) {
+            res.death = lifetime.death;
+            res.last_death = lifetime.last_death;
+        }
+    }
+    return res;
+}
+
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
     : bucket(bucket),
       structures(analyser->structures),
@@ -41,6 +80,7 @@ Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
 
 void Analyser::analyse(const std::vector<aast::Statement *> &statements) {
     analyse_statements(statements);
+    verify_statements(statements);
 }
 
 void Analyser::analyse_statements(const std::vector<aast::Statement *> &statements) {
@@ -230,6 +270,157 @@ void Analyser::analyse_expression(aast::Expression *expression) {
             auto *ce = (aast::CastExpression *) expression;
             analyse_expression(ce->expression);
             break;
+        }
+    }
+}
+
+void Analyser::verify_statements(const std::vector<aast::Statement *> &statements) {
+    for (auto *statement : statements) {
+        verify_statement(statement);
+    }
+}
+
+void Analyser::verify_statement(aast::Statement *statement) {
+    switch (statement->statement_type) {
+        case aast::SCOPE_STMT:
+            verify_scope((aast::ScopeStatement *) statement);
+            break;
+        case aast::FUNC_STMT:
+            verify_function((aast::FuncStatement *) statement);
+            break;
+        case aast::IF_STMT:
+            verify_if((aast::IfStatement *) statement);
+            break;
+        case aast::RETURN_STMT:
+            verify_return((aast::ReturnStatement *) statement);
+            break;
+        case aast::WHILE_STMT:
+            verify_while((aast::WhileStatement *) statement);
+            break;
+        case aast::IMPORT_STMT:
+            verify_import((aast::ImportStatement *) statement);
+            break;
+        case aast::EXPR_STMT:
+            verify_expression((aast::Expression *) statement);
+            break;
+        case aast::ELSE_STMT:
+        case aast::BREAK_STMT:
+        case aast::CONTINUE_STMT:
+        case aast::VARIABLE_STMT:
+        case aast::STRUCT_STMT:
+        default:
+            break;
+    }
+    statement_index++;
+}
+
+void Analyser::verify_scope(aast::ScopeStatement *scope) {
+    verify_statements(scope->block);
+}
+
+void Analyser::verify_function(aast::FuncStatement *func) {
+    statement_index = 1;
+    current_function = &functions.at(func->path);
+
+    verify_scope(func);
+}
+
+void Analyser::verify_if(aast::IfStatement *if_) {
+    verify_expression(if_->condition);
+    verify_scope(if_);
+    if (if_->else_statement) {
+        verify_scope(if_->else_statement);
+    }
+}
+
+void Analyser::verify_return(aast::ReturnStatement *return_) {
+    if (return_->value)
+        verify_expression(return_->value);
+}
+
+void Analyser::verify_while(aast::WhileStatement *while_) {
+    verify_expression(while_->condition);
+    verify_scope(while_);
+}
+
+void Analyser::verify_import(aast::ImportStatement *import_) {
+    verify_scope(import_);
+}
+
+Lifetime Analyser::verify_expression(aast::Expression *expression) {
+    switch (expression->expression_type) {
+        case aast::CALL_EXPR: {
+            auto *ce = (aast::CallExpression *) expression;
+
+            for (auto *argument : ce->arguments)
+                verify_expression(argument);
+            // Todo: check for pointers
+            return Lifetime::static_();
+        }
+        case aast::DASH_EXPR:
+        case aast::DOT_EXPR:
+        case aast::EQ_EXPR:
+        case aast::COMP_EXPR: {
+            auto *be = (aast::BinaryExpression *) expression;
+
+            verify_expression(be->left);
+            verify_expression(be->right);
+            return Lifetime::static_();
+        }
+        case aast::MEM_ACC_EXPR: {
+            auto *mae = (aast::BinaryExpression *) expression;
+
+            // We don't care about which member is accessed, if a member is access the entire struct has to live to that
+            // point, because structs always have the exact same lifetime as their members
+            return verify_expression(mae->left);
+        }
+        case aast::PREFIX_EXPR: {
+            auto *pe = (aast::PrefixExpression *) expression;
+            Lifetime lifetime = verify_expression(pe->operand);
+            if (pe->prefix_type == aast::REF)
+                // todo: detect literals, which have static lifetimes, but whose references don't
+                return lifetime;
+            return Lifetime::static_();
+        }
+        case aast::ASSIGN_EXPR: {
+            auto *ae = (aast::BinaryExpression *) expression;
+
+            aast::Expression *left = ae->left;
+            bool mem_acc = left->expression_type == aast::MEM_ACC_EXPR;
+
+            // Again, we don't care about which member is assigned to
+            while (left->expression_type == aast::MEM_ACC_EXPR) {
+                left = ((aast::BinaryExpression *) left)->left;
+            }
+
+            Lifetime right_lifetime = verify_expression(ae->right);
+
+            if (left->expression_type == aast::NAME_EXPR && !mem_acc) {
+                std::string var_name = left->print();
+                Lifetime left_lifetime = current_function->lifetimes.at(var_name).current(statement_index);
+                bucket->iassert(left_lifetime.death <= right_lifetime.last_death,
+                                ae->right->origin,
+                                "value does not live long enough");
+                // todo: translate statement index to origin and print where we think the value dies
+            } else {
+                // In normal expressions, variables don't create a new lifetime
+                verify_expression(left);
+            }
+
+            return Lifetime::static_();
+        }
+        case aast::NAME_EXPR: {
+            auto *ne = (aast::NameExpression *) expression;
+            return current_function->lifetimes.at(ne->name).current_continous(statement_index);
+        }
+        case aast::INT_EXPR:
+        case aast::BOOL_EXPR:
+        case aast::REAL_EXPR:
+        case aast::STR_EXPR:
+            return Lifetime::static_();
+        case aast::CAST_EXPR: {
+            auto *ce = (aast::CastExpression *) expression;
+            return verify_expression(ce->expression);
         }
     }
 }

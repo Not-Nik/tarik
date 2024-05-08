@@ -15,6 +15,9 @@ struct Lifetime {
     std::size_t birth, death, last_death;
 
     Lifetime(std::size_t at);
+    static Lifetime static_();
+private:
+    Lifetime(std::size_t birth, std::size_t deaths);
 };
 
 struct Variable {
@@ -25,6 +28,9 @@ struct Variable {
     void used(std::size_t at);
     void rebirth(std::size_t at); // oh how biblical
     void add(Lifetime lifetime);
+
+    Lifetime current(std::size_t at);
+    Lifetime current_continous(std::size_t at);
 };
 
 struct Function {
@@ -58,6 +64,16 @@ private:
     void analyse_variable(aast::VariableStatement *var, bool argument = false);
     void analyse_import(aast::ImportStatement *import_);
     void analyse_expression(aast::Expression *expression);
+
+    void verify_statements(const std::vector<aast::Statement *> &statements);
+    void verify_statement(aast::Statement *statement);
+    void verify_scope(aast::ScopeStatement *scope);
+    void verify_function(aast::FuncStatement *func);
+    void verify_if(aast::IfStatement *if_);
+    void verify_return(aast::ReturnStatement *return_);
+    void verify_while(aast::WhileStatement *while_);
+    void verify_import(aast::ImportStatement *import_);
+    Lifetime verify_expression(aast::Expression *expression);
 
     Variable &get_variable(std::string name);
 };
