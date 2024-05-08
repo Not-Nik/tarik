@@ -34,9 +34,8 @@ void Variable::used(std::size_t at) {
 }
 
 void Variable::rebirth(std::size_t at) {
-    if (!lifetimes.empty()) {
-        used(at);
-    }
+    if (!lifetimes.empty())
+        lifetimes.back().last_death = at;
     lifetimes.emplace_back(at);
 }
 
@@ -45,16 +44,13 @@ void Variable::add(Lifetime lifetime) {
 }
 
 Lifetime Variable::current(std::size_t at) {
-    std::optional<Lifetime> candidate = {};
     for (auto &lifetime : lifetimes) {
         if (lifetime.birth <= at) {
-            if (lifetime.death >= at)
+            if (lifetime.last_death >= at)
                 return lifetime;
-            if (lifetime.last_death > at)
-                candidate = lifetime;
         }
     }
-    return candidate.value();
+    std::unreachable();
 }
 
 Lifetime Variable::current_continous(std::size_t at) {
@@ -168,6 +164,15 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
     statement_index++;
 
     analyse_scope(func, true);
+
+    std::cout << "In " << func->path.str() << std::endl;
+    for (auto [name, var] : current_function->lifetimes) {
+        std::cout << "\t" << name << ":" << std::endl;
+        for (auto lifetime : var.lifetimes) {
+            std::cout << "\t\t" << lifetime.birth << "-" << lifetime.death << " (" << lifetime.last_death << ")" <<
+                    std::endl;
+        }
+    }
 }
 
 void Analyser::analyse_if(aast::IfStatement *if_) {
