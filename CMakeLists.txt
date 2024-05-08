@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 project(tarik)
 
-set(CMAKE_CXX_STANDARD 20 REQUIRED)
+set(CMAKE_CXX_STANDARD 23 REQUIRED)
 
 find_package(llvm 18.1 REQUIRED)
 
@@ -28,6 +28,8 @@ add_executable(tarik
         src/lexical/Lexer.h
         src/lexical/Token.cpp
         src/lexical/Token.h
+        src/lifetime/Analyser.cpp
+        src/lifetime/Analyser.h
         src/semantic/ast/Base.h
         src/semantic/ast/Expression.h
         src/semantic/ast/Statements.h

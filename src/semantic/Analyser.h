@@ -8,6 +8,7 @@
 #define TARIK_SRC_SEMANTIC_ANALYSER_H_
 
 #include <vector>
+#include <unordered_map>
 
 #include "Macro.h"
 #include "error/Bucket.h"
@@ -15,7 +16,14 @@
 #include "syntactic/ast/Statements.h"
 #include "Variables.h"
 
+namespace lifetime
+{
+class Analyser;
+}
+
 class Analyser {
+    friend class lifetime::Analyser;
+
     std::vector<aast::FuncStatement *> functions;
     std::unordered_map<Path, aast::StructStatement *> structures;
     std::unordered_map<Path, aast::FuncDeclareStatement *> declarations;

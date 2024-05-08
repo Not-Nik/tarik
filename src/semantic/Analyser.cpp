@@ -39,7 +39,7 @@ void Analyser::analyse(const std::vector<ast::Statement *> &statements) {
 void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
     for (auto *statement : statements) {
         if (statement->statement_type == ast::FUNC_STMT) {
-            auto *func = (ast::FuncStatement *)(statement);
+            auto *func = (ast::FuncStatement *) (statement);
             Path name = Path({});
             if (func->member_of.has_value()) {
                 name = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);

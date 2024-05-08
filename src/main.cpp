@@ -9,8 +9,9 @@
 #include "cli/Arguments.h"
 
 #include "codegen/LLVM.h"
-#include "syntactic/Parser.h"
+#include "lifetime/Analyser.h"
 #include "semantic/Analyser.h"
+#include "syntactic/Parser.h"
 
 #include <fstream>
 #include <iostream>
@@ -197,6 +198,11 @@ int main(int argc, const char *argv[]) {
             Analyser analyser(&error_bucket);
             analyser.analyse(statements);
             analysed_statements = analyser.finish();
+
+            if (error_bucket.get_error_count() == 0) {
+                lifetime::Analyser lifetime_analyser(&error_bucket, &analyser);
+                lifetime_analyser.analyse(analysed_statements);
+            }
         }
 
         if (error_bucket.get_error_count() == 0) {
