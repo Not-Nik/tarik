@@ -35,8 +35,8 @@ void Variable::used(std::size_t at) {
     if (lifetimes.empty()) {
         lifetimes.emplace_back(at);
     }
-    lifetimes.back().death = at;
-    lifetimes.back().last_death = at;
+    lifetimes.back().death = std::max(lifetimes.back().death, at);
+    lifetimes.back().last_death = std::max(lifetimes.back().last_death, at);
 }
 
 void Variable::rebirth(std::size_t at) {
@@ -142,7 +142,7 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
         // If it ever lived
         if (!var.lifetimes.empty())
             // Mark the current location as the last possible place it could die
-            var.lifetimes.back().last_death = statement_index;
+            var.lifetimes.back().last_death = std::max(var.lifetimes.back().last_death, statement_index);
         // If we already had a cariable of the same name in a previous scope (mind you this does not mean a scope
         // above the current on, but literally before it in the file, i.e. a previous line)
         if (current_function->lifetimes.contains(name)) {
@@ -205,8 +205,13 @@ void Analyser::analyse_import(aast::ImportStatement *import_) {
 
 void Analyser::analyse_variable(aast::VariableStatement *var, bool argument) {
     variables.back().emplace(var->name.raw, Variable());
-    if (argument)
-        variables.back().at(var->name.raw).rebirth(0);
+    if (argument) {
+        Variable &arg = variables.back().at(var->name.raw);
+        arg.rebirth(0);
+        if (var->type.pointer_level > 0)
+            // To the function, a pointer given as an argument is as static as it gets
+            arg.lifetimes.back() = Lifetime::static_();
+    }
 }
 
 void Analyser::analyse_expression(aast::Expression *expression) {
