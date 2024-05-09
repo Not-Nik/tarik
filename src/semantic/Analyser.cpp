@@ -217,6 +217,8 @@ std::optional<aast::ScopeStatement *> Analyser::verify_scope(ast::ScopeStatement
 
 std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatement *func) {
     variables.clear();
+    variable_names.clear();
+    used_names.clear();
     last_loop = nullptr; // this shouldn't do anything, but just to be sure
 
     if (func->member_of.has_value())
@@ -375,7 +377,22 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
     if (!type.has_value())
         return {};
 
-    auto *new_var = new aast::VariableStatement(var->origin, type.value(), var->name);
+    Token name = var->name;
+    // If the name was used before, i.e. in a previous, separate scope
+    if (used_names.contains(name.raw)) {
+        // Find a replacement that wasn't
+        for (std::size_t i = 1; i < std::numeric_limits<std::size_t>::max(); i++) {
+            if (!used_names.contains(name.raw + std::to_string(i))) {
+                name.raw += std::to_string(i);
+                break;
+            }
+        }
+    }
+    // Store that we used the name before
+    used_names.emplace(name.raw);
+    variable_names[var->name.raw] = name.raw;
+
+    auto *new_var = new aast::VariableStatement(var->origin, type.value(), name);
 
     SemanticVariable *sem;
     if (type.value().is_primitive()) {
@@ -387,7 +404,7 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
         for (auto *member : st->members) {
             auto *temp = new ast::VariableStatement(var->origin,
                                                     member->type,
-                                                    Token::name(var->name.raw + "." + member->name.raw));
+                                                    Token::name(name.raw + "." + member->name.raw));
 
             std::optional semantic_member = verify_variable(temp);
             if (semantic_member.has_value())
@@ -1029,7 +1046,9 @@ std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expr
 
     Type variable_type = var->var->type;
 
-    auto *new_expr = new aast::NameExpression(ne->origin, variable_type, ne->name);
+    // Use the name of the variable, which might not be the one in the NameExpression, if the name was replaced to avoid
+    // having the same variable name in a function twice (even if they are in separate scopes)
+    auto *new_expr = new aast::NameExpression(ne->origin, variable_type, var->var->name.raw);
 
     if (access == ASSIGNMENT)
         var->var->written_to = true;
@@ -1113,7 +1132,9 @@ bool Analyser::does_always_return(ast::ScopeStatement *scope) {
     return false;
 }
 
-bool Analyser::is_var_declared(const std::string &name) {
+bool Analyser::is_var_declared(std::string name) {
+    if (variable_names.contains(name))
+        name = variable_names.at(name);
     return std::find_if(variables.begin(),
                         variables.end(),
                         [name](SemanticVariable *v) {
@@ -1133,7 +1154,9 @@ bool Analyser::is_struct_declared(Path path) {
     return structures.contains(path);
 }
 
-SemanticVariable *Analyser::get_variable(const std::string &name) {
+SemanticVariable *Analyser::get_variable(std::string name) {
+    if (variable_names.contains(name))
+        name = variable_names.at(name);
     return *std::find_if(variables.begin(),
                          variables.end(),
                          [name](SemanticVariable *v) {

@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "Macro.h"
 #include "error/Bucket.h"
@@ -33,6 +34,9 @@ class Analyser {
     Path path = Path({});
 
     std::vector<SemanticVariable *> variables;
+    std::unordered_map<std::string, std::string> variable_names;
+    std::unordered_set<std::string> used_names;
+
     ast::Statement *last_loop = nullptr;
     unsigned int level = 0;
     Type return_type = Type(VOID);
@@ -94,11 +98,11 @@ protected:
     std::optional<Type> verify_type(Type type);
 
     bool does_always_return(ast::ScopeStatement *scope);
-    bool is_var_declared(const std::string &name);
+    bool is_var_declared(std::string name);
     bool is_func_declared(Path path);
     bool is_struct_declared(Path path);
 
-    SemanticVariable *get_variable(const std::string &name);
+    SemanticVariable *get_variable(std::string name);
     aast::FuncDeclareStatement *get_func_decl(Path path);
     aast::StructStatement *get_struct(Path path);
 };
