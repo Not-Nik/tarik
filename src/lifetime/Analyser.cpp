@@ -22,8 +22,8 @@ Lifetime Lifetime::static_() {
     return {0, std::numeric_limits<std::size_t>::max()};
 }
 
-Lifetime Lifetime::temporary() {
-    Lifetime t = {0, std::numeric_limits<std::size_t>::max()};
+Lifetime Lifetime::temporary(std::size_t at) {
+    Lifetime t = {at};
     t.temp = true;
     return t;
 }
@@ -358,7 +358,7 @@ void Analyser::verify_import(aast::ImportStatement *import_) {
     verify_scope(import_);
 }
 
-Lifetime Analyser::verify_expression(aast::Expression *expression) {
+Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned) {
     switch (expression->expression_type) {
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;
@@ -366,7 +366,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
             for (auto *argument : ce->arguments)
                 verify_expression(argument);
             // Todo: check for pointers
-            return Lifetime::temporary();
+            return Lifetime::temporary(statement_index);
         }
         case aast::DASH_EXPR:
         case aast::DOT_EXPR:
@@ -376,7 +376,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
 
             verify_expression(be->left);
             verify_expression(be->right);
-            return Lifetime::temporary();
+            return Lifetime::temporary(statement_index);
         }
         case aast::MEM_ACC_EXPR: {
             auto *mae = (aast::BinaryExpression *) expression;
@@ -392,32 +392,18 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
                 if (lifetime.temp)
                     return {statement_index};
                 return lifetime;
+            } else if (assigned && pe->prefix_type == aast::DEREF) {
+                return lifetime;
             }
-            return Lifetime::temporary();
+            return Lifetime::temporary(statement_index);
         }
         case aast::ASSIGN_EXPR: {
             auto *ae = (aast::BinaryExpression *) expression;
 
-            aast::Expression *left = ae->left;
-            bool mem_acc = left->expression_type == aast::MEM_ACC_EXPR;
-
-            // Again, we don't care about which member is assigned to
-            while (left->expression_type == aast::MEM_ACC_EXPR) {
-                left = ((aast::BinaryExpression *) left)->left;
-            }
-
             Lifetime right_lifetime = verify_expression(ae->right);
-            Lifetime left_lifetime = Lifetime(0);
+            Lifetime left_lifetime = verify_expression(ae->left, true);
 
-            if (left->expression_type == aast::NAME_EXPR && !mem_acc) {
-                std::string var_name = left->print();
-                left_lifetime = current_function->lifetimes.at(var_name).current(statement_index);
-            } else {
-                // In normal expressions, variables don't create a new lifetime
-                left_lifetime = verify_expression(left);
-            }
-
-            bucket->iassert(left_lifetime.death <= right_lifetime.last_death,
+            bucket->iassert(right_lifetime.temp || left_lifetime.death <= right_lifetime.last_death,
                             ae->right->origin,
                             "value does not live long enough");
             // todo: translate statement index to origin and print where we think the value dies
@@ -426,12 +412,14 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
         }
         case aast::NAME_EXPR: {
             auto *ne = (aast::NameExpression *) expression;
+            if (assigned)
+                return current_function->lifetimes.at(ne->name).current(statement_index);
             return current_function->lifetimes.at(ne->name).current_continous(statement_index);
         }
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:
         case aast::REAL_EXPR:
-            return Lifetime::temporary();
+            return Lifetime::temporary(statement_index);
         case aast::STR_EXPR:
             return Lifetime::static_();
         case aast::CAST_EXPR: {

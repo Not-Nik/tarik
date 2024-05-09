@@ -17,7 +17,7 @@ struct Lifetime {
 
     Lifetime(std::size_t at);
     static Lifetime static_();
-    static Lifetime temporary();
+    static Lifetime temporary(std::size_t at);
 private:
     Lifetime(std::size_t birth, std::size_t deaths);
 };
@@ -75,7 +75,7 @@ private:
     void verify_return(aast::ReturnStatement *return_);
     void verify_while(aast::WhileStatement *while_);
     void verify_import(aast::ImportStatement *import_);
-    Lifetime verify_expression(aast::Expression *expression);
+    Lifetime verify_expression(aast::Expression *expression, bool assigned = false);
 
     Variable &get_variable(std::string name);
 };
