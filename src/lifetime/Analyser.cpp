@@ -22,6 +22,12 @@ Lifetime Lifetime::static_() {
     return {0, std::numeric_limits<std::size_t>::max()};
 }
 
+Lifetime Lifetime::temporary() {
+    Lifetime t = {0, std::numeric_limits<std::size_t>::max()};
+    t.temp = true;
+    return t;
+}
+
 Variable::Variable()
     : lifetimes({}) {}
 
@@ -360,7 +366,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
             for (auto *argument : ce->arguments)
                 verify_expression(argument);
             // Todo: check for pointers
-            return Lifetime::static_();
+            return Lifetime::temporary();
         }
         case aast::DASH_EXPR:
         case aast::DOT_EXPR:
@@ -370,7 +376,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
 
             verify_expression(be->left);
             verify_expression(be->right);
-            return Lifetime::static_();
+            return Lifetime::temporary();
         }
         case aast::MEM_ACC_EXPR: {
             auto *mae = (aast::BinaryExpression *) expression;
@@ -382,10 +388,12 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
         case aast::PREFIX_EXPR: {
             auto *pe = (aast::PrefixExpression *) expression;
             Lifetime lifetime = verify_expression(pe->operand);
-            if (pe->prefix_type == aast::REF)
-                // todo: detect literals, which have static lifetimes, but whose references don't
+            if (pe->prefix_type == aast::REF) {
+                if (lifetime.temp)
+                    return {statement_index};
                 return lifetime;
-            return Lifetime::static_();
+            }
+            return Lifetime::temporary();
         }
         case aast::ASSIGN_EXPR: {
             auto *ae = (aast::BinaryExpression *) expression;
@@ -410,8 +418,8 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
             }
 
             bucket->iassert(left_lifetime.death <= right_lifetime.last_death,
-                                ae->right->origin,
-                                "value does not live long enough");
+                            ae->right->origin,
+                            "value does not live long enough");
             // todo: translate statement index to origin and print where we think the value dies
 
             return Lifetime::static_();
@@ -423,11 +431,14 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:
         case aast::REAL_EXPR:
+            return Lifetime::temporary();
         case aast::STR_EXPR:
             return Lifetime::static_();
         case aast::CAST_EXPR: {
             auto *ce = (aast::CastExpression *) expression;
-            return verify_expression(ce->expression);
+            Lifetime l = verify_expression(ce->expression);
+            l.temp = true;
+            return l;
         }
     }
 }

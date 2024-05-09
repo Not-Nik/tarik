@@ -13,9 +13,11 @@ namespace lifetime
 {
 struct Lifetime {
     std::size_t birth, death, last_death;
+    bool temp = false;
 
     Lifetime(std::size_t at);
     static Lifetime static_();
+    static Lifetime temporary();
 private:
     Lifetime(std::size_t birth, std::size_t deaths);
 };
