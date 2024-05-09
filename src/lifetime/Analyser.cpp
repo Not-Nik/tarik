@@ -399,18 +399,20 @@ Lifetime Analyser::verify_expression(aast::Expression *expression) {
             }
 
             Lifetime right_lifetime = verify_expression(ae->right);
+            Lifetime left_lifetime = Lifetime(0);
 
             if (left->expression_type == aast::NAME_EXPR && !mem_acc) {
                 std::string var_name = left->print();
-                Lifetime left_lifetime = current_function->lifetimes.at(var_name).current(statement_index);
-                bucket->iassert(left_lifetime.death <= right_lifetime.last_death,
-                                ae->right->origin,
-                                "value does not live long enough");
-                // todo: translate statement index to origin and print where we think the value dies
+                left_lifetime = current_function->lifetimes.at(var_name).current(statement_index);
             } else {
                 // In normal expressions, variables don't create a new lifetime
-                verify_expression(left);
+                left_lifetime = verify_expression(left);
             }
+
+            bucket->iassert(left_lifetime.death <= right_lifetime.last_death,
+                                ae->right->origin,
+                                "value does not live long enough");
+            // todo: translate statement index to origin and print where we think the value dies
 
             return Lifetime::static_();
         }
