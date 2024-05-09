@@ -28,51 +28,40 @@ Lifetime Lifetime::temporary(std::size_t at) {
     return t;
 }
 
-Variable::Variable()
-    : lifetimes({}) {}
+Variable::Variable(std::size_t at)
+    : lifetime(at),
+      values({}) {}
 
 void Variable::used(std::size_t at) {
-    if (lifetimes.empty()) {
-        lifetimes.emplace_back(at);
+    if (values.empty()) {
+        values.emplace_back(at);
     }
-    lifetimes.back().death = std::max(lifetimes.back().death, at);
-    lifetimes.back().last_death = std::max(lifetimes.back().last_death, at);
+    values.back().death = std::max(values.back().death, at);
+    values.back().last_death = std::max(values.back().last_death, at);
+
+    lifetime.death = at;
 }
 
-void Variable::rebirth(std::size_t at) {
-    if (!lifetimes.empty())
-        lifetimes.back().last_death = at;
-    lifetimes.emplace_back(at);
+void Variable::assigned(std::size_t at) {
+    if (!values.empty())
+        values.back().last_death = at;
+    values.emplace_back(at);
+
+    lifetime.death = at;
 }
 
-void Variable::add(Lifetime lifetime) {
-    lifetimes.push_back(lifetime);
+void Variable::kill(std::size_t at) {
+    lifetime.last_death = std::max(lifetime.last_death, at);
 }
 
 Lifetime Variable::current(std::size_t at) {
-    for (auto &lifetime : lifetimes) {
+    for (auto &lifetime : values) {
         if (lifetime.birth <= at) {
             if (lifetime.last_death >= at)
                 return lifetime;
         }
     }
     std::unreachable();
-}
-
-Lifetime Variable::current_continous(std::size_t at) {
-    Lifetime res = Lifetime(0);
-    bool found_current = false;
-
-    for (auto &lifetime : lifetimes) {
-        if (lifetime.birth <= at && lifetime.death >= at) {
-            res = lifetime;
-            found_current = true;
-        } else if (found_current && res.death == lifetime.birth) {
-            res.death = lifetime.death;
-            res.last_death = lifetime.last_death;
-        }
-    }
-    return res;
 }
 
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
@@ -139,20 +128,10 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
 
     // Go through all the variables created in this scope
     for (auto [name, var] : current_scope) {
-        // If it ever lived
-        if (!var.lifetimes.empty())
-            // Mark the current location as the last possible place it could die
-            var.lifetimes.back().last_death = std::max(var.lifetimes.back().last_death, statement_index);
-        // If we already had a cariable of the same name in a previous scope (mind you this does not mean a scope
-        // above the current on, but literally before it in the file, i.e. a previous line)
-        if (current_function->lifetimes.contains(name)) {
-            // Add all the lifetimes to the previous ones
-            for (auto lifetime : var.lifetimes)
-                current_function->lifetimes.at(name).add(lifetime);
-        } else {
-            // Otherwise just emplace it
-            current_function->lifetimes.emplace(name, var);
-        }
+        // Mark the current location as the last possible place it could die
+        var.kill(statement_index);
+        // Otherwise just emplace it
+        current_function->variables.emplace(name, var);
     }
 }
 
@@ -172,9 +151,10 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
     analyse_scope(func, true);
 
     std::cout << "In " << func->path.str() << std::endl;
-    for (auto [name, var] : current_function->lifetimes) {
-        std::cout << "\t" << name << ":" << std::endl;
-        for (auto lifetime : var.lifetimes) {
+    for (auto [name, var] : current_function->variables) {
+        std::cout << "\t" << name << " (" << var.lifetime.birth << "-" << var.lifetime.death << " (" << var.lifetime.
+                last_death << ")" << ":" << std::endl;
+        for (auto lifetime : var.values) {
             std::cout << "\t\t" << lifetime.birth << "-" << lifetime.death << " (" << lifetime.last_death << ")" <<
                     std::endl;
         }
@@ -204,13 +184,13 @@ void Analyser::analyse_import(aast::ImportStatement *import_) {
 }
 
 void Analyser::analyse_variable(aast::VariableStatement *var, bool argument) {
-    variables.back().emplace(var->name.raw, Variable());
+    variables.back().emplace(var->name.raw, Variable(statement_index));
     if (argument) {
         Variable &arg = variables.back().at(var->name.raw);
-        arg.rebirth(0);
+        arg.assigned(0);
         if (var->type.pointer_level > 0)
             // To the function, a pointer given as an argument is as static as it gets
-            arg.lifetimes.back() = Lifetime::static_();
+            arg.lifetime = Lifetime::static_();
     }
 }
 
@@ -263,7 +243,7 @@ void Analyser::analyse_expression(aast::Expression *expression) {
             // todo: Solve this by tracking individual member states like we do in semantic analysis.
             if (left->expression_type == aast::NAME_EXPR && !mem_acc) {
                 std::string var_name = left->print();
-                get_variable(var_name).rebirth(statement_index);
+                get_variable(var_name).assigned(statement_index);
             } else {
                 // In normal expressions, variables don't create a new lifetime
                 analyse_expression(left);
@@ -418,8 +398,8 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
         case aast::NAME_EXPR: {
             auto *ne = (aast::NameExpression *) expression;
             if (assigned)
-                return current_function->lifetimes.at(ne->name).current(statement_index);
-            return current_function->lifetimes.at(ne->name).current_continous(statement_index);
+                return current_function->variables.at(ne->name).current(statement_index);
+            return current_function->variables.at(ne->name).lifetime;
         }
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:

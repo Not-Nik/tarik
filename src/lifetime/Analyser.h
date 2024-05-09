@@ -23,20 +23,21 @@ private:
 };
 
 struct Variable {
-    std::vector<Lifetime> lifetimes;
+    Lifetime lifetime;
+    std::vector<Lifetime> values;
 
-    Variable();
+    Variable(std::size_t at);
 
     void used(std::size_t at);
-    void rebirth(std::size_t at); // oh how biblical
-    void add(Lifetime lifetime);
+    void assigned(std::size_t at);
+
+    void kill(std::size_t at);
 
     Lifetime current(std::size_t at);
-    Lifetime current_continous(std::size_t at);
 };
 
 struct Function {
-    std::map<std::string, Variable> lifetimes;
+    std::map<std::string, Variable> variables;
 };
 
 class Analyser {
