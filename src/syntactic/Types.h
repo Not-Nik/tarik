@@ -158,10 +158,6 @@ public:
         type = user;
     }
 
-    [[nodiscard]] bool is_primitive() const {
-        return type.index() == 0;
-    }
-
     [[nodiscard]] Type get_result(const Type &t) const {
         if (pointer_level > 0 || !is_primitive())
             return *this;
@@ -300,6 +296,10 @@ public:
         }
     }
 
+    [[nodiscard]] bool is_primitive() const {
+        return type.index() == 0;
+    }
+
     [[nodiscard]] bool is_bool() const {
         return is_primitive() && std::get<TypeSize>(type) == BOOL;
     }
@@ -314,6 +314,10 @@ public:
 
     [[nodiscard]] bool is_unsigned_int() const {
         return is_primitive() && (std::get<TypeSize>(type) >= U0 && std::get<TypeSize>(type) <= U64);
+    }
+
+    [[nodiscard]] bool is_copyable() const {
+        return is_primitive() || pointer_level > 0;
     }
 
     [[nodiscard]] size_t get_integer_bitwidth() const {

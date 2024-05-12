@@ -10,7 +10,7 @@ namespace lifetime
 Lifetime::Lifetime(std::size_t at)
     : birth(at),
       death(at),
-      last_death(at) {}
+      last_death(0) {}
 
 Lifetime::Lifetime(std::size_t birth, std::size_t deaths)
     : birth(birth),
@@ -61,7 +61,7 @@ Lifetime Variable::current(std::size_t at) {
                 return lifetime;
         }
     }
-    std::unreachable();
+    return Lifetime(0);
 }
 
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
@@ -128,8 +128,9 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
 
     // Go through all the variables created in this scope
     for (auto [name, var] : current_scope) {
-        // Mark the current location as the last possible place it could die
-        var.kill(statement_index);
+        if (var.lifetime.last_death == 0)
+            // Mark the current location as the last possible place it could die
+            var.kill(statement_index);
         // Otherwise just emplace it
         current_function->variables.emplace(name, var);
     }
@@ -152,7 +153,7 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
 
     std::cout << "In " << func->path.str() << std::endl;
     for (auto [name, var] : current_function->variables) {
-        std::cout << "\t" << name << " (" << var.lifetime.birth << "-" << var.lifetime.death << " (" << var.lifetime.
+        std::cout << "\t" << name << " " << var.lifetime.birth << "-" << var.lifetime.death << " (" << var.lifetime.
                 last_death << ")" << ":" << std::endl;
         for (auto lifetime : var.values) {
             std::cout << "\t\t" << lifetime.birth << "-" << lifetime.death << " (" << lifetime.last_death << ")" <<
@@ -199,8 +200,12 @@ void Analyser::analyse_expression(aast::Expression *expression) {
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;
 
-            for (auto *argument : ce->arguments)
+            for (auto *argument : ce->arguments) {
                 analyse_expression(argument);
+                if (argument->flattens_to_member_access() && !argument->type.is_copyable()) {
+                    get_variable(argument->flatten_to_member_access()).kill(statement_index);
+                }
+            }
             break;
         }
         case aast::DASH_EXPR:

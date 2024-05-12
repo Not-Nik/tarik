@@ -1083,7 +1083,7 @@ std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expr
                 bucket->note(var->state()->get_moved_pos(), "moved here");
             } else if (access == NORMAL) {
                 var->state()->make_definitely_read(expression->origin);
-            } else if (access == MOVE && !var->var->type.is_primitive() && var->var->type.pointer_level == 0) {
+            } else if (access == MOVE && !var->var->type.is_copyable()) {
                 var->state()->make_definitely_moved(expression->origin);
             }
         }
