@@ -14,7 +14,7 @@ void VariableState::used(std::size_t at) {
     }
     values.back().death = std::max(values.back().death, at);
 
-    lifetime.death = at;
+    lifetime.death = std::max(lifetime.death, at);
 }
 
 void VariableState::assigned(std::size_t at) {

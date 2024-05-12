@@ -30,6 +30,10 @@ Lifetime Lifetime::temporary(std::size_t at) {
     return t;
 }
 
+bool Lifetime::operator==(const Lifetime &o) const {
+    return birth == o.birth && death == o.death && last_death == o.last_death;
+}
+
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
     : bucket(bucket),
       structures(analyser->structures),
@@ -109,15 +113,22 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
 
     variables.emplace_back();
 
+    std::vector<VariableState *> argument_states;
+    argument_states.reserve(func->arguments.size());
     for (auto *argument : func->arguments) {
-        analyse_variable(argument, true);
+        argument_states.push_back(analyse_variable(argument, true));
     }
     statement_index++;
 
     analyse_scope(func, true);
 
+    for (auto *state : argument_states) {
+        if (state->values.size() == 1 && state->lifetime == Lifetime::static_())
+            state->values[0] = Lifetime::static_();
+    }
+
     std::cout << "In " << func->path.str() << std::endl;
-    for (auto [name, var] : current_function->variables) {
+    for (const auto &[name, var] : current_function->variables) {
         std::cout << "\t" << name << " " << var->lifetime.birth << "-" << var->lifetime.death << " (" << var->lifetime.
                 last_death << ")" << ":" << std::endl;
         for (auto lifetime : var->values) {
@@ -357,7 +368,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
         }
         case aast::PREFIX_EXPR: {
             auto *pe = (aast::PrefixExpression *) expression;
-            Lifetime lifetime = verify_expression(pe->operand);
+            Lifetime lifetime = verify_expression(pe->operand, assigned);
             if (pe->prefix_type == aast::REF) {
                 if (lifetime.temp)
                     return {statement_index};

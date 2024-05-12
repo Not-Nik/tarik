@@ -18,6 +18,8 @@ struct Lifetime {
     Lifetime(std::size_t at);
     static Lifetime static_();
     static Lifetime temporary(std::size_t at);
+
+    bool operator==(const Lifetime &) const;
 private:
     Lifetime(std::size_t birth, std::size_t deaths);
 };
