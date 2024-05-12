@@ -32,8 +32,10 @@ struct Variable {
     void assigned(std::size_t at);
 
     void kill(std::size_t at);
+    void move(std::size_t at);
 
     Lifetime current(std::size_t at);
+    Lifetime current_continuous(std::size_t at);
 };
 
 struct Function {

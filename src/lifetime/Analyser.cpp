@@ -37,13 +37,13 @@ void Variable::used(std::size_t at) {
         values.emplace_back(at);
     }
     values.back().death = std::max(values.back().death, at);
-    values.back().last_death = std::max(values.back().last_death, at);
 
     lifetime.death = at;
 }
 
 void Variable::assigned(std::size_t at) {
-    if (!values.empty())
+    // If values last_death was set previously, because it was moved, don't overwrite that
+    if (!values.empty() && values.back().last_death == 0)
         values.back().last_death = at;
     values.emplace_back(at);
 
@@ -51,7 +51,14 @@ void Variable::assigned(std::size_t at) {
 }
 
 void Variable::kill(std::size_t at) {
+    // Killing ends the variables lifetime, and thus the values
     lifetime.last_death = std::max(lifetime.last_death, at);
+    values.back().last_death = std::max(values.back().last_death, at);
+}
+
+void Variable::move(std::size_t at) {
+    // Moving only ends the values lifetime
+    values.back().last_death = at;
 }
 
 Lifetime Variable::current(std::size_t at) {
@@ -62,6 +69,22 @@ Lifetime Variable::current(std::size_t at) {
         }
     }
     return Lifetime(0);
+}
+
+Lifetime Variable::current_continuous(std::size_t at) {
+    Lifetime res = Lifetime(0);
+    bool found_current = false;
+
+    for (auto &lifetime : values) {
+        if (lifetime.birth <= at && lifetime.death >= at) {
+            res = lifetime;
+            found_current = true;
+        } else if (found_current && res.death == lifetime.birth) {
+            res.death = lifetime.death;
+            res.last_death = lifetime.last_death;
+        }
+    }
+    return res;
 }
 
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
@@ -128,9 +151,8 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
 
     // Go through all the variables created in this scope
     for (auto [name, var] : current_scope) {
-        if (var.lifetime.last_death == 0)
-            // Mark the current location as the last possible place it could die
-            var.kill(statement_index);
+        // Mark the current location as the last possible place it could die
+        var.kill(statement_index);
         // Otherwise just emplace it
         current_function->variables.emplace(name, var);
     }
@@ -203,7 +225,8 @@ void Analyser::analyse_expression(aast::Expression *expression) {
             for (auto *argument : ce->arguments) {
                 analyse_expression(argument);
                 if (argument->flattens_to_member_access() && !argument->type.is_copyable()) {
-                    get_variable(argument->flatten_to_member_access()).kill(statement_index);
+                    // Move if variable has non-copyable type
+                    get_variable(argument->flatten_to_member_access()).move(statement_index);
                 }
             }
             break;
@@ -404,7 +427,8 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
             auto *ne = (aast::NameExpression *) expression;
             if (assigned)
                 return current_function->variables.at(ne->name).current(statement_index);
-            return current_function->variables.at(ne->name).lifetime;
+            // Get timeframe, where this variable has a value, i.e. can be accessed by a pointer
+            return current_function->variables.at(ne->name).current_continuous(statement_index);
         }
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:
