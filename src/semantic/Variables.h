@@ -4,8 +4,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-#ifndef VARIABLES_H
-#define VARIABLES_H
+#ifndef TARIK_SRC_SEMANTIC_VARIABLES_H
+#define TARIK_SRC_SEMANTIC_VARIABLES_H
 
 #include <stack>
 
@@ -100,4 +100,4 @@ public:
     void push_state(VariableState _state) override {};
 };
 
-#endif //VARIABLES_H
+#endif //TARIK_SRC_SEMANTIC_VARIABLES_H

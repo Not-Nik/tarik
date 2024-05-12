@@ -22,24 +22,10 @@ private:
     Lifetime(std::size_t birth, std::size_t deaths);
 };
 
-struct Variable {
-    Lifetime lifetime;
-    std::vector<Lifetime> values;
-
-    Variable(std::size_t at);
-
-    void used(std::size_t at);
-    void assigned(std::size_t at);
-
-    void kill(std::size_t at);
-    void move(std::size_t at);
-
-    Lifetime current(std::size_t at);
-    Lifetime current_continuous(std::size_t at);
-};
+struct VariableState;
 
 struct Function {
-    std::map<std::string, Variable> variables;
+    std::map<std::string, VariableState *> variables;
 };
 
 class Analyser {
@@ -51,7 +37,7 @@ class Analyser {
 
     std::size_t statement_index = 0;
     Function *current_function = nullptr;
-    std::vector<std::map<std::string, Variable>> variables;
+    std::vector<std::map<std::string, VariableState *>> variables;
 
 public:
     Analyser(Bucket *bucket, ::Analyser *analyser);
@@ -66,7 +52,7 @@ private:
     void analyse_if(aast::IfStatement *if_);
     void analyse_return(aast::ReturnStatement *return_);
     void analyse_while(aast::WhileStatement *while_);
-    void analyse_variable(aast::VariableStatement *var, bool argument = false);
+    VariableState *analyse_variable(aast::VariableStatement *var, bool argument = false);
     void analyse_import(aast::ImportStatement *import_);
     void analyse_expression(aast::Expression *expression);
 
@@ -80,7 +66,7 @@ private:
     void verify_import(aast::ImportStatement *import_);
     Lifetime verify_expression(aast::Expression *expression, bool assigned = false);
 
-    Variable &get_variable(std::string name);
+    VariableState *get_variable(std::string name);
 };
 } // lifetime
 

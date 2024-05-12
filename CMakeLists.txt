@@ -30,6 +30,8 @@ add_executable(tarik
         src/lexical/Token.h
         src/lifetime/Analyser.cpp
         src/lifetime/Analyser.h
+        src/lifetime/Variable.cpp
+        src/lifetime/Variable.h
         src/semantic/ast/Base.h
         src/semantic/ast/Expression.h
         src/semantic/ast/Statements.h

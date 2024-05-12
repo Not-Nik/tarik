@@ -2,6 +2,8 @@
 
 #include "Analyser.h"
 
+#include "Variable.h"
+
 #include <iostream>
 #include <utility>
 
@@ -26,65 +28,6 @@ Lifetime Lifetime::temporary(std::size_t at) {
     Lifetime t = {at};
     t.temp = true;
     return t;
-}
-
-Variable::Variable(std::size_t at)
-    : lifetime(at),
-      values({}) {}
-
-void Variable::used(std::size_t at) {
-    if (values.empty()) {
-        values.emplace_back(at);
-    }
-    values.back().death = std::max(values.back().death, at);
-
-    lifetime.death = at;
-}
-
-void Variable::assigned(std::size_t at) {
-    // If values last_death was set previously, because it was moved, don't overwrite that
-    if (!values.empty() && values.back().last_death == 0)
-        values.back().last_death = at;
-    values.emplace_back(at);
-
-    lifetime.death = at;
-}
-
-void Variable::kill(std::size_t at) {
-    // Killing ends the variables lifetime, and thus the values
-    lifetime.last_death = std::max(lifetime.last_death, at);
-    values.back().last_death = std::max(values.back().last_death, at);
-}
-
-void Variable::move(std::size_t at) {
-    // Moving only ends the values lifetime
-    values.back().last_death = at;
-}
-
-Lifetime Variable::current(std::size_t at) {
-    for (auto &lifetime : values) {
-        if (lifetime.birth <= at) {
-            if (lifetime.last_death >= at)
-                return lifetime;
-        }
-    }
-    return Lifetime(0);
-}
-
-Lifetime Variable::current_continuous(std::size_t at) {
-    Lifetime res = Lifetime(0);
-    bool found_current = false;
-
-    for (auto &lifetime : values) {
-        if (lifetime.birth <= at && lifetime.death >= at) {
-            res = lifetime;
-            found_current = true;
-        } else if (found_current && res.death == lifetime.birth) {
-            res.death = lifetime.death;
-            res.last_death = lifetime.last_death;
-        }
-    }
-    return res;
 }
 
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
@@ -146,13 +89,13 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
 
     analyse_statements(scope->block);
 
-    std::map<std::string, Variable> current_scope = variables.back();
+    std::map<std::string, VariableState *> current_scope = variables.back();
     variables.pop_back();
 
     // Go through all the variables created in this scope
     for (auto [name, var] : current_scope) {
         // Mark the current location as the last possible place it could die
-        var.kill(statement_index);
+        var->kill(statement_index);
         // Otherwise just emplace it
         current_function->variables.emplace(name, var);
     }
@@ -175,9 +118,9 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
 
     std::cout << "In " << func->path.str() << std::endl;
     for (auto [name, var] : current_function->variables) {
-        std::cout << "\t" << name << " " << var.lifetime.birth << "-" << var.lifetime.death << " (" << var.lifetime.
+        std::cout << "\t" << name << " " << var->lifetime.birth << "-" << var->lifetime.death << " (" << var->lifetime.
                 last_death << ")" << ":" << std::endl;
-        for (auto lifetime : var.values) {
+        for (auto lifetime : var->values) {
             std::cout << "\t\t" << lifetime.birth << "-" << lifetime.death << " (" << lifetime.last_death << ")" <<
                     std::endl;
         }
@@ -206,15 +149,36 @@ void Analyser::analyse_import(aast::ImportStatement *import_) {
     analyse_scope(import_);
 }
 
-void Analyser::analyse_variable(aast::VariableStatement *var, bool argument) {
-    variables.back().emplace(var->name.raw, Variable(statement_index));
+VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool argument) {
+    VariableState *state;
+
+    if (var->type.is_primitive()) {
+        state = new VariableState(statement_index);
+    } else {
+        aast::StructStatement *st = structures.at(var->type.get_user());
+
+        std::vector<VariableState *> member_states;
+        for (auto *member : st->members) {
+            auto *temp = new aast::VariableStatement(var->origin,
+                                                     member->type,
+                                                     Token::name(var->name.raw + "." + member->name.raw));
+
+            VariableState *semantic_member = analyse_variable(temp, argument);
+            member_states.push_back(semantic_member);
+        }
+
+        state = new CompoundState(statement_index, member_states);
+    }
+
+    variables.back().emplace(var->name.raw, state);
     if (argument) {
-        Variable &arg = variables.back().at(var->name.raw);
-        arg.assigned(0);
+        state->assigned(0);
         if (var->type.pointer_level > 0)
             // To the function, a pointer given as an argument is as static as it gets
-            arg.lifetime = Lifetime::static_();
+            state->lifetime = Lifetime::static_();
     }
+
+    return state;
 }
 
 void Analyser::analyse_expression(aast::Expression *expression) {
@@ -226,7 +190,7 @@ void Analyser::analyse_expression(aast::Expression *expression) {
                 analyse_expression(argument);
                 if (argument->flattens_to_member_access() && !argument->type.is_copyable()) {
                     // Move if variable has non-copyable type
-                    get_variable(argument->flatten_to_member_access()).move(statement_index);
+                    get_variable(argument->flatten_to_member_access())->move(statement_index);
                 }
             }
             break;
@@ -244,9 +208,12 @@ void Analyser::analyse_expression(aast::Expression *expression) {
         case aast::MEM_ACC_EXPR: {
             auto *mae = (aast::BinaryExpression *) expression;
 
-            // We don't care about which member is accessed, if a member is access the entire struct has to live to that
-            // point, because structs always have the exact same lifetime as their members
             analyse_expression(mae->left);
+
+            auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
+            analyse_expression(name);
+            delete name;
+
             break;
         }
         case aast::PREFIX_EXPR: {
@@ -257,38 +224,24 @@ void Analyser::analyse_expression(aast::Expression *expression) {
         case aast::ASSIGN_EXPR: {
             auto *ae = (aast::BinaryExpression *) expression;
 
-            aast::Expression *left = ae->left;
-            bool mem_acc = left->expression_type == aast::MEM_ACC_EXPR;
-
-            // Again, we don't care about which member is assigned to
-            while (left->expression_type == aast::MEM_ACC_EXPR) {
-                left = ((aast::BinaryExpression *) left)->left;
-            }
-
-            // But if a member is assigned, that doesn't creat a new lifetime for the struct
-            // fixme: This could potentially create cases where this analysis detects an error in a piece of code, even
-            //  though it is actually valid.
-            // todo: Solve this by tracking individual member states like we do in semantic analysis.
-            if (left->expression_type == aast::NAME_EXPR && !mem_acc) {
-                std::string var_name = left->print();
-                get_variable(var_name).assigned(statement_index);
+            if (ae->left->flattens_to_member_access()) {
+                get_variable(ae->left->flatten_to_member_access())->assigned(statement_index);
             } else {
                 // In normal expressions, variables don't create a new lifetime
-                analyse_expression(left);
+                analyse_expression(ae->left);
             }
             analyse_expression(ae->right);
             break;
         }
         case aast::NAME_EXPR: {
             auto *ne = (aast::NameExpression *) expression;
-            get_variable(ne->name).used(statement_index);
+            get_variable(ne->name)->used(statement_index);
             break;
         }
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:
         case aast::REAL_EXPR:
         case aast::STR_EXPR:
-            // todo: give strings static lifetime
             break;
         case aast::CAST_EXPR: {
             auto *ce = (aast::CastExpression *) expression;
@@ -394,9 +347,13 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
         case aast::MEM_ACC_EXPR: {
             auto *mae = (aast::BinaryExpression *) expression;
 
-            // We don't care about which member is accessed, if a member is access the entire struct has to live to that
-            // point, because structs always have the exact same lifetime as their members
-            return verify_expression(mae->left);
+            verify_expression(mae->left);
+
+            auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
+            Lifetime lt = verify_expression(name);
+            delete name;
+
+            return lt;
         }
         case aast::PREFIX_EXPR: {
             auto *pe = (aast::PrefixExpression *) expression;
@@ -426,9 +383,9 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
         case aast::NAME_EXPR: {
             auto *ne = (aast::NameExpression *) expression;
             if (assigned)
-                return current_function->variables.at(ne->name).current(statement_index);
+                return current_function->variables.at(ne->name)->current(statement_index);
             // Get timeframe, where this variable has a value, i.e. can be accessed by a pointer
-            return current_function->variables.at(ne->name).current_continuous(statement_index);
+            return current_function->variables.at(ne->name)->current_continuous(statement_index);
         }
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:
@@ -445,7 +402,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
     }
 }
 
-Variable &Analyser::get_variable(std::string name) {
+VariableState *Analyser::get_variable(std::string name) {
     for (auto &scope : variables) {
         if (scope.contains(name))
             return scope.at(name);
