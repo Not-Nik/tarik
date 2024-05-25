@@ -445,7 +445,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
                     auto [var, type, is_arg] = get_var_on_stack(((aast::NameExpression *) pe->operand)->name);
                     return var;
                 } else if (pe->operand->expression_type == aast::MEM_ACC_EXPR) {
-                    return generate_member_access((aast::BinaryExpression *) expression);
+                    return generate_member_access((aast::BinaryExpression *) pe->operand);
                 }
                 llvm::Type *ty = make_llvm_type(pe->type);
                 llvm::Value *alloca = builder.CreateAlloca(ty, 0u, nullptr, "_ref_temp");
