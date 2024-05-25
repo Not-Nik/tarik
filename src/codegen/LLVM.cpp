@@ -183,7 +183,8 @@ void LLVM::generate_function(aast::FuncStatement *func) {
 
     generate_scope(func, true);
 
-    if (func->return_type == Type(VOID) && func->block.back()->statement_type != aast::RETURN_STMT) {
+    if (func->return_type == Type(VOID) && (func->block.empty() || func->block.back()->statement_type !=
+        aast::RETURN_STMT)) {
         builder.CreateRetVoid();
     }
 }
