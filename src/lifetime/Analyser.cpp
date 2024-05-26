@@ -9,31 +9,6 @@
 
 namespace lifetime
 {
-Lifetime::Lifetime(std::size_t at)
-    : birth(at),
-      death(at),
-      last_death(0) {}
-
-Lifetime::Lifetime(std::size_t birth, std::size_t deaths)
-    : birth(birth),
-      death(deaths),
-      last_death(deaths) {}
-
-
-Lifetime Lifetime::static_() {
-    return {0, std::numeric_limits<std::size_t>::max()};
-}
-
-Lifetime Lifetime::temporary(std::size_t at) {
-    Lifetime t = {at};
-    t.temp = true;
-    return t;
-}
-
-bool Lifetime::operator==(const Lifetime &o) const {
-    return birth == o.birth && death == o.death && last_death == o.last_death;
-}
-
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
     : bucket(bucket),
       structures(analyser->structures),
@@ -123,16 +98,29 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
     analyse_scope(func, true);
 
     for (auto *state : argument_states) {
-        if (state->values.size() == 1 && state->lifetime == Lifetime::static_())
-            state->values[0] = Lifetime::static_();
+        if (state->values.size() == 1 && state->lifetime == LocalLifetime::static_(nullptr))
+            state->values[0] = LocalLifetime::static_(nullptr);
     }
 
     std::cout << "In " << func->path.str() << std::endl;
     for (const auto &[name, var] : current_function->variables) {
-        std::cout << "\t" << name << " " << var->lifetime.birth << "-" << var->lifetime.death << " (" << var->lifetime.
-                last_death << ")" << ":" << std::endl;
+        std::cout << "\t" << name;
+        Lifetime *target = var->lifetime;
+
+        while (target) {
+            if (target->is_local()) {
+                auto *local = (LocalLifetime *) target;
+                std::cout << " " << local->birth << "-" << local->death << " (" << local->last_death << ")";
+                target = target->next;
+            } else {
+                break;
+            }
+        }
+
+        std::cout << ":" << std::endl;
+
         for (auto lifetime : var->values) {
-            std::cout << "\t\t" << lifetime.birth << "-" << lifetime.death << " (" << lifetime.last_death << ")" <<
+            std::cout << "\t\t" << lifetime->birth << "-" << lifetime->death << " (" << lifetime->last_death << ")" <<
                     std::endl;
         }
     }
@@ -163,8 +151,16 @@ void Analyser::analyse_import(aast::ImportStatement *import_) {
 VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool argument) {
     VariableState *state;
 
-    if (var->type.is_primitive()) {
-        state = new VariableState(statement_index);
+    Lifetime *lt = nullptr;
+
+    for (int i = 0; i < var->type.pointer_level; i++)
+        // Todo: store that the previous lt lives longer than the new one
+        lt = argument ? new Lifetime(lt) : new LocalLifetime(lt, statement_index);
+
+    auto *llt = new LocalLifetime(lt, statement_index);
+
+    if (var->type.is_primitive() || var->type.pointer_level > 0) {
+        state = new VariableState(llt, statement_index);
     } else {
         aast::StructStatement *st = structures.at(var->type.get_user());
 
@@ -178,21 +174,18 @@ VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool arg
             member_states.push_back(semantic_member);
         }
 
-        state = new CompoundState(statement_index, member_states);
+        state = new CompoundState(llt, statement_index, member_states);
     }
 
     variables.back().emplace(var->name.raw, state);
     if (argument) {
         state->assigned(0);
-        if (var->type.pointer_level > 0)
-            // To the function, a pointer given as an argument is as static as it gets
-            state->lifetime = Lifetime::static_();
     }
 
     return state;
 }
 
-void Analyser::analyse_expression(aast::Expression *expression) {
+void Analyser::analyse_expression(aast::Expression *expression, int depth) {
     switch (expression->expression_type) {
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;
@@ -219,17 +212,26 @@ void Analyser::analyse_expression(aast::Expression *expression) {
         case aast::MEM_ACC_EXPR: {
             auto *mae = (aast::BinaryExpression *) expression;
 
-            analyse_expression(mae->left);
+            if (mae->left->type.pointer_level == 0) {
+                analyse_expression(mae->left);
 
-            auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
-            analyse_expression(name);
-            delete name;
+                auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
+                analyse_expression(name);
+                delete name;
+            } else {
+                // Ignore depth of previous derefs
+                analyse_expression(mae->left, 1);
+            }
 
             break;
         }
         case aast::PREFIX_EXPR: {
             auto *pe = (aast::PrefixExpression *) expression;
-            analyse_expression(pe->operand);
+            if (pe->prefix_type == aast::DEREF) {
+                analyse_expression(pe->operand, depth + 1);
+            } else {
+                analyse_expression(pe->operand);
+            }
             break;
         }
         case aast::ASSIGN_EXPR: {
@@ -246,7 +248,7 @@ void Analyser::analyse_expression(aast::Expression *expression) {
         }
         case aast::NAME_EXPR: {
             auto *ne = (aast::NameExpression *) expression;
-            get_variable(ne->name)->used(statement_index);
+            get_variable(ne->name)->used(statement_index, depth);
             break;
         }
         case aast::INT_EXPR:
@@ -335,7 +337,7 @@ void Analyser::verify_import(aast::ImportStatement *import_) {
     verify_scope(import_);
 }
 
-Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned) {
+Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigned) {
     switch (expression->expression_type) {
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;
@@ -343,7 +345,7 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
             for (auto *argument : ce->arguments)
                 verify_expression(argument);
             // Todo: check for pointers
-            return Lifetime::temporary(statement_index);
+            return LocalLifetime::temporary(nullptr, statement_index);
         }
         case aast::DASH_EXPR:
         case aast::DOT_EXPR:
@@ -353,43 +355,43 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
 
             verify_expression(be->left);
             verify_expression(be->right);
-            return Lifetime::temporary(statement_index);
+            return LocalLifetime::temporary(nullptr, statement_index);
         }
         case aast::MEM_ACC_EXPR: {
             auto *mae = (aast::BinaryExpression *) expression;
 
-            verify_expression(mae->left);
+            Lifetime *lt = verify_expression(mae->left);
 
-            auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
-            Lifetime lt = verify_expression(name);
-            delete name;
+            if (mae->left->type.pointer_level == 0) {
+                auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
+                lt = verify_expression(name);
+                delete name;
+            }
 
             return lt;
         }
         case aast::PREFIX_EXPR: {
             auto *pe = (aast::PrefixExpression *) expression;
-            Lifetime lifetime = verify_expression(pe->operand, assigned);
+            Lifetime *lifetime = verify_expression(pe->operand, assigned);
             if (pe->prefix_type == aast::REF) {
-                if (lifetime.temp)
-                    return {statement_index};
-                return lifetime;
+                return LocalLifetime::temporary(lifetime, statement_index);
             } else if (assigned && pe->prefix_type == aast::DEREF) {
-                return lifetime;
+                return lifetime->next;
             }
-            return Lifetime::temporary(statement_index);
+            return LocalLifetime::temporary(lifetime->next, statement_index);
         }
         case aast::ASSIGN_EXPR: {
             auto *ae = (aast::BinaryExpression *) expression;
 
-            Lifetime right_lifetime = verify_expression(ae->right);
-            Lifetime left_lifetime = verify_expression(ae->left, true);
+            Lifetime *right_lifetime = verify_expression(ae->right);
+            Lifetime *left_lifetime = verify_expression(ae->left, true);
 
-            bucket->iassert(right_lifetime.temp || left_lifetime.death <= right_lifetime.last_death,
+            bucket->iassert(is_within(left_lifetime, right_lifetime),
                             ae->right->origin,
                             "value does not live long enough");
             // todo: translate statement index to origin and print where we think the value dies
 
-            return Lifetime::static_();
+            return LocalLifetime::static_(nullptr);
         }
         case aast::NAME_EXPR: {
             auto *ne = (aast::NameExpression *) expression;
@@ -401,14 +403,13 @@ Lifetime Analyser::verify_expression(aast::Expression *expression, bool assigned
         case aast::INT_EXPR:
         case aast::BOOL_EXPR:
         case aast::REAL_EXPR:
-            return Lifetime::temporary(statement_index);
+            return LocalLifetime::temporary(nullptr, statement_index);
         case aast::STR_EXPR:
-            return Lifetime::static_();
+            return LocalLifetime::temporary(LocalLifetime::static_(nullptr), statement_index);
         case aast::CAST_EXPR: {
             auto *ce = (aast::CastExpression *) expression;
-            Lifetime l = verify_expression(ce->expression);
-            l.temp = true;
-            return l;
+            Lifetime *lt = verify_expression(ce->expression);
+            return LocalLifetime::temporary(lt->next, statement_index);
         }
     }
 }
@@ -419,5 +420,35 @@ VariableState *Analyser::get_variable(std::string name) {
             return scope.at(name);
     }
     std::unreachable();
+}
+
+bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
+    if (a->is_local() && !b->is_local())
+        return true;
+
+    if (!a->is_local() && b->is_local())
+        return false;
+
+    if (a->is_local()) {
+        auto *local_a = (LocalLifetime *) a;
+        auto *local_b = (LocalLifetime *) b;
+
+        if (rec && local_b->is_temp()) {
+            return false;
+        } else if (local_a->death <= local_b->last_death) {
+            // todo: properly order deaths
+            local_a->last_death = std::min(local_a->last_death, local_b->last_death);
+        } else if (!local_b->is_temp()) {
+            return false;
+        }
+
+        if (local_a->next && local_b->next)
+            return is_within(local_a->next, local_b->next, true);
+
+        return true;
+    } else {
+        // This is actually very reachable, but it's not implemented yet
+        std::unreachable();
+    }
 }
 } // lifetime

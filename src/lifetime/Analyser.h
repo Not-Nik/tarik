@@ -8,24 +8,10 @@
 #include "error/Bucket.h"
 #include "semantic/Analyser.h"
 #include "semantic/ast/Statements.h"
+#include "Variable.h"
 
 namespace lifetime
 {
-struct Lifetime {
-    std::size_t birth, death, last_death;
-    bool temp = false;
-
-    Lifetime(std::size_t at);
-    static Lifetime static_();
-    static Lifetime temporary(std::size_t at);
-
-    bool operator==(const Lifetime &) const;
-private:
-    Lifetime(std::size_t birth, std::size_t deaths);
-};
-
-struct VariableState;
-
 struct Function {
     std::map<std::string, VariableState *> variables;
 };
@@ -56,7 +42,7 @@ private:
     void analyse_while(aast::WhileStatement *while_);
     VariableState *analyse_variable(aast::VariableStatement *var, bool argument = false);
     void analyse_import(aast::ImportStatement *import_);
-    void analyse_expression(aast::Expression *expression);
+    void analyse_expression(aast::Expression *expression, int depth = 0);
 
     void verify_statements(const std::vector<aast::Statement *> &statements);
     void verify_statement(aast::Statement *statement);
@@ -66,9 +52,11 @@ private:
     void verify_return(aast::ReturnStatement *return_);
     void verify_while(aast::WhileStatement *while_);
     void verify_import(aast::ImportStatement *import_);
-    Lifetime verify_expression(aast::Expression *expression, bool assigned = false);
+    Lifetime *verify_expression(aast::Expression *expression, bool assigned = false);
 
     VariableState *get_variable(std::string name);
+
+    bool is_within(Lifetime *a, Lifetime *b, bool rec = false) const;
 };
 } // lifetime
 
