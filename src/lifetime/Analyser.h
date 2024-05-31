@@ -14,6 +14,7 @@ namespace lifetime
 {
 struct Function {
     std::map<std::string, VariableState *> variables;
+    std::vector<LexerRange> statement_positions;
 };
 
 class Analyser {
@@ -57,6 +58,12 @@ private:
     VariableState *get_variable(std::string name);
 
     bool is_within(Lifetime *a, Lifetime *b, bool rec = false) const;
+    void print_lifetime_error(const aast::Expression *left,
+                              const aast::Expression *right,
+                              Lifetime *a,
+                              Lifetime *b,
+                              bool rec =
+                                      false) const;
 };
 } // lifetime
 

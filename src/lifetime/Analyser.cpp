@@ -60,6 +60,8 @@ void Analyser::analyse_statement(aast::Statement *statement) {
             break;
     }
     statement_index++;
+    if (current_function)
+        current_function->statement_positions.push_back(statement->origin);
 }
 
 void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
@@ -386,9 +388,11 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
             Lifetime *right_lifetime = verify_expression(ae->right);
             Lifetime *left_lifetime = verify_expression(ae->left, true);
 
-            bucket->iassert(is_within(left_lifetime, right_lifetime),
-                            ae->right->origin,
-                            "value does not live long enough");
+            if (!bucket->iassert(is_within(left_lifetime, right_lifetime),
+                                 ae->right->origin,
+                                 "value does not live long enough")) {
+                print_lifetime_error(ae->left, ae->right, left_lifetime, right_lifetime);
+            }
             // todo: translate statement index to origin and print where we think the value dies
 
             return LocalLifetime::static_(nullptr);
@@ -446,6 +450,60 @@ bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
             return is_within(local_a->next, local_b->next, true);
 
         return true;
+    } else {
+        // This is actually very reachable, but it's not implemented yet
+        std::unreachable();
+    }
+}
+
+void Analyser::print_lifetime_error(const aast::Expression *left,
+                                    const aast::Expression *right,
+                                    Lifetime *a,
+                                    Lifetime *b,
+                                    bool rec) const {
+    if (a->is_local() && !b->is_local())
+        return;
+
+    if (!a->is_local() && b->is_local()) {
+        bucket->note(current_function->statement_positions[((LocalLifetime *) b)->death-1],
+                     "'{}' dies after this,...",
+                     right->print());
+
+        bucket->note(current_function->statement_positions.back(),
+                     "...but '{}' outlives the function",
+                     left->print());
+        return;
+    }
+
+    if (a->is_local()) {
+        auto *local_a = (LocalLifetime *) a;
+        auto *local_b = (LocalLifetime *) b;
+
+        if (rec && local_b->is_temp()) {
+            bucket->note(current_function->statement_positions[local_a->death-1],
+                     "'{}' dies after this,...",
+                     left->print());
+
+            bucket->note(current_function->statement_positions[local_b->death-1],
+                         "...but '{}' takes a pointer of a temporary value which dies immediately",
+                         right->print());
+            return;
+        } else if (local_a->death <= local_b->last_death) {
+            // todo: properly order deaths
+            local_a->last_death = std::min(local_a->last_death, local_b->last_death);
+        } else if (!local_b->is_temp()) {
+            bucket->note(current_function->statement_positions[local_b->death-1],
+                     "'{}' dies after this,...",
+                     right->print());
+
+            bucket->note(current_function->statement_positions[local_a->death-1],
+                         "...but '{}' lives until here",
+                         left->print());
+            return;
+        }
+
+        if (local_a->next && local_b->next)
+            return print_lifetime_error(left, right->get_inner(), local_a->next, local_b->next, true);
     } else {
         // This is actually very reachable, but it's not implemented yet
         std::unreachable();

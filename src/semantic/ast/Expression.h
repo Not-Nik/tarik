@@ -39,7 +39,7 @@ std::string smart_cast_to_string(To t) {
 }
 
 inline std::string smart_cast_to_string(std::string s) {
-    return s;
+    return '"' + s + '"';
 }
 
 inline std::string smart_cast_to_string(bool s) {
@@ -101,6 +101,10 @@ public:
 
     [[nodiscard]] std::string print() const override {
         return to_string(prefix_type) + operand->print();
+    }
+
+    Expression *get_inner() const override {
+        return operand;
     }
 };
 
