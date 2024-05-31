@@ -46,6 +46,10 @@ LexerRange LexerPos::operator-(LexerPos other) {
     return LexerRange { *this, other.p - this->p };
 }
 
+LexerPos LexerRange::end() const {
+    return LexerPos { this->l, this->p + this->length, this->filename };
+}
+
 LexerRange LexerRange::operator+(const LexerRange &other) const {
     if (this->filename != other.filename || this->l != other.l) {
         return {};

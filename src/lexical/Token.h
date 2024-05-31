@@ -136,6 +136,8 @@ struct LexerPos {
 struct LexerRange : LexerPos {
     int length = 0;
 
+    LexerPos end() const;
+
     LexerRange operator+(const LexerRange &other) const;
     bool operator >(const LexerRange &other) const;
 };
