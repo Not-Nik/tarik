@@ -15,6 +15,7 @@ namespace lifetime
 struct Function {
     std::map<std::string, VariableState *> variables;
     std::vector<LexerRange> statement_positions;
+    std::unordered_map<Lifetime*, std::vector<Lifetime*>> relations;
 };
 
 class Analyser {
@@ -64,6 +65,8 @@ private:
                               Lifetime *b,
                               bool rec =
                                       false) const;
+
+    bool is_shorter(Lifetime *a, Lifetime *b) const;
 };
 } // lifetime
 

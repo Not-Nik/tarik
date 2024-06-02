@@ -155,9 +155,16 @@ VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool arg
 
     Lifetime *lt = nullptr;
 
-    for (int i = 0; i < var->type.pointer_level; i++)
-        // Todo: store that the previous lt lives longer than the new one
-        lt = argument ? new Lifetime(lt) : new LocalLifetime(lt, statement_index);
+    for (int i = 0; i < var->type.pointer_level; i++) {
+        if (argument) {
+            lt = new Lifetime(lt);
+
+            if (lt->next)
+                current_function->relations[lt].push_back(lt->next);
+        } else {
+            lt = new LocalLifetime(lt, statement_index);
+        }
+    }
 
     auto *llt = new LocalLifetime(lt, statement_index);
 
@@ -388,12 +395,15 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
             Lifetime *right_lifetime = verify_expression(ae->right);
             Lifetime *left_lifetime = verify_expression(ae->left, true);
 
+            if (ae->right->flattens_to_member_access()) {
+                right_lifetime = LocalLifetime::temporary(right_lifetime->next, statement_index);
+            }
+
             if (!bucket->iassert(is_within(left_lifetime, right_lifetime),
                                  ae->right->origin,
                                  "value does not live long enough")) {
                 print_lifetime_error(ae->left, ae->right, left_lifetime, right_lifetime);
             }
-            // todo: translate statement index to origin and print where we think the value dies
 
             return LocalLifetime::static_(nullptr);
         }
@@ -430,7 +440,7 @@ bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
     if (a->is_local() && !b->is_local())
         return true;
 
-    if (!a->is_local() && b->is_local())
+    if (!a->is_local() && b->is_local() && !b->is_temp())
         return false;
 
     if (a->is_local()) {
@@ -451,8 +461,14 @@ bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
 
         return true;
     } else {
-        // This is actually very reachable, but it's not implemented yet
-        std::unreachable();
+        if (is_shorter(a, b)) {
+            return true;
+        } else if (is_shorter(b, a)) {
+            return false;
+        } else {
+            current_function->relations[b].push_back(a);
+            return true;
+        }
     }
 }
 
@@ -464,8 +480,8 @@ void Analyser::print_lifetime_error(const aast::Expression *left,
     if (a->is_local() && !b->is_local())
         return;
 
-    if (!a->is_local() && b->is_local()) {
-        bucket->note(current_function->statement_positions[((LocalLifetime *) b)->death-1],
+    if (!a->is_local() && b->is_local() && !b->is_temp()) {
+        bucket->note(current_function->statement_positions[((LocalLifetime *) b)->death - 1],
                      "'{}' dies after this,...",
                      right->print());
 
@@ -480,11 +496,11 @@ void Analyser::print_lifetime_error(const aast::Expression *left,
         auto *local_b = (LocalLifetime *) b;
 
         if (rec && local_b->is_temp()) {
-            bucket->note(current_function->statement_positions[local_a->death-1],
-                     "'{}' dies after this,...",
-                     left->print());
+            bucket->note(current_function->statement_positions[local_a->death - 1],
+                         "'{}' dies after this,...",
+                         left->print());
 
-            bucket->note(current_function->statement_positions[local_b->death-1],
+            bucket->note(current_function->statement_positions[local_b->death - 1],
                          "...but '{}' takes a pointer of a temporary value which dies immediately",
                          right->print());
             return;
@@ -492,11 +508,11 @@ void Analyser::print_lifetime_error(const aast::Expression *left,
             // todo: properly order deaths
             local_a->last_death = std::min(local_a->last_death, local_b->last_death);
         } else if (!local_b->is_temp()) {
-            bucket->note(current_function->statement_positions[local_b->death-1],
-                     "'{}' dies after this,...",
-                     right->print());
+            bucket->note(current_function->statement_positions[local_b->death - 1],
+                         "'{}' dies after this,...",
+                         right->print());
 
-            bucket->note(current_function->statement_positions[local_a->death-1],
+            bucket->note(current_function->statement_positions[local_a->death - 1],
                          "...but '{}' lives until here",
                          left->print());
             return;
@@ -509,4 +525,30 @@ void Analyser::print_lifetime_error(const aast::Expression *left,
         std::unreachable();
     }
 }
+
+bool Analyser::is_shorter(Lifetime *a, Lifetime *b) const {
+    // Perform DFS to see if there's a path from `a` to `b`
+    std::unordered_set<Lifetime*> visited;
+    std::stack<Lifetime*> stack;
+    stack.push(a);
+
+    while (!stack.empty()) {
+        Lifetime *current = stack.top();
+        stack.pop();
+
+        if (current == b) {
+            return true;
+        }
+
+        for (Lifetime *neighbor : current_function->relations[current]) {
+            if (!visited.contains(neighbor)) {
+                visited.insert(neighbor);
+                stack.push(neighbor);
+            }
+        }
+    }
+
+    return false;
+}
+
 } // lifetime
