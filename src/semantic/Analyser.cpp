@@ -401,14 +401,16 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
         aast::StructStatement *st = get_struct(type.value().get_user());
 
         std::vector<SemanticVariable *> member_states;
-        for (auto *member : st->members) {
-            auto *temp = new ast::VariableStatement(var->origin,
-                                                    member->type,
-                                                    Token::name(name.raw + "." + member->name.raw));
+        if (st) {
+            for (auto *member : st->members) {
+                auto *temp = new ast::VariableStatement(var->origin,
+                                                        member->type,
+                                                        Token::name(name.raw + "." + member->name.raw));
 
-            std::optional semantic_member = verify_variable(temp);
-            if (semantic_member.has_value())
-                member_states.push_back(semantic_member.value());
+                std::optional semantic_member = verify_variable(temp);
+                if (semantic_member.has_value())
+                    member_states.push_back(semantic_member.value());
+            }
         }
 
         sem = new CompoundVariable(new_var, member_states);
