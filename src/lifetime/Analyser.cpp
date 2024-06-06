@@ -83,10 +83,10 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
 }
 
 void Analyser::analyse_function(aast::FuncStatement *func) {
-    functions.emplace(func->path, Function {});
+    functions.emplace(func->path.str(), Function {});
 
     statement_index = 0;
-    current_function = &functions.at(func->path);
+    current_function = &functions.at(func->path.str());
 
     variables.emplace_back();
 
@@ -94,6 +94,7 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
     argument_states.reserve(func->arguments.size());
     for (auto *argument : func->arguments) {
         argument_states.push_back(analyse_variable(argument, true));
+        current_function->arguments.push_back(argument_states.back()->lifetime->next);
     }
     statement_index++;
 
@@ -159,8 +160,8 @@ VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool arg
         if (argument) {
             lt = new Lifetime(lt);
 
-            if (lt->next)
-                current_function->relations[lt].push_back(lt->next);
+            //if (lt->next)
+            //current_function->relations[lt].push_back(lt->next);
         } else {
             lt = new LocalLifetime(lt, statement_index);
         }
@@ -319,7 +320,7 @@ void Analyser::verify_scope(aast::ScopeStatement *scope) {
 
 void Analyser::verify_function(aast::FuncStatement *func) {
     statement_index = 1;
-    current_function = &functions.at(func->path);
+    current_function = &functions.at(func->path.str());
 
     verify_scope(func);
 }
@@ -351,8 +352,68 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;
 
+            // Store all the lifetimes of the arguments on the caller side
+            std::vector<std::pair<Lifetime *, aast::Expression *>> lifetimes;
+            lifetimes.reserve(ce->arguments.size());
             for (auto *argument : ce->arguments)
-                verify_expression(argument);
+                lifetimes.emplace_back(verify_expression(argument), argument);
+
+            // Get the function to be called
+            Function &function = functions.at(ce->callee->print());
+
+            auto find_argument_index = [&function](const Lifetime *pointer) -> std::pair<int, int> {
+                int index = 0;
+                for (auto &argument : function.arguments) {
+                    Lifetime *lifetime = argument;
+
+                    int depth = 0;
+                    while (lifetime) {
+                        if (lifetime == pointer)
+                            return std::make_pair(index, depth);
+                        lifetime = lifetime->next;
+                        depth++;
+                    }
+                    index++;
+                }
+                return std::make_pair(-1, -1);
+            };
+
+            for (auto &[longer, relations] : function.relations) {
+                for (auto [shorter, relation_origin] : relations) {
+                    auto a = find_argument_index(longer);
+                    auto b = find_argument_index(shorter);
+
+                    if (a.first == -1 || b.first == -1)
+                        continue;
+
+                    auto [local_longer, longer_expression] = lifetimes[a.first];
+                    auto [local_shorter, shorter_expression] = lifetimes[b.first];
+
+                    for (int i = 0; i < a.second + 1; i++)
+                        local_longer = local_longer->next;
+                    for (int i = 0; i < b.second + 1; i++)
+                        local_shorter = local_shorter->next;
+
+                    if (!bucket->iassert(is_within(local_shorter, local_longer, ce->origin),
+                                         longer_expression->origin,
+                                         "value does not live long enough")) {
+                        bucket->note(shorter_expression->origin,
+                                     "'{}' should live longer than '{}',...",
+                                     longer_expression->print(),
+                                     shorter_expression->print());
+
+                        bucket->note(relation_origin, "...because of its usage here,...");
+
+                        // Todo: integrate this with print_lifetime_error
+                        if (local_longer->is_local()) {
+                            auto *local_local_longer = (LocalLifetime *) local_longer;
+                            bucket->note(current_function->statement_positions[local_local_longer->death - 1],
+                                         "...but it only lives until here");
+                        }
+                    }
+                }
+            }
+
             // Todo: check for pointers
             return LocalLifetime::temporary(nullptr, statement_index);
         }
@@ -399,7 +460,7 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                 right_lifetime = LocalLifetime::temporary(right_lifetime->next, statement_index);
             }
 
-            if (!bucket->iassert(is_within(left_lifetime, right_lifetime),
+            if (!bucket->iassert(is_within(left_lifetime, right_lifetime, ae->origin),
                                  ae->right->origin,
                                  "value does not live long enough")) {
                 print_lifetime_error(ae->left, ae->right, left_lifetime, right_lifetime);
@@ -436,16 +497,20 @@ VariableState *Analyser::get_variable(std::string name) {
     std::unreachable();
 }
 
-bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
-    if (a->is_local() && !b->is_local())
+bool Analyser::is_within(Lifetime *inner, Lifetime *outer, LexerRange origin, bool rec) const {
+    if (inner->is_local() && !outer->is_local())
         return true;
 
-    if (!a->is_local() && b->is_local() && !b->is_temp())
-        return false;
+    if (!inner->is_local() && outer->is_local()) {
+        if (outer->is_temp())
+            return is_within(inner->next, outer->next, origin, true);
+        else
+            return false;
+    }
 
-    if (a->is_local()) {
-        auto *local_a = (LocalLifetime *) a;
-        auto *local_b = (LocalLifetime *) b;
+    if (inner->is_local()) {
+        auto *local_a = (LocalLifetime *) inner;
+        auto *local_b = (LocalLifetime *) outer;
 
         if (rec && local_b->is_temp()) {
             return false;
@@ -457,16 +522,16 @@ bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
         }
 
         if (local_a->next && local_b->next)
-            return is_within(local_a->next, local_b->next, true);
+            return is_within(local_a->next, local_b->next, origin, true);
 
         return true;
     } else {
-        if (is_shorter(a, b)) {
+        if (is_shorter(outer, inner, current_function->relations)) {
             return true;
-        } else if (is_shorter(b, a)) {
+        } else if (is_shorter(inner, outer, current_function->relations)) {
             return false;
         } else {
-            current_function->relations[b].push_back(a);
+            current_function->relations[outer].emplace_back(inner, origin);
             return true;
         }
     }
@@ -474,26 +539,30 @@ bool Analyser::is_within(Lifetime *a, Lifetime *b, bool rec) const {
 
 void Analyser::print_lifetime_error(const aast::Expression *left,
                                     const aast::Expression *right,
-                                    Lifetime *a,
-                                    Lifetime *b,
+                                    Lifetime *inner,
+                                    Lifetime *outer,
                                     bool rec) const {
-    if (a->is_local() && !b->is_local())
+    if (inner->is_local() && !outer->is_local())
         return;
 
-    if (!a->is_local() && b->is_local() && !b->is_temp()) {
-        bucket->note(current_function->statement_positions[((LocalLifetime *) b)->death - 1],
-                     "'{}' dies after this,...",
-                     right->print());
+    if (!inner->is_local() && outer->is_local()) {
+        if (outer->is_temp()) {
+            print_lifetime_error(left, right->get_inner(), inner->next, outer->next, true);
+        } else {
+            bucket->note(current_function->statement_positions[((LocalLifetime *) outer)->death - 1],
+                         "'{}' dies after this,...",
+                         right->print());
 
-        bucket->note(current_function->statement_positions.back(),
-                     "...but '{}' outlives the function",
-                     left->print());
+            bucket->note(current_function->statement_positions.back(),
+                         "...but '{}' outlives the function",
+                         left->print());
+        }
         return;
     }
 
-    if (a->is_local()) {
-        auto *local_a = (LocalLifetime *) a;
-        auto *local_b = (LocalLifetime *) b;
+    if (inner->is_local()) {
+        auto *local_a = (LocalLifetime *) inner;
+        auto *local_b = (LocalLifetime *) outer;
 
         if (rec && local_b->is_temp()) {
             bucket->note(current_function->statement_positions[local_a->death - 1],
@@ -526,21 +595,24 @@ void Analyser::print_lifetime_error(const aast::Expression *left,
     }
 }
 
-bool Analyser::is_shorter(Lifetime *a, Lifetime *b) const {
+bool Analyser::is_shorter(Lifetime *shorter,
+                          Lifetime *longer,
+                          std::unordered_map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations)
+const {
     // Perform DFS to see if there's a path from `a` to `b`
-    std::unordered_set<Lifetime*> visited;
-    std::stack<Lifetime*> stack;
-    stack.push(a);
+    std::unordered_set<Lifetime *> visited;
+    std::stack<Lifetime *> stack;
+    stack.push(longer);
 
     while (!stack.empty()) {
         Lifetime *current = stack.top();
         stack.pop();
 
-        if (current == b) {
+        if (current == shorter) {
             return true;
         }
 
-        for (Lifetime *neighbor : current_function->relations[current]) {
+        for (auto [neighbor, origin] : relations[current]) {
             if (!visited.contains(neighbor)) {
                 visited.insert(neighbor);
                 stack.push(neighbor);
@@ -550,5 +622,4 @@ bool Analyser::is_shorter(Lifetime *a, Lifetime *b) const {
 
     return false;
 }
-
 } // lifetime

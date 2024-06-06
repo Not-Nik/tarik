@@ -13,9 +13,10 @@
 namespace lifetime
 {
 struct Function {
+    std::vector<Lifetime *> arguments;
     std::map<std::string, VariableState *> variables;
     std::vector<LexerRange> statement_positions;
-    std::unordered_map<Lifetime*, std::vector<Lifetime*>> relations;
+    std::unordered_map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations;
 };
 
 class Analyser {
@@ -23,7 +24,8 @@ class Analyser {
     std::unordered_map<Path, aast::StructStatement *> structures;
     std::unordered_map<Path, aast::FuncDeclareStatement *> declarations;
 
-    std::unordered_map<Path, Function> functions;
+    // This should use Path instead of std::string, once function calls use PathExpressions as callees
+    std::unordered_map<std::string, Function> functions;
 
     std::size_t statement_index = 0;
     Function *current_function = nullptr;
@@ -58,15 +60,17 @@ private:
 
     VariableState *get_variable(std::string name);
 
-    bool is_within(Lifetime *a, Lifetime *b, bool rec = false) const;
+    bool is_within(Lifetime *inner, Lifetime *outer, LexerRange origin, bool rec = false) const;
     void print_lifetime_error(const aast::Expression *left,
                               const aast::Expression *right,
-                              Lifetime *a,
-                              Lifetime *b,
+                              Lifetime *inner,
+                              Lifetime *outer,
                               bool rec =
                                       false) const;
 
-    bool is_shorter(Lifetime *a, Lifetime *b) const;
+    bool is_shorter(Lifetime *shorter,
+                    Lifetime *longer,
+                    std::unordered_map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations) const;
 };
 } // lifetime
 
