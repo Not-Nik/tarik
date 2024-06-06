@@ -103,7 +103,7 @@ public:
         return to_string(prefix_type) + operand->print();
     }
 
-    Expression *get_inner() const override {
+    Expression *get_inner() override {
         return operand;
     }
 };

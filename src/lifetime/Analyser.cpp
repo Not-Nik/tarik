@@ -389,10 +389,15 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                     auto [local_longer, longer_expression] = lifetimes[a.first];
                     auto [local_shorter, shorter_expression] = lifetimes[b.first];
 
-                    for (int i = 0; i < a.second + 1; i++)
+                    for (int i = 0; i < a.second + 1; i++) {
                         local_longer = local_longer->next;
-                    for (int i = 0; i < b.second + 1; i++)
+                        longer_expression = longer_expression->get_inner();
+                    }
+
+                    for (int i = 0; i < b.second + 1; i++) {
                         local_shorter = local_shorter->next;
+                        shorter_expression = shorter_expression->get_inner();
+                    }
 
                     if (!bucket->iassert(is_within(local_shorter, local_longer, ce->origin),
                                          longer_expression->origin,
@@ -537,8 +542,8 @@ bool Analyser::is_within(Lifetime *inner, Lifetime *outer, LexerRange origin, bo
     }
 }
 
-void Analyser::print_lifetime_error(const aast::Expression *left,
-                                    const aast::Expression *right,
+void Analyser::print_lifetime_error(aast::Expression *left,
+                                    aast::Expression *right,
                                     Lifetime *inner,
                                     Lifetime *outer,
                                     bool rec) const {

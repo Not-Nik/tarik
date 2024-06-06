@@ -61,8 +61,8 @@ private:
     VariableState *get_variable(std::string name);
 
     bool is_within(Lifetime *inner, Lifetime *outer, LexerRange origin, bool rec = false) const;
-    void print_lifetime_error(const aast::Expression *left,
-                              const aast::Expression *right,
+    void print_lifetime_error(aast::Expression *left,
+                              aast::Expression *right,
                               Lifetime *inner,
                               Lifetime *outer,
                               bool rec =

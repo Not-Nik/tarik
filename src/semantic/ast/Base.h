@@ -82,7 +82,7 @@ public:
 
     virtual bool flattens_to_member_access() const { return false; }
     virtual std::string flatten_to_member_access() const { return "<>"; }
-    virtual const Expression *get_inner() const { return this; }
+    virtual Expression *get_inner() { return this; }
 };
 } // namespace ast
 
