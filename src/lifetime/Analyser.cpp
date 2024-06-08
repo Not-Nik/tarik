@@ -105,6 +105,7 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
             state->values[0] = LocalLifetime::static_(nullptr);
     }
 
+    /*
     std::cout << "In " << func->path.str() << std::endl;
     for (const auto &[name, var] : current_function->variables) {
         std::cout << "\t" << name;
@@ -127,6 +128,7 @@ void Analyser::analyse_function(aast::FuncStatement *func) {
                     std::endl;
         }
     }
+    */
 }
 
 void Analyser::analyse_if(aast::IfStatement *if_) {
