@@ -334,8 +334,25 @@ void Analyser::verify_if(aast::IfStatement *if_) {
 }
 
 void Analyser::verify_return(aast::ReturnStatement *return_) {
-    if (return_->value)
-        verify_expression(return_->value);
+    if (return_->value) {
+        Lifetime *lt = verify_expression(return_->value);
+
+        if (!lt->next)
+            return;
+        if (current_function->return_type) {
+            if (!bucket->iassert(is_within(current_function->return_type, lt->next, return_->origin),
+                                 return_->origin,
+                                 "value does not live long enough")) {
+                bucket->note(return_->value->origin,
+                             "'{}' does not live as long as the deduced return type lifetime",
+                             return_->value->print());
+                bucket->note(current_function->return_deduction, "deduced here");
+            }
+        } else {
+            current_function->return_type = lt->next;
+            current_function->return_deduction = return_->origin;
+        }
+    }
 }
 
 void Analyser::verify_while(aast::WhileStatement *while_) {
@@ -378,8 +395,8 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                 return std::make_pair(-1, -1);
             };
 
-            for (auto &[longer, relations] : function.relations) {
-                for (auto [shorter, relation_origin] : relations) {
+            for (const auto &[longer, relations] : function.relations) {
+                for (const auto &[shorter, relation_origin] : relations) {
                     auto a = find_argument_index(longer);
                     auto b = find_argument_index(shorter);
 
@@ -419,7 +436,19 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                 }
             }
 
-            // Todo: check for pointers
+            if (function.return_type) {
+                auto [arg_index, depth] = find_argument_index(function.return_type);
+
+                auto [local_arg, arg_expression] = lifetimes[arg_index];
+
+                for (int i = 0; i < depth + 1; i++) {
+                    local_arg = local_arg->next;
+                    arg_expression = arg_expression->get_inner();
+                }
+
+                return LocalLifetime::temporary(local_arg, statement_index);
+            }
+
             return LocalLifetime::temporary(nullptr, statement_index);
         }
         case aast::DASH_EXPR:
@@ -555,7 +584,8 @@ void Analyser::print_lifetime_error(aast::Expression *left,
             print_lifetime_error(left, right->get_inner(), inner->next, outer->next, true);
         } else {
             bucket->note(current_function->statement_positions[((LocalLifetime *) outer)->death - 1],
-                         "'{}' dies after this,...",
+                         "{}'{}' dies after this,...",
+                         right->expression_type == aast::CALL_EXPR ? "return value of " : "",
                          right->print());
 
             bucket->note(current_function->statement_positions.back(),
@@ -575,7 +605,8 @@ void Analyser::print_lifetime_error(aast::Expression *left,
                          left->print());
 
             bucket->note(current_function->statement_positions[local_b->death - 1],
-                         "...but '{}' takes a pointer of a temporary value which dies immediately",
+                         "...but {}'{}' takes a pointer of a temporary value which dies immediately",
+                         right->expression_type == aast::CALL_EXPR ? "the return value of " : "",
                          right->print());
             return;
         } else if (local_a->death <= local_b->last_death) {
@@ -583,7 +614,8 @@ void Analyser::print_lifetime_error(aast::Expression *left,
             local_a->last_death = std::min(local_a->last_death, local_b->last_death);
         } else if (!local_b->is_temp()) {
             bucket->note(current_function->statement_positions[local_b->death - 1],
-                         "'{}' dies after this,...",
+                         "{}'{}' dies after this,...",
+                         right->expression_type == aast::CALL_EXPR ? "return value of " : "",
                          right->print());
 
             bucket->note(current_function->statement_positions[local_a->death - 1],
@@ -602,8 +634,7 @@ void Analyser::print_lifetime_error(aast::Expression *left,
 
 bool Analyser::is_shorter(Lifetime *shorter,
                           Lifetime *longer,
-                          std::unordered_map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations)
-const {
+                          std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations) const {
     // Perform DFS to see if there's a path from `a` to `b`
     std::unordered_set<Lifetime *> visited;
     std::stack<Lifetime *> stack;
@@ -617,7 +648,7 @@ const {
             return true;
         }
 
-        for (auto [neighbor, origin] : relations[current]) {
+        for (const auto &[neighbor, origin] : relations[current]) {
             if (!visited.contains(neighbor)) {
                 visited.insert(neighbor);
                 stack.push(neighbor);

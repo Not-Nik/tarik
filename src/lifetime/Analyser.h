@@ -14,9 +14,12 @@ namespace lifetime
 {
 struct Function {
     std::vector<Lifetime *> arguments;
+    Lifetime *return_type = nullptr;
+    LexerRange return_deduction;
+
     std::map<std::string, VariableState *> variables;
     std::vector<LexerRange> statement_positions;
-    std::unordered_map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations;
+    std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations;
 };
 
 class Analyser {
@@ -70,7 +73,7 @@ private:
 
     bool is_shorter(Lifetime *shorter,
                     Lifetime *longer,
-                    std::unordered_map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations) const;
+                    std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations) const;
 };
 } // lifetime
 
