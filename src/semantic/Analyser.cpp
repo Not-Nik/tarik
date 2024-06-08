@@ -417,19 +417,19 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
     if (type.value().is_primitive()) {
         sem = new PrimitiveVariable(new_var);
     } else {
+        if (!is_struct_declared(type.value().get_user()))
+            return {};
         aast::StructStatement *st = get_struct(type.value().get_user());
 
         std::vector<SemanticVariable *> member_states;
-        if (st) {
-            for (auto *member : st->members) {
-                auto *temp = new ast::VariableStatement(var->origin,
-                                                        member->type,
-                                                        Token::name(name.raw + "." + member->name.raw));
+        for (auto *member : st->members) {
+            auto *temp = new ast::VariableStatement(var->origin,
+                                                    member->type,
+                                                    Token::name(name.raw + "." + member->name.raw));
 
-                std::optional semantic_member = verify_variable(temp);
-                if (semantic_member.has_value())
-                    member_states.push_back(semantic_member.value());
-            }
+            std::optional semantic_member = verify_variable(temp);
+            if (semantic_member.has_value())
+                member_states.push_back(semantic_member.value());
         }
 
         sem = new CompoundVariable(new_var, member_states);
@@ -1208,13 +1208,13 @@ aast::FuncDeclareStatement *Analyser::get_func_decl(Path path) {
 
 aast::StructStatement *Analyser::get_struct(Path path) {
     if (path.is_global()) {
-        return structures[path];
+        return structures.at(path);
     }
 
     Path local = path.with_prefix(this->path);
 
     if (structures.contains(local))
-        return structures[local];
+        return structures.at(local);
 
-    return structures[path];
+    return structures.at(path);
 }

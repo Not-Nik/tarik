@@ -139,7 +139,7 @@ struct LexerRange : LexerPos {
     LexerPos end() const;
 
     LexerRange operator+(const LexerRange &other) const;
-    bool operator >(const LexerRange &other) const;
+    bool operator>(const LexerRange &other) const;
 };
 
 class Token {
