@@ -143,7 +143,7 @@ ParsedOption ArgumentParser::parse_next_arg() {
         }
     } else
         inputs.push_back(raw);
-    return {};
+    return {nullptr, raw};
 }
 
 std::vector<std::string> ArgumentParser::get_inputs() {

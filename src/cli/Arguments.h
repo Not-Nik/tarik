@@ -69,7 +69,6 @@ public:
         bool overriden;
 
         ParsedOption last;
-        bool made_last = false;
 
         friend bool operator==(iterator &me, iterator &other);
 
@@ -85,8 +84,7 @@ public:
         ParsedOption operator++() {
             if (overriden)
                 return override;
-            if (!made_last) {
-                made_last = true;
+            if (!last.option) {
                 parser->parse_next_arg();
             }
             return last = parser->parse_next_arg();
@@ -95,8 +93,7 @@ public:
         ParsedOption operator*() {
             if (overriden)
                 return override;
-            if (!made_last) {
-                made_last = true;
+            if (!last.option) {
                 last = parser->parse_next_arg();
             }
             return last;
