@@ -153,6 +153,8 @@ std::optional<aast::ScopeStatement *> Analyser::verify_scope(ast::ScopeStatement
 
     for (auto *var : variables) {
         var->push_state(*var->state());
+        if (var->state()->is_definitely_defined())
+            var->state()->make_definitely_read();
     }
 
     path = path.create_member(name);
@@ -833,8 +835,16 @@ std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     auto *ae = (ast::BinaryExpression *) expression;
 
     access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
-    std::optional left = verify_expression(ae->left, access);
-    std::optional right = verify_expression(ae->right);
+    std::optional<aast::Expression *> left = {};
+    std::optional<aast::Expression *> right = {};
+
+    if (expression->expression_type == ast::ASSIGN_EXPR) {
+        right = verify_expression(ae->right);
+        left = verify_expression(ae->left, access);
+    } else {
+        left = verify_expression(ae->left, access);
+        right = verify_expression(ae->right);
+    }
 
     if (!left.has_value() || !right.has_value())
         return {};
@@ -1101,7 +1111,7 @@ std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expr
                                  "value might have been moved")) {
                 bucket->note(var->state()->get_moved_pos(), "moved here");
             } else if (access == NORMAL) {
-                var->state()->make_definitely_read(expression->origin);
+                var->state()->make_definitely_read();
             } else if (access == MOVE && !var->var->type.is_copyable()) {
                 var->state()->make_definitely_moved(expression->origin);
             }

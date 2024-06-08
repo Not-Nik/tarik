@@ -9,14 +9,11 @@
 VariableState::VariableState(bool undefined,
                              bool defined,
                              bool moved,
-                             LexerRange defined_pos,
-                             LexerRange
-                             read_pos)
+                             LexerRange defined_pos)
     : is_undefined(undefined),
       was_defined(defined),
       was_moved(moved),
-      defined_pos(defined_pos),
-      read_pos(read_pos) {}
+      defined_pos(defined_pos) {}
 
 void VariableState::make_definitely_defined(LexerRange pos) {
     is_undefined = false;
@@ -24,17 +21,15 @@ void VariableState::make_definitely_defined(LexerRange pos) {
     was_moved = false;
 
     defined_pos = pos;
-    read_pos = LexerRange();
     moved_pos = LexerRange();
 }
 
-void VariableState::make_definitely_read(LexerRange pos) {
+void VariableState::make_definitely_read() {
     is_undefined = false;
     was_defined = false;
     was_moved = false;
 
     defined_pos = LexerRange();
-    read_pos = pos;
     moved_pos = LexerRange();
 }
 
@@ -44,7 +39,6 @@ void VariableState::make_definitely_moved(LexerRange pos) {
     was_moved = true;
 
     defined_pos = LexerRange();
-    read_pos = LexerRange();
     moved_pos = pos;
 }
 
@@ -84,8 +78,7 @@ VariableState VariableState::operator||(const VariableState &other) const {
     return VariableState(is_undefined || other.is_undefined,
                          was_defined || other.was_defined,
                          was_moved || other.was_moved,
-                         (defined_pos > other.defined_pos ? defined_pos : other.defined_pos),
-                         (read_pos > other.read_pos ? read_pos : other.read_pos));
+                         (defined_pos > other.defined_pos ? defined_pos : other.defined_pos));
 }
 
 CompoundState::CompoundState(const std::vector<SemanticVariable *> &states)
@@ -99,10 +92,10 @@ void CompoundState::make_definitely_defined(LexerRange pos) {
     }
 }
 
-void CompoundState::make_definitely_read(LexerRange pos) {
-    VariableState::make_definitely_read(pos);
+void CompoundState::make_definitely_read() {
+    VariableState::make_definitely_read();
     for (auto *child : children) {
-        child->state()->make_definitely_read(pos);
+        child->state()->make_definitely_read();
     }
 }
 

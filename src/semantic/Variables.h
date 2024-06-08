@@ -15,15 +15,15 @@
 class VariableState {
 protected:
     bool is_undefined = true, was_defined = false, was_moved = false;
-    LexerRange defined_pos, read_pos, moved_pos;
+    LexerRange defined_pos, moved_pos;
 
-    VariableState(bool undefined, bool defined, bool moved, LexerRange defined_pos, LexerRange read_pos);
+    VariableState(bool undefined, bool defined, bool moved, LexerRange defined_pos);
 
 public:
     VariableState() = default;
 
     virtual void make_definitely_defined(LexerRange pos);
-    virtual void make_definitely_read(LexerRange pos);
+    virtual void make_definitely_read();
     virtual void make_definitely_moved(LexerRange pos);
 
     virtual bool is_definitely_undefined() const;
@@ -57,7 +57,7 @@ struct CompoundState : VariableState {
     CompoundState(const std::vector<SemanticVariable *> &states);
 
     void make_definitely_defined(LexerRange pos) override;
-    void make_definitely_read(LexerRange pos) override;
+    void make_definitely_read() override;
     void make_definitely_moved(LexerRange pos) override;
 
     bool is_definitely_undefined() const override;
