@@ -12,7 +12,7 @@ is subject to change, especially details about the implementation.
  - [Structures](statements/Structures.md)
  - [Scopes](statements/Scopes.md)
  - [If](statements/If.md)
- - While
+ - [While](statements/While.md)
  - [Imports](statements/Imports.md)
  - Variables
 
