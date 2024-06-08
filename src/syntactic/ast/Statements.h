@@ -8,6 +8,7 @@
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_STATEMENTS_H_
 
 #include <map>
+#include <numeric>
 #include <vector>
 
 #include "Base.h"
@@ -60,7 +61,7 @@ public:
     ElseStatement *else_statement = nullptr;
 
     IfStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(IF_STMT, o, std::move(block)),
+        : ScopeStatement(IF_STMT, o + cond->origin, std::move(block)),
           condition(cond) {}
 
     ~IfStatement() override {
@@ -80,7 +81,7 @@ public:
     Expression *value;
 
     explicit ReturnStatement(const LexerRange &o, Expression *val)
-        : Statement(RETURN_STMT, o),
+        : Statement(RETURN_STMT, val ? o + val->origin : o),
           value(val) {}
 
     ~ReturnStatement() override {
@@ -101,7 +102,7 @@ public:
     Expression *condition;
 
     explicit WhileStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(WHILE_STMT, o, block),
+        : ScopeStatement(WHILE_STMT, o + cond->origin, block),
           condition(cond) {}
 
     ~WhileStatement() override {
@@ -208,7 +209,7 @@ public:
     std::vector<VariableStatement *> members;
 
     StructStatement(const LexerRange &o, Token n, std::vector<VariableStatement *> m)
-        : Statement(STRUCT_STMT, o),
+        : Statement(STRUCT_STMT, o + n.origin),
           name(std::move(n)),
           members(std::move(m)) {}
 

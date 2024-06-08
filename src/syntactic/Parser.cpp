@@ -294,7 +294,7 @@ Statement *Parser::parse_statement() {
                     expect(COMMA);
             }
         }
-        expect(PAREN_CLOSE);
+        LexerRange origin = token.origin + expect(PAREN_CLOSE).origin;
         Type t;
         if (lexer.peek().id == CURLY_OPEN)
             t = Type(VOID);
@@ -306,7 +306,7 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
 
-        return new FuncStatement(token.origin, name, t, args, body, var_arg, member_of);
+        return new FuncStatement(origin, name, t, args, body, var_arg, member_of);
     } else if (token.id == RETURN) {
         lexer.consume();
         Expression *val = nullptr;

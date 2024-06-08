@@ -119,9 +119,9 @@ class CallParselet : public InfixParselet {
                 break;
             parser->expect(COMMA);
         }
-        parser->expect(PAREN_CLOSE);
+        LexerRange origin = left->origin + parser->expect(PAREN_CLOSE).origin;
 
-        return new ast::CallExpression(token.origin, left, args);
+        return new ast::CallExpression(origin, left, args);
     }
 
     ast::Expression *parse_macro(Parser *parser, const Token &token, ast::Expression *left) {
