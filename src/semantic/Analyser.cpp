@@ -25,9 +25,11 @@ std::vector<aast::Statement *> Analyser::finish() {
     for (auto [_, st] : structures)
         res.push_back(st);
 
-    std::sort(res.begin(), res.end(), [](aast::Statement *s1, aast::Statement *s2) {
-        return !(s1->origin > s2->origin);
-    });
+    std::sort(res.begin(),
+              res.end(),
+              [](aast::Statement *s1, aast::Statement *s2) {
+                  return !(s1->origin > s2->origin);
+              });
 
     for (auto [_, dc] : declarations)
         res.push_back(dc);
@@ -284,8 +286,9 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
 std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
     std::optional condition = verify_expression(if_->condition);
     std::optional scope = verify_scope(if_);
+    std::optional<aast::ScopeStatement *> else_ = {};
     if (if_->else_statement)
-        verify_scope(if_->else_statement);
+        else_ = verify_scope(if_->else_statement);
 
     if (condition.has_value() && scope.has_value()) {
         // implicitely compare to 0 if condition isn't a bool already
@@ -299,7 +302,16 @@ std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
 
         std::vector block = std::move(scope.value()->block);
         delete scope.value();
-        return new aast::IfStatement(if_->origin, condition.value(), block);
+        auto new_if = new aast::IfStatement(if_->origin, condition.value(), block);
+
+        if (if_->else_statement && else_.has_value()) {
+            new_if->else_statement = new aast::ElseStatement(if_->else_statement->origin, else_.value()->block);
+            else_.value()->block.clear();
+            delete else_.value();
+        } else {
+            return {};
+        }
+        return new_if;
     } else {
         return {};
     }
