@@ -532,7 +532,10 @@ llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed
     if (val->getType() == type)
         return val;
     llvm::Instruction::CastOps co;
-    if (type->isFloatingPointTy()) {
+
+    if (type->isPointerTy()) {
+        co = llvm::Instruction::IntToPtr;
+    } else if (type->isFloatingPointTy()) {
         if (val->getType()->isFloatingPointTy())
             return builder.CreateFPCast(val, type, "cast_temp");
         if (signed_int)
@@ -540,13 +543,16 @@ llvm::Value *LLVM::generate_cast(llvm::Value *val, llvm::Type *type, bool signed
         else
             co = llvm::Instruction::UIToFP;
     } else {
-        if (!val->getType()->isFloatingPointTy())
+        if (val->getType()->isPointerTy())
+            co = llvm::Instruction::PtrToInt;
+        else if (!val->getType()->isFloatingPointTy())
             return builder.CreateIntCast(val, type, signed_int, "cast_temp");
-        if (signed_int)
+        else if (signed_int)
             co = llvm::Instruction::FPToSI;
         else
             co = llvm::Instruction::FPToUI;
     }
+
     return builder.CreateCast(co, val, type, "cast_temp");
 }
 
