@@ -29,18 +29,25 @@ Lexer::~Lexer() {
 }
 
 bool Lexer::operator_startswith(char c) {
+    if (operators.contains({c}))
+        return true;
     return std::any_of(operators.begin(),
                        operators.end(),
                        [c](std::pair<std::string, TokenType> op) {
-                           return op.first[0] ==
-                                   c;
+                           return op.first[0] == c;
                        });
 }
 
-bool Lexer::operator_startswith(std::string c) {
+bool Lexer::operator_startswith(const std::string &c) {
+    if (operators.contains(c))
+        return true;
     return std::any_of(operators.begin(),
                        operators.end(),
-                       [c](auto op) { return op.first.find(c) != std::string::npos; });
+                       [c](auto op) {
+                            if (op.first.size() < c.size())
+                                return false;
+                           return memcmp(op.first.data(), c.data(), c.size()) == 0;
+                       });
 }
 
 char Lexer::read_stream() {

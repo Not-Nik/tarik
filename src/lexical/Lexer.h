@@ -21,7 +21,7 @@ class Lexer {
 
     static bool operator_startswith(char c);
 
-    static bool operator_startswith(std::string c);
+    static bool operator_startswith(const std::string& c);
 
     char read_stream();
     char peek_stream();

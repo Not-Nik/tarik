@@ -7,9 +7,9 @@
 #ifndef TARIK_SRC_LEXICAL_TOKEN_H_
 #define TARIK_SRC_LEXICAL_TOKEN_H_
 
-#include <map>
-#include <string>
 #include <filesystem>
+#include <string>
+#include <unordered_map>
 
 enum TokenType {
     END,
@@ -62,7 +62,7 @@ enum TokenType {
     USER_TYPE
 };
 
-inline std::map<std::string, TokenType> operators = {
+inline std::unordered_map<std::string, TokenType> operators = {
     {"+", PLUS},
     {"-", MINUS},
     {"*", ASTERISK},
@@ -92,7 +92,7 @@ inline std::map<std::string, TokenType> operators = {
     {"$", DOLLAR}
 };
 
-inline std::map<std::string, TokenType> keywords = {
+inline std::unordered_map<std::string, TokenType> keywords = {
     {"fn", FUNC},
     {"return", RETURN},
     {"if", IF},
