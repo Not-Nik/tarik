@@ -24,11 +24,11 @@ class LLVM {
     bool return_type_signed_int = false;
     llvm::Function *current_function = nullptr;
     llvm::BasicBlock *last_loop_entry = nullptr, *last_loop_exit = nullptr;
-    std::map<std::string, llvm::FunctionType *> functions;
-    std::map<std::string, llvm::Function *> function_bodies;
-    std::map<std::string, std::tuple<llvm::Value *, llvm::Type *, bool>> variables;
-    std::map<std::string, llvm::StructType *> structures;
-    std::map<std::string, aast::StructStatement *> struct_statements;
+    std::unordered_map<std::string, llvm::FunctionType *> functions;
+    std::unordered_map<std::string, llvm::Function *> function_bodies;
+    std::unordered_map<std::string, std::tuple<llvm::Value *, llvm::Type *, bool>> variables;
+    std::unordered_map<std::string, llvm::StructType *> structures;
+    std::unordered_map<std::string, aast::StructStatement *> struct_statements;
 
 public:
     static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();

@@ -30,8 +30,8 @@ class Parser {
     Lexer lexer;
     Bucket *bucket;
 
-    std::map<TokenType, PrefixParselet *> prefix_parslets;
-    std::map<TokenType, InfixParselet *> infix_parslets;
+    std::unordered_map<TokenType, PrefixParselet *> prefix_parslets;
+    std::unordered_map<TokenType, InfixParselet *> infix_parslets;
 
     std::vector<std::filesystem::path> search_paths;
 
