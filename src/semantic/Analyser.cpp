@@ -24,6 +24,11 @@ std::vector<aast::Statement *> Analyser::finish() {
     res.reserve(structures.size() + declarations.size() + functions.size());
     for (auto [_, st] : structures)
         res.push_back(st);
+
+    std::sort(res.begin(), res.end(), [](aast::Statement *s1, aast::Statement *s2) {
+        return !(s1->origin > s2->origin);
+    });
+
     for (auto [_, dc] : declarations)
         res.push_back(dc);
     for (auto *fn : functions)
