@@ -7,25 +7,47 @@
 #ifndef TARIK_SRC_ERROR_ERROR_H_
 #define TARIK_SRC_ERROR_ERROR_H_
 
+#include <vector>
+
 #include "lexical/Token.h"
 
+#undef assert
+
+class Bucket;
+
 enum class ErrorKind {
+    STAGING,
     ERROR,
     WARNING,
-    NOTE
+};
+
+struct Note {
+    std::string message;
+    LexerRange origin;
 };
 
 struct Error {
     ErrorKind kind;
     std::string message;
-    LexerRange range;
+    LexerRange origin;
+    Bucket *bucket;
 
-    void print();
+    std::vector<Note> notes = {};
+
+    template <class... Args>
+    Error *note(const LexerRange &pos, std::format_string<Args...> what, Args &&... args) {
+        std::string str = std::vformat(what.get(), std::make_format_args(args...));
+        notes.emplace_back(str, pos);
+        return this;
+    }
+
+    bool assert(bool cond);
+    void print() const;
 };
 
-void verror(LexerRange pos, std::string what);
-void vwarning(LexerRange pos, std::string what);
-void vnote(LexerRange pos, std::string what);
-bool viassert(bool cond, LexerRange pos, std::string what);
+void verror(const LexerRange& pos, const std::string &what);
+void vwarning(const LexerRange & pos, const std::string & what);
+void vnote(const LexerRange & pos, const std::string & what);
+bool viassert(bool cond, const LexerRange & pos, const std::string & what);
 
 #endif //TARIK_SRC_ERROR_ERROR_H_

@@ -6,51 +6,29 @@
 
 #include "Bucket.h"
 
-void Bucket::add_error(LexerRange pos, std::string message) {
-    errors.push_back(Error {
-        ErrorKind::ERROR,
-        message,
-        pos
-    });
-    error_count++;
+Error *Bucket::clear_staging_error(LexerRange origin, std::string message, ErrorKind kind) {
+    if (staging_error.kind != ErrorKind::STAGING)
+        errors.push_back(staging_error);
+
+    return &(staging_error = Error { kind, message, std::move(origin), this });
 }
 
-void Bucket::add_warning(LexerRange pos, std::string message) {
-    errors.push_back(Error {
-        ErrorKind::WARNING,
-        message,
-        pos
-    });
-}
 
-void Bucket::add_note(LexerRange pos, std::string message) {
-    errors.push_back(Error {
-        ErrorKind::NOTE,
-        message,
-        pos
-    });
-}
-
-size_t Bucket::get_error_count() {
+size_t Bucket::get_error_count() const {
     return error_count;
 }
 
-std::vector<Error> Bucket::finish() {
+std::vector<Error> Bucket::get_errors() {
+    if (staging_error.kind != ErrorKind::STAGING)
+        errors.push_back(staging_error);
     return errors;
 }
 
-void Bucket::print_errors() const {
-    for (auto error : errors) {
-        switch (error.kind) {
-            case ErrorKind::ERROR:
-                verror(error.range, error.message);
-                break;
-            case ErrorKind::WARNING:
-                vwarning(error.range, error.message);
-                break;
-            case ErrorKind::NOTE:
-                vnote(error.range, error.message);
-                break;
-        }
+void Bucket::print_errors() {
+    if (staging_error.kind != ErrorKind::STAGING)
+        errors.push_back(staging_error);
+
+    for (const auto &error : errors) {
+        error.print();
     }
 }

@@ -43,7 +43,8 @@ std::optional<Type> Parser::type() {
 
     if (peek.id == TYPE) {
         TypeSize size = to_typesize(peek.raw);
-        bucket->iassert(size != (TypeSize) -1, peek.origin, "internal: couldn't find enum member for built-in type");
+        bucket->error(peek.origin, "internal: couldn't find enum member for built-in type")
+              ->assert(size != (TypeSize) -1);
         t = Type(size);
     } else {
         std::vector path = {peek.raw};
@@ -148,7 +149,8 @@ Parser::~Parser() {
 Token Parser::expect(TokenType raw) {
     std::string s = to_string(raw);
     Token peek = lexer.consume();
-    if (!bucket->iassert(peek.id == raw, peek.origin, "expected a {} found '{}' instead", s, peek.raw)) {
+    if (!bucket->error(peek.origin, "expected a {} found '{}' instead", s, peek.raw)
+               ->assert(peek.id == raw)) {
         while (peek.id != raw && peek.id != END) {
             peek = lexer.consume();
         }
@@ -159,11 +161,11 @@ Token Parser::expect(TokenType raw) {
 bool Parser::check_expect(TokenType raw) {
     std::string s = to_string(raw);
     Token peek = lexer.peek();
-    bool r = bucket->iassert(peek.id == raw,
-                             peek.origin,
-                             "expected a {} found '{}' instead",
-                             s,
-                             peek.raw);
+    bool r = bucket->error(peek.origin,
+                           "expected a {} found '{}' instead",
+                           s,
+                           peek.raw)
+                   ->assert(peek.id == raw);
     lexer.consume();
     return r;
 }
@@ -203,10 +205,10 @@ Expression *Parser::parse_expression(int precedence) {
     Token token = lexer.peek();
     if (token.id == END)
         return reinterpret_cast<Expression *>(-1);
-    if (!bucket->iassert(prefix_parslets.contains(token.id),
-                         token.origin,
-                         "expected expression, found '{}'",
-                         token.raw))
+    if (!bucket->error(token.origin,
+                       "expected expression, found '{}'",
+                       token.raw)
+               ->assert(prefix_parslets.contains(token.id)))
         return new EmptyExpression(token.origin);
     lexer.consume();
     PrefixParselet *prefix = prefix_parslets[token.id];
@@ -243,10 +245,11 @@ Statement *Parser::parse_statement() {
                 name = expect(NAME);
             } else {
                 // We read a type, but it's probably a function name instead
-                if (bucket->iassert(
-                    !member_of.value().is_primitive() && member_of.value().get_user().get_parts().size() == 1,
-                    member_of.value().origin,
-                    "expected function name")) {
+                if (bucket->error(member_of.value().origin,
+                                  "expected function name")
+                          ->assert(
+                              !member_of.value().is_primitive() && member_of.value().get_user().get_parts().size() ==
+                              1)) {
                     name = Token::name(member_of.value().get_user().get_parts()[0], member_of.value().origin);
                     member_of = {};
                 }
@@ -262,8 +265,8 @@ Statement *Parser::parse_statement() {
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE)
                 lexer.consume();
         } else {
-            if (member_of.has_value() && (lexer.peek().raw == "this" ||
-                (lexer.peek().id == ASTERISK && lexer.peek(1).raw == "this"))) {
+            if (member_of.has_value() &&
+                (lexer.peek().raw == "this" || (lexer.peek().id == ASTERISK && lexer.peek(1).raw == "this"))) {
                 Token this_tok = lexer.consume();
                 Type this_type = member_of.value();
                 if (this_tok.id == ASTERISK) {
@@ -284,7 +287,8 @@ Statement *Parser::parse_statement() {
                     break;
                 }
                 std::optional<Type> maybe_type = type();
-                bucket->iassert(maybe_type.has_value(), lexer.peek().origin, "exepcted type name");
+                bucket->error(lexer.peek().origin, "exepcted type name")
+                      ->assert(maybe_type.has_value());
 
                 Type arg_type = maybe_type.value_or(Type());
 
@@ -300,7 +304,8 @@ Statement *Parser::parse_statement() {
             t = Type(VOID);
         else {
             std::optional<Type> ty = type();
-            bucket->iassert(ty.has_value(), lexer.peek().origin, "exepcted type name");
+            bucket->error(lexer.peek().origin, "exepcted type name")
+                  ->assert(ty.has_value());
             t = ty.value_or(Type());
         }
 
@@ -320,9 +325,6 @@ Statement *Parser::parse_statement() {
         auto *is = new IfStatement(token.origin, parse_expression(), block());
         if (lexer.peek().id == ELSE) {
             Statement *es = parse_statement();
-            bucket->iassert(es->statement_type == ELSE_STMT,
-                            es->origin,
-                            "internal: next token is 'else', but parsed statement isn't. report this as a bug");
             is->else_statement = (ElseStatement *) es;
         }
         return is;
@@ -353,7 +355,8 @@ Statement *Parser::parse_statement() {
         while (lexer.peek().id != CURLY_CLOSE) {
             std::optional<Type> maybe_type = type();
 
-            bucket->iassert(maybe_type.has_value(), lexer.peek().origin, "expected type name");
+            bucket->error(lexer.peek().origin, "expected type name")
+                  ->assert(maybe_type.has_value());
 
             Type member_type = maybe_type.value_or(Type());
 
@@ -380,10 +383,9 @@ Statement *Parser::parse_statement() {
                 statements.pop_back();
             }
         } else {
-            bucket->iassert(false,
-                            token.origin,
-                            "tried to import '{}', but file can't be found",
-                            import_path.string());
+            bucket->error(token.origin,
+                          "tried to import '{}', but file can't be found",
+                          import_path.string());
         }
         expect(SEMICOLON);
 
@@ -425,7 +427,7 @@ Statement *Parser::parse_statement() {
         expect(SEMICOLON);
         return e;
     } else {
-        bucket->iassert(false, token.origin, "unexpected token '{}'", token.raw);
+        bucket->error(token.origin, "unexpected token '{}'", token.raw);
         lexer.consume();
         return parse_statement();
     }

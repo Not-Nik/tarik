@@ -10,47 +10,36 @@
 #include "Error.h"
 
 #include <format>
+#include <utility>
 #include <vector>
 
 class Bucket {
+    friend struct Error;
+
     std::vector<Error> errors;
     size_t error_count = 0;
 
-    void add_error(LexerRange pos, std::string message);
-    void add_warning(LexerRange pos, std::string message);
-    void add_note(LexerRange pos, std::string message);
+    Error staging_error;
+
+    Error *clear_staging_error(LexerRange origin, std::string message, ErrorKind kind);
 
 public:
     template <class... Args>
-    void error(LexerRange pos, std::format_string<Args...> what, Args &&... args) {
+    Error *error(LexerRange pos, std::format_string<Args...> what, Args &&... args) {
         std::string str = std::vformat(what.get(), std::make_format_args(args...));
-        add_error(pos, str);
+        return clear_staging_error(std::move(pos), str, ErrorKind::ERROR);
     }
 
     template <class... Args>
-    void warning(LexerRange pos, std::format_string<Args...> what, Args &&... args) {
+    Error *warning(LexerRange pos, std::format_string<Args...> what, Args &&... args) {
         std::string str = std::vformat(what.get(), std::make_format_args(args...));
-        add_warning(pos, str);
+        return clear_staging_error(std::move(pos), str, ErrorKind::WARNING);
     }
 
-    template <class... Args>
-    void note(LexerRange pos, std::format_string<Args...> what, Args &&... args) {
-        std::string str = std::vformat(what.get(), std::make_format_args(args...));
-        add_note(pos, str);
-    }
+    size_t get_error_count() const;
+    std::vector<Error> get_errors();
 
-    template <class... Args>
-    bool iassert(bool cond, LexerRange pos, std::format_string<Args...> what, Args &&... args) {
-        if (cond)
-            return true;
-        std::string str = std::vformat(what.get(), std::make_format_args(args...));
-        add_error(pos, str);
-        return false;
-    }
-
-    size_t get_error_count();
-    std::vector<Error> finish();
-    void print_errors() const;
+    void print_errors();
 };
 
 #endif //TARIK_SRC_ERROR_BUCKET_H_

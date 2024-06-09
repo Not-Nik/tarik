@@ -342,14 +342,12 @@ void Analyser::verify_return(aast::ReturnStatement *return_) {
         if (!lt->next)
             return;
         if (current_function->return_type) {
-            if (!bucket->iassert(is_within(current_function->return_type, lt->next, return_->origin),
-                                 return_->origin,
-                                 "value does not live long enough")) {
-                bucket->note(return_->value->origin,
-                             "'{}' does not live as long as the deduced return type lifetime",
-                             return_->value->print());
-                bucket->note(current_function->return_deduction, "deduced here");
-            }
+            bucket->error(return_->origin, "value does not live long enough")
+                  ->note(return_->value->origin,
+                         "'{}' does not live as long as the deduced return type lifetime",
+                         return_->value->print())
+                  ->note(current_function->return_deduction, "deduced here")
+                  ->assert(is_within(current_function->return_type, lt->next, return_->origin));
         } else {
             current_function->return_type = lt->next;
             current_function->return_deduction = return_->origin;
@@ -418,23 +416,21 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                         shorter_expression = shorter_expression->get_inner();
                     }
 
-                    if (!bucket->iassert(is_within(local_shorter, local_longer, ce->origin),
-                                         longer_expression->origin,
-                                         "value does not live long enough")) {
-                        bucket->note(shorter_expression->origin,
-                                     "'{}' should live longer than '{}',...",
-                                     longer_expression->print(),
-                                     shorter_expression->print());
+                    Error *error = bucket->error(longer_expression->origin, "value does not live long enough")
+                                         ->note(shorter_expression->origin,
+                                                "'{}' should live longer than '{}',...",
+                                                longer_expression->print(),
+                                                shorter_expression->print())
+                                         ->note(relation_origin, "...because of its usage here,...");
 
-                        bucket->note(relation_origin, "...because of its usage here,...");
-
-                        // Todo: integrate this with print_lifetime_error
-                        if (local_longer->is_local()) {
-                            auto *local_local_longer = (LocalLifetime *) local_longer;
-                            bucket->note(current_function->statement_positions[local_local_longer->death - 1],
-                                         "...but it only lives until here");
-                        }
+                    // Todo: integrate this with print_lifetime_error
+                    if (local_longer->is_local()) {
+                        auto *local_local_longer = (LocalLifetime *) local_longer;
+                        error->note(current_function->statement_positions[local_local_longer->death - 1],
+                                    "...but it only lives until here");
                     }
+
+                    error->assert(is_within(local_shorter, local_longer, ce->origin));
                 }
             }
 
@@ -496,11 +492,12 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                 right_lifetime = LocalLifetime::temporary(right_lifetime->next, statement_index);
             }
 
-            if (!bucket->iassert(is_within(left_lifetime, right_lifetime, ae->origin),
-                                 ae->right->origin,
-                                 "value does not live long enough")) {
-                print_lifetime_error(ae->left, ae->right, left_lifetime, right_lifetime);
-            }
+            if (!is_within(left_lifetime, right_lifetime, ae->origin))
+                print_lifetime_error(bucket->error(ae->right->origin, "value does not live long enough"),
+                                     ae->left,
+                                     ae->right,
+                                     left_lifetime,
+                                     right_lifetime);
 
             return LocalLifetime::static_(nullptr);
         }
@@ -573,26 +570,27 @@ bool Analyser::is_within(Lifetime *inner, Lifetime *outer, LexerRange origin, bo
     }
 }
 
-void Analyser::print_lifetime_error(aast::Expression *left,
-                                    aast::Expression *right,
-                                    Lifetime *inner,
-                                    Lifetime *outer,
-                                    bool rec) const {
+void Analyser::print_lifetime_error(Error *error,
+                                      aast::Expression *left,
+                                      aast::Expression *right,
+                                      Lifetime *inner,
+                                      Lifetime *outer,
+                                      bool rec) const {
     if (inner->is_local() && !outer->is_local())
         return;
 
     if (!inner->is_local() && outer->is_local()) {
         if (outer->is_temp()) {
-            print_lifetime_error(left, right->get_inner(), inner->next, outer->next, true);
+            print_lifetime_error(error, left, right->get_inner(), inner->next, outer->next, true);
         } else {
-            bucket->note(current_function->statement_positions[((LocalLifetime *) outer)->death - 1],
-                         "{}'{}' dies after this,...",
-                         right->expression_type == aast::CALL_EXPR ? "return value of " : "",
-                         right->print());
+            error->note(current_function->statement_positions[((LocalLifetime *) outer)->death - 1],
+                        "{}'{}' dies after this,...",
+                        right->expression_type == aast::CALL_EXPR ? "return value of " : "",
+                        right->print());
 
-            bucket->note(current_function->statement_positions.back(),
-                         "...but '{}' outlives the function",
-                         left->print());
+            error->note(current_function->statement_positions.back(),
+                        "...but '{}' outlives the function",
+                        left->print());
         }
         return;
     }
@@ -602,32 +600,32 @@ void Analyser::print_lifetime_error(aast::Expression *left,
         auto *local_b = (LocalLifetime *) outer;
 
         if (rec && local_b->is_temp()) {
-            bucket->note(current_function->statement_positions[local_a->death - 1],
-                         "'{}' dies after this,...",
-                         left->print());
+            error->note(current_function->statement_positions[local_a->death - 1],
+                        "'{}' dies after this,...",
+                        left->print());
 
-            bucket->note(current_function->statement_positions[local_b->death - 1],
-                         "...but {}'{}' takes a pointer of a temporary value which dies immediately",
-                         right->expression_type == aast::CALL_EXPR ? "the return value of " : "",
-                         right->print());
+            error->note(current_function->statement_positions[local_b->death - 1],
+                        "...but {}'{}' takes a pointer of a temporary value which dies immediately",
+                        right->expression_type == aast::CALL_EXPR ? "the return value of " : "",
+                        right->print());
             return;
         } else if (local_a->death <= local_b->last_death) {
             // todo: properly order deaths
             local_a->last_death = std::min(local_a->last_death, local_b->last_death);
         } else if (!local_b->is_temp()) {
-            bucket->note(current_function->statement_positions[local_b->death - 1],
-                         "{}'{}' dies after this,...",
-                         right->expression_type == aast::CALL_EXPR ? "return value of " : "",
-                         right->print());
+            error->note(current_function->statement_positions[local_b->death - 1],
+                        "{}'{}' dies after this,...",
+                        right->expression_type == aast::CALL_EXPR ? "return value of " : "",
+                        right->print());
 
-            bucket->note(current_function->statement_positions[local_a->death - 1],
-                         "...but '{}' lives until here",
-                         left->print());
+            error->note(current_function->statement_positions[local_a->death - 1],
+                        "...but '{}' lives until here",
+                        left->print());
             return;
         }
 
         if (local_a->next && local_b->next)
-            return print_lifetime_error(left, right->get_inner(), local_a->next, local_b->next, true);
+            print_lifetime_error(error, left, right->get_inner(), local_a->next, local_b->next, true);
     } else {
         // This is actually very reachable, but it's not implemented yet
         std::unreachable();
