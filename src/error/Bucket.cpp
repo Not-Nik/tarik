@@ -6,11 +6,15 @@
 
 #include "Bucket.h"
 
+#include <algorithm>
+
+#include <utility>
+
 Error *Bucket::clear_staging_error(LexerRange origin, std::string message, ErrorKind kind) {
     if (staging_error.kind != ErrorKind::STAGING)
         errors.push_back(staging_error);
 
-    return &(staging_error = Error { kind, message, std::move(origin), this });
+    return &(staging_error = Error {kind, std::move(message), std::move(origin), this});
 }
 
 
@@ -21,14 +25,18 @@ size_t Bucket::get_error_count() const {
 std::vector<Error> Bucket::get_errors() {
     if (staging_error.kind != ErrorKind::STAGING)
         errors.push_back(staging_error);
+
+    std::stable_sort(errors.begin(),
+                     errors.end(),
+                     [](const Error &e1, const Error &e2) {
+                         return !(e1.origin > e2.origin);
+                     });
+
     return errors;
 }
 
 void Bucket::print_errors() {
-    if (staging_error.kind != ErrorKind::STAGING)
-        errors.push_back(staging_error);
-
-    for (const auto &error : errors) {
+    for (const auto &error : get_errors()) {
         error.print();
     }
 }
