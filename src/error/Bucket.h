@@ -36,7 +36,7 @@ public:
         return clear_staging_error(std::move(pos), str, ErrorKind::WARNING);
     }
 
-    size_t get_error_count() const;
+    size_t get_error_count();
     std::vector<Error> get_errors();
 
     void print_errors();
