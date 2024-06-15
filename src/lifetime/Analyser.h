@@ -4,6 +4,8 @@
 #define TARIK_SRC_LIFETIME_ANALYSER_H_
 
 #include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "error/Bucket.h"
 #include "semantic/Analyser.h"
@@ -13,13 +15,18 @@
 namespace lifetime
 {
 struct Function {
-    std::vector<Lifetime *> arguments;
+    aast::FuncStatement *statement;
+
     Lifetime *return_type = nullptr;
     LexerRange return_deduction;
 
-    std::map<std::string, VariableState *> variables;
+    std::vector<Lifetime *> arguments;
     std::vector<LexerRange> statement_positions;
+
+    std::map<std::string, VariableState *> variables;
     std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations;
+
+    std::unordered_set<Function *> callers;
 };
 
 class Analyser {

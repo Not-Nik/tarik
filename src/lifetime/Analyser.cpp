@@ -17,6 +17,24 @@ Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
 void Analyser::analyse(const std::vector<aast::Statement *> &statements) {
     analyse_statements(statements);
     verify_statements(statements);
+
+    if (bucket->get_error_count() > 0)
+        return;
+
+    bool changed = false;
+    do {
+        for (auto [name, func] : functions) {
+            std::unordered_set<Function *> callers = func.callers;
+            func.callers.clear();
+            for (auto *caller : callers) {
+                std::size_t relation_count = caller->relations.size();
+
+                verify_function(caller->statement);
+
+                changed = changed || relation_count > caller->relations.size();
+            }
+        }
+    } while (changed);
 }
 
 void Analyser::analyse_statements(const std::vector<aast::Statement *> &statements) {
@@ -42,7 +60,6 @@ void Analyser::analyse_statement(aast::Statement *statement) {
         case aast::WHILE_STMT:
             analyse_while((aast::WhileStatement *) statement);
             break;
-            break;
         case aast::VARIABLE_STMT:
             analyse_variable((aast::VariableStatement *) statement);
             break;
@@ -52,10 +69,6 @@ void Analyser::analyse_statement(aast::Statement *statement) {
         case aast::EXPR_STMT:
             analyse_expression((aast::Expression *) statement);
             break;
-        case aast::ELSE_STMT:
-        case aast::BREAK_STMT:
-        case aast::CONTINUE_STMT:
-        case aast::STRUCT_STMT:
         default:
             break;
     }
@@ -83,7 +96,7 @@ void Analyser::analyse_scope(aast::ScopeStatement *scope, bool dont_init_vars) {
 }
 
 void Analyser::analyse_function(aast::FuncStatement *func) {
-    functions.emplace(func->path.str(), Function {});
+    functions.emplace(func->path.str(), Function {func});
 
     statement_index = 0;
     current_function = &functions.at(func->path.str());
@@ -378,6 +391,8 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
             // Get the function to be called
             Function &function = functions.at(ce->callee->print());
 
+            function.callers.emplace(current_function);
+
             auto find_argument_index = [&function](const Lifetime *pointer) -> std::pair<int, int> {
                 int index = 0;
                 for (auto &argument : function.arguments) {
@@ -571,11 +586,11 @@ bool Analyser::is_within(Lifetime *inner, Lifetime *outer, LexerRange origin, bo
 }
 
 void Analyser::print_lifetime_error(Error *error,
-                                      aast::Expression *left,
-                                      aast::Expression *right,
-                                      Lifetime *inner,
-                                      Lifetime *outer,
-                                      bool rec) const {
+                                    aast::Expression *left,
+                                    aast::Expression *right,
+                                    Lifetime *inner,
+                                    Lifetime *outer,
+                                    bool rec) const {
     if (inner->is_local() && !outer->is_local())
         return;
 
