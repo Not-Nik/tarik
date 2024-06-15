@@ -12,11 +12,12 @@
 #include <format>
 #include <utility>
 #include <vector>
+#include <unordered_set>
 
 class Bucket {
     friend struct Error;
 
-    std::vector<Error> errors;
+    std::unordered_set<Error> errors;
     size_t error_count = 0;
 
     Error staging_error;

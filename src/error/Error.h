@@ -24,6 +24,8 @@ enum class ErrorKind {
 struct Note {
     std::string message;
     LexerRange origin;
+
+    bool operator==(const Note &) const = default;
 };
 
 struct Error {
@@ -43,6 +45,18 @@ struct Error {
 
     bool assert(bool cond);
     void print() const;
+
+    bool operator==(const Error &other) const = default;
+};
+
+template <>
+struct std::hash<Note> {
+    std::size_t operator()(const Note &s) const noexcept;
+};
+
+template <>
+struct std::hash<Error> {
+    std::size_t operator()(const Error &s) const noexcept;
 };
 
 void verror(const LexerRange& pos, const std::string &what);

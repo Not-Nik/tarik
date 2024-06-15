@@ -64,3 +64,13 @@ bool LexerRange::operator>(const LexerRange &other) const {
 
     return (this->p + this->length) > other.p + other.length;
 }
+
+std::size_t std::hash<LexerRange>::operator()(const LexerRange &r) const noexcept {
+    std::size_t seed = 0;
+    seed += std::hash<int>{}(r.l);
+    seed += std::hash<int>{}(r.p);
+    seed += std::hash<int>{}(r.length);
+    seed += std::hash<std::filesystem::path>{}(r.filename);
+
+    return seed;
+}

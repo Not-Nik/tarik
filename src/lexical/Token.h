@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 enum TokenType {
     END,
@@ -131,6 +132,7 @@ struct LexerPos {
     LexerPos &operator--();
     // range from pos1 to pos2
     LexerRange operator-(LexerPos other);
+    bool operator==(const LexerPos &other) const = default;
 };
 
 struct LexerRange : LexerPos {
@@ -140,6 +142,12 @@ struct LexerRange : LexerPos {
 
     LexerRange operator+(const LexerRange &other) const;
     bool operator>(const LexerRange &other) const;
+    bool operator==(const LexerRange &other) const = default;
+};
+
+template <>
+struct std::hash<LexerRange> {
+    std::size_t operator()(const LexerRange &s) const noexcept;
 };
 
 class Token {
@@ -147,11 +155,10 @@ public:
     explicit Token(TokenType id, std::string s, LexerRange lp)
         : id(id),
           raw(std::move(s)),
-          origin(std::move(lp)) {
-    }
+          origin(std::move(lp)) {}
 
     static Token name(std::string s, LexerRange lp = {}) {
-        return Token(NAME, s, lp);
+        return Token(NAME, std::move(s), lp);
     }
 
     TokenType id;

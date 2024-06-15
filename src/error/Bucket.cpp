@@ -12,7 +12,7 @@
 
 Error *Bucket::clear_staging_error(LexerRange origin, std::string message, ErrorKind kind) {
     if (staging_error.kind != ErrorKind::STAGING) {
-        errors.push_back(staging_error);
+        errors.emplace(staging_error);
         if (staging_error.kind == ErrorKind::ERROR)
             error_count++;
     }
@@ -28,13 +28,15 @@ size_t Bucket::get_error_count() {
 std::vector<Error> Bucket::get_errors() {
     clear_staging_error({}, {}, ErrorKind::STAGING);
 
-    std::stable_sort(errors.begin(),
-                     errors.end(),
+    std::vector<Error> error_vec(errors.begin(), errors.end());
+
+    std::stable_sort(error_vec.begin(),
+                     error_vec.end(),
                      [](const Error &e1, const Error &e2) {
                          return !(e1.origin > e2.origin);
                      });
 
-    return errors;
+    return error_vec;
 }
 
 void Bucket::print_errors() {

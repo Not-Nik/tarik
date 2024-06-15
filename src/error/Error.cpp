@@ -12,7 +12,7 @@
 
 bool Error::assert(bool cond) {
     if (!cond) {
-        bucket->errors.push_back(*this);
+        bucket->errors.emplace(*this);
         bucket->error_count += kind == ErrorKind::ERROR ? 1 : 0;
     }
 
@@ -30,6 +30,29 @@ void Error::print() const {
 
     for (auto &note : notes)
         vnote(note.origin, note.message);
+}
+
+
+std::size_t std::hash<Note>::operator()(const Note &e) const noexcept {
+    std::size_t seed = 0;
+    seed += std::hash<std::string>{}(e.message);
+    seed += std::hash<LexerRange>{}(e.origin);
+
+    return seed;
+}
+
+std::size_t std::hash<Error>::operator()(const Error &e) const noexcept {
+    std::size_t seed = 0;
+    seed += std::hash<ErrorKind>{}(e.kind);
+    seed += std::hash<std::string>{}(e.message);
+    seed += std::hash<LexerRange>{}(e.origin);
+    seed += std::hash<Bucket*>{}(e.bucket);
+
+    for (const auto &note : e.notes) {
+        seed += std::hash<Note>{}(note);
+    }
+
+    return seed;
 }
 
 void verror(const LexerRange &pos, const std::string &what) {
