@@ -12,7 +12,7 @@ namespace lifetime
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
     : bucket(bucket),
       structures(analyser->structures),
-      declarations(analyser->declarations) {}
+      declarations(analyser->func_decls) {}
 
 void Analyser::analyse(const std::vector<aast::Statement *> &statements) {
     analyse_statements(statements);

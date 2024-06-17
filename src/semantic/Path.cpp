@@ -74,6 +74,12 @@ Path Path::create_member(std::string name) const {
     return Path(member_parts);
 }
 
+Path Path::create_member(Token token) const {
+    std::vector member_parts = parts;
+    member_parts.push_back(token.raw);
+    return Path(member_parts, token.origin);
+}
+
 Path Path::get_parent() const {
     std::vector parent_parts = parts;
     parent_parts.pop_back();

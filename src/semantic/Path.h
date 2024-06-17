@@ -35,6 +35,8 @@ public:
     [[nodiscard]] bool contains_pointer() const;
 
     Path create_member(std::string name) const;
+    Path create_member(Token token) const;
+
     Path get_parent() const;
     Path with_prefix(Path prefix) const;
 

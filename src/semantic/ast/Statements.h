@@ -214,13 +214,28 @@ public:
     }
 };
 
-class StructStatement : public Statement {
+class StructDeclareStatement : public Statement {
 public:
     Path path;
+
+    StructDeclareStatement(const LexerRange &o, Path p, StmtType type = STRUCT_DECL_STMT)
+        : Statement(type, o), path(std::move(p)) {}
+
+    Type get_type(Path prefix = Path({})) const {
+        return Type(path.with_prefix(std::move(prefix)), 0);
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return "struct " + path.str() + ";";
+    }
+};
+
+class StructStatement : public StructDeclareStatement {
+public:
     std::vector<VariableStatement *> members;
 
     StructStatement(const LexerRange &o, Path p, std::vector<VariableStatement *> m)
-        : Statement(STRUCT_STMT, o), path(std::move(p)), members(std::move(m)) {}
+        : StructDeclareStatement(o, std::move(p), STRUCT_STMT), members(std::move(m)) {}
 
     ~StructStatement() override {
         for (auto *m: members) {
@@ -234,10 +249,6 @@ public:
                 return true;
         }
         return false;
-    }
-
-    Type get_type(Path prefix = Path({})) {
-        return Type(path.with_prefix(prefix), 0);
     }
 
     Type get_member_type(const std::string &n) {

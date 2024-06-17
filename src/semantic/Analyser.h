@@ -27,7 +27,9 @@ class Analyser {
 
     std::vector<aast::FuncStatement *> functions;
     std::unordered_map<Path, aast::StructStatement *> structures;
-    std::unordered_map<Path, aast::FuncDeclareStatement *> declarations;
+
+    std::unordered_map<Path, aast::StructDeclareStatement *> struct_decls;
+    std::unordered_map<Path, aast::FuncDeclareStatement *> func_decls;
 
     std::unordered_map<std::string, Macro *> macros;
 
@@ -98,13 +100,13 @@ protected:
     std::optional<Type> verify_type(Type type);
 
     bool does_always_return(ast::ScopeStatement *scope);
-    bool is_var_declared(std::string name);
-    bool is_func_declared(Path path);
-    bool is_struct_declared(Path path);
+    bool is_var_declared(std::string name) const;
+    bool is_func_declared(Path path) const;
+    bool is_struct_declared(Path path) const;
 
-    SemanticVariable *get_variable(std::string name);
-    aast::FuncDeclareStatement *get_func_decl(Path path);
-    aast::StructStatement *get_struct(Path path);
+    SemanticVariable *get_variable(std::string name) const;
+    aast::FuncDeclareStatement *get_func_decl(Path path) const;
+    aast::StructStatement *get_struct(Path path) const;
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_

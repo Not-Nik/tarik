@@ -21,7 +21,7 @@ Analyser::Analyser(Bucket *bucket)
 
 std::vector<aast::Statement *> Analyser::finish() {
     std::vector<aast::Statement *> res;
-    res.reserve(structures.size() + declarations.size() + functions.size());
+    res.reserve(structures.size() + func_decls.size() + functions.size());
     for (auto [_, st] : structures)
         res.push_back(st);
 
@@ -31,7 +31,7 @@ std::vector<aast::Statement *> Analyser::finish() {
                   return !(s1->origin > s2->origin);
               });
 
-    for (auto [_, dc] : declarations)
+    for (auto [_, dc] : func_decls)
         res.push_back(dc);
     for (auto *fn : functions)
         res.push_back(fn);
@@ -51,7 +51,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
             if (func->member_of.has_value()) {
                 name = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
             } else {
-                name = Path({func->name.raw}, func->name.origin).with_prefix(path);
+                name = path.create_member(func->name);
             }
 
             std::vector<aast::VariableStatement *> arguments;
@@ -60,12 +60,18 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
                 arguments.push_back(new aast::VariableStatement(var->origin, var->type, var->name));
             }
 
-            declarations.emplace(name,
+            func_decls.emplace(name,
                                  new aast::FuncDeclareStatement(statement->origin,
                                                                 name,
                                                                 func->return_type,
                                                                 arguments,
                                                                 func->var_arg));
+        } else if (statement->statement_type == ast::STRUCT_STMT) {
+            auto *struct_ = (ast::StructStatement *) statement;
+
+            Path name = path.create_member(struct_->name);
+
+            struct_decls.emplace(name, new aast::StructDeclareStatement(statement->origin, name));
         } else if (statement->statement_type == ast::IMPORT_STMT) {
             auto *import_ = (ast::ImportStatement *) statement;
 
@@ -239,7 +245,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
     if (func->member_of.has_value()) {
         func_path = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
     } else {
-        func_path = Path({func->name.raw}, func->name.origin).with_prefix(path);
+        func_path = path.create_member(func->name);
     }
 
     for (auto *registered : functions) {
@@ -417,9 +423,9 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
     if (type.value().is_primitive()) {
         sem = new PrimitiveVariable(new_var);
     } else {
-        if (!is_struct_declared(type.value().get_user()))
-            return {};
         aast::StructStatement *st = get_struct(type.value().get_user());
+        if (!st)
+            return {};
 
         std::vector<SemanticVariable *> member_states;
         for (auto *member : st->members) {
@@ -497,14 +503,14 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
     auto *new_struct = new aast::StructStatement(struct_->origin, struct_path, members);
     structures.emplace(struct_path, new_struct);
 
-    path = path.create_member(struct_->name.raw);
+    path = path.create_member(struct_->name);
     // fixme: this throws additional errors if member types are invalid
     std::optional constructor = verify_function(ctor);
     path = path.get_parent();
 
     bucket->error(struct_->origin, "internal: failed to verify constructor for '{}'", struct_path.str())
           ->assert(constructor.has_value());
-    declarations.emplace(constructor_path,
+    func_decls.emplace(constructor_path,
                          new aast::FuncDeclareStatement(ctor->origin,
                                                         constructor_path,
                                                         ctor->return_type,
@@ -939,10 +945,10 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
                ->assert(!left.value()->type.is_primitive()))
         return {};
     Path struct_name = left.value()->type.get_user();
+    aast::StructStatement *st = get_struct(struct_name);
     if (!bucket->error(left.value()->origin, "undefined structure '{}'", left.value()->type.str())
-               ->assert(is_struct_declared(struct_name)))
+               ->assert(st))
         return {};
-    aast::StructStatement *s = get_struct(struct_name);
 
     if (!bucket->error(mae->right->origin, "expected identifier")
                ->assert(mae->right->expression_type == ast::NAME_EXPR))
@@ -954,10 +960,10 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
                        "no member named '{}' in '{}'",
                        member_name,
                        left.value()->type.str())
-               ->assert(s->has_member(member_name)))
+               ->assert(st->has_member(member_name)))
         return {};
 
-    Type member_type = s->get_member_type(member_name);
+    Type member_type = st->get_member_type(member_name);
 
     if (left.value()->flattens_to_member_access()) {
         auto *name = new ast::NameExpression(mae->origin,
@@ -1124,7 +1130,7 @@ bool Analyser::does_always_return(ast::ScopeStatement *scope) {
     return false;
 }
 
-bool Analyser::is_var_declared(std::string name) {
+bool Analyser::is_var_declared(std::string name) const {
     if (variable_names.contains(name))
         name = variable_names.at(name);
     return std::find_if(variables.begin(),
@@ -1134,19 +1140,23 @@ bool Analyser::is_var_declared(std::string name) {
                         }) != variables.end();
 }
 
-bool Analyser::is_func_declared(Path path) {
+bool Analyser::is_func_declared(Path path) const {
     if (path.is_global()) {
-        return declarations.contains(path);
+        return func_decls.contains(path);
     }
 
-    return declarations.contains(path) || declarations.contains(path.with_prefix(this->path));
+    return func_decls.contains(path) || func_decls.contains(path.with_prefix(this->path));
 }
 
-bool Analyser::is_struct_declared(Path path) {
-    return structures.contains(path);
+bool Analyser::is_struct_declared(Path path) const {
+    if (path.is_global()) {
+        return struct_decls.contains(path);
+    }
+
+    return struct_decls.contains(path) || struct_decls.contains(path.with_prefix(this->path));
 }
 
-SemanticVariable *Analyser::get_variable(std::string name) {
+SemanticVariable *Analyser::get_variable(std::string name) const {
     if (variable_names.contains(name))
         name = variable_names.at(name);
     return *std::find_if(variables.begin(),
@@ -1156,28 +1166,28 @@ SemanticVariable *Analyser::get_variable(std::string name) {
                          });
 }
 
-aast::FuncDeclareStatement *Analyser::get_func_decl(Path path) {
+aast::FuncDeclareStatement *Analyser::get_func_decl(Path path) const {
     if (path.is_global()) {
-        return declarations[path];
+        return func_decls.contains(path) ? func_decls.at(path) : nullptr;
     }
 
     Path local = path.with_prefix(this->path);
 
-    if (declarations.contains(local))
-        return declarations[local];
+    if (func_decls.contains(local))
+        return func_decls.contains(local) ? func_decls.at(local) : nullptr;
 
-    return declarations[path];
+    return func_decls.contains(path) ? func_decls.at(path) : nullptr;
 }
 
-aast::StructStatement *Analyser::get_struct(Path path) {
+aast::StructStatement *Analyser::get_struct(Path path) const {
     if (path.is_global()) {
-        return structures.at(path);
+        return structures.contains(path) ? structures.at(path) : nullptr;
     }
 
     Path local = path.with_prefix(this->path);
 
     if (structures.contains(local))
-        return structures.at(local);
+        return structures.contains(local) ? structures.at(local) : nullptr;
 
-    return structures.at(path);
+    return structures.contains(path) ? structures.at(path) : nullptr;
 }
