@@ -468,11 +468,6 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
     }
 
     std::vector<aast::VariableStatement *> members;
-    std::vector<ast::VariableStatement *> ctor_args;
-    std::vector<ast::Statement *> body;
-
-    auto *instance = new ast::VariableStatement(struct_->origin, struct_->get_type(path), Token::name("_instance"));
-    body.push_back(instance);
 
     StructureNode *node = structure_graph.get_node(get_struct_decl(struct_path));
 
@@ -496,52 +491,11 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
             }
 
             members.push_back(new aast::VariableStatement(member->origin, member_type.value(), member->name));
-            ctor_args.push_back(new ast::VariableStatement(struct_->origin, member_type.value(), member->name));
-
-            auto *member_access = new ast::BinaryExpression(struct_->origin,
-                                                            ast::MEM_ACC,
-                                                            new ast::NameExpression(
-                                                                struct_->origin,
-                                                                "_instance"),
-                                                            new ast::NameExpression(
-                                                                struct_->origin,
-                                                                member->name.raw));
-
-            body.push_back(new ast::BinaryExpression(struct_->origin,
-                                                     ast::ASSIGN,
-                                                     member_access,
-                                                     new ast::NameExpression(
-                                                         struct_->origin,
-                                                         member->name.raw)));
         }
     }
-    body.push_back(new ast::ReturnStatement(struct_->origin, new ast::NameExpression(struct_->origin, "_instance")));
-
-    Path constructor_path = struct_path.create_member("$constructor");
-    auto *ctor = new ast::FuncStatement(struct_->origin,
-                                        Token::name("$constructor", struct_->origin),
-                                        struct_->get_type(path),
-                                        ctor_args,
-                                        body,
-                                        false,
-                                        {});
 
     auto *new_struct = new aast::StructStatement(struct_->origin, struct_path, members);
     structures.emplace(struct_path, new_struct);
-
-    path = path.create_member(struct_->name);
-    // fixme: this throws additional errors if member types are invalid
-    std::optional constructor = verify_function(ctor);
-    path = path.get_parent();
-
-    bucket->error(struct_->origin, "internal: failed to verify constructor for '{}'", struct_path.str())
-          ->assert(constructor.has_value());
-    func_decls.emplace(constructor_path,
-                       new aast::FuncDeclareStatement(ctor->origin,
-                                                      constructor_path,
-                                                      ctor->return_type,
-                                                      constructor.value()->arguments,
-                                                      ctor->var_arg));
 
     return new_struct;
 }
@@ -635,11 +589,6 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
         ce->callee->expression_type == ast::NAME_EXPR || ce->callee->expression_type == ast::PATH_EXPR ||
         (ce->callee->expression_type == ast::PREFIX_EXPR && gl->prefix_type == ast::GLOBAL)) {
         func_path = Path::from_expression(ce->callee);
-
-        if (is_struct_declared(func_path)) {
-            func_path = func_path.create_member("$constructor");
-            // TODO: check if there exists a function with the same name
-        }
     } else if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
         auto *mem = (ast::BinaryExpression *) ce->callee;
         std::optional callee_parent = verify_expression(mem->left);
@@ -741,9 +690,8 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                           func->arguments[0]->type.str())
                   ->assert(func->arguments[0]->type.is_assignable_from(arguments[0]->type));
             arg_offset = 1;
-        } else if (func->path.get_parts().back() != "$constructor")
-            // constructors are in the scope of a struct, but aren't called by a member expression. Otherwise
-            // function is static, but we always put in the this argument
+        } else
+            // function is static, but we always put in the `this` argument
             arguments.erase(arguments.begin());
     }
 
@@ -761,7 +709,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                ->assert(func->var_arg || ce->arguments.size() <= func->arguments.size() - arg_offset))
         return {};
 
-    for (int i = arg_offset; i < std::min(func->arguments.size(), ce->arguments.size() + arg_offset); i++) {
+    for (size_t i = arg_offset; i < std::min(func->arguments.size(), ce->arguments.size() + arg_offset); i++) {
         aast::VariableStatement *arg_var = func->arguments[i];
         ast::Expression *arg = ce->arguments[i - arg_offset];
 
