@@ -22,14 +22,8 @@ Analyser::Analyser(Bucket *bucket)
 std::vector<aast::Statement *> Analyser::finish() {
     std::vector<aast::Statement *> res;
     res.reserve(structures.size() + func_decls.size() + functions.size());
-    for (auto [_, st] : structures)
-        res.push_back(st);
-
-    std::sort(res.begin(),
-              res.end(),
-              [](aast::Statement *s1, aast::Statement *s2) {
-                  return !(s1->origin > s2->origin);
-              });
+    for (auto decl : structure_graph.flatten())
+        res.push_back(structures[decl->path]);
 
     for (auto [_, dc] : func_decls)
         res.push_back(dc);
@@ -61,11 +55,11 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
             }
 
             func_decls.emplace(name,
-                                 new aast::FuncDeclareStatement(statement->origin,
-                                                                name,
-                                                                func->return_type,
-                                                                arguments,
-                                                                func->var_arg));
+                               new aast::FuncDeclareStatement(statement->origin,
+                                                              name,
+                                                              func->return_type,
+                                                              arguments,
+                                                              func->var_arg));
         } else if (statement->statement_type == ast::STRUCT_STMT) {
             auto *struct_ = (ast::StructStatement *) statement;
 
@@ -261,10 +255,11 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
     for (auto *arg : func->arguments) {
         std::optional sem = verify_variable(arg);
 
-        if (sem.has_value())
+        if (sem.has_value()) {
             sem.value()->state()->make_definitely_defined(arg->origin);
 
-        arguments.push_back(sem.value()->var);
+            arguments.push_back(sem.value()->var);
+        }
     }
 
     if (func->var_arg)
@@ -424,6 +419,8 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
         sem = new PrimitiveVariable(new_var);
     } else {
         aast::StructStatement *st = get_struct(type.value().get_user());
+
+        // TODO: variables that use not-yet-defined structures, are just not verified at all
         if (!st)
             return {};
 
@@ -461,6 +458,8 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
     auto *instance = new ast::VariableStatement(struct_->origin, struct_->get_type(path), Token::name("_instance"));
     body.push_back(instance);
 
+    StructureNode *node = structure_graph.get_node(get_struct_decl(struct_path));
+
     for (auto *member : struct_->members) {
         bucket->error(member->name.origin, "duplicate member '{}'", member->name.raw)
               ->assert(std::find(registered.begin(), registered.end(), member->name.raw) == registered.end());
@@ -469,6 +468,17 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
 
         registered.push_back(member->name.raw);
         if (member_type.has_value()) {
+            if (!member_type.value().is_primitive()) {
+                StructureNode *field_node = structure_graph.get_node(get_struct_decl(member_type.value().get_user()));
+
+                if (!bucket->error(member_type.value().origin,
+                                   "'{}' recursively includes '{}'",
+                                   member_type.value().str(),
+                                   struct_->name.raw)
+                           ->assert(node->add_field(field_node)))
+                    return {};
+            }
+
             members.push_back(new aast::VariableStatement(member->origin, member_type.value(), member->name));
             ctor_args.push_back(new ast::VariableStatement(struct_->origin, member_type.value(), member->name));
 
@@ -511,11 +521,11 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
     bucket->error(struct_->origin, "internal: failed to verify constructor for '{}'", struct_path.str())
           ->assert(constructor.has_value());
     func_decls.emplace(constructor_path,
-                         new aast::FuncDeclareStatement(ctor->origin,
-                                                        constructor_path,
-                                                        ctor->return_type,
-                                                        constructor.value()->arguments,
-                                                        ctor->var_arg));
+                       new aast::FuncDeclareStatement(ctor->origin,
+                                                      constructor_path,
+                                                      ctor->return_type,
+                                                      constructor.value()->arguments,
+                                                      ctor->var_arg));
 
     return new_struct;
 }
@@ -1190,4 +1200,17 @@ aast::StructStatement *Analyser::get_struct(Path path) const {
         return structures.contains(local) ? structures.at(local) : nullptr;
 
     return structures.contains(path) ? structures.at(path) : nullptr;
+}
+
+aast::StructDeclareStatement *Analyser::get_struct_decl(Path path) const {
+    if (path.is_global()) {
+        return struct_decls.contains(path) ? struct_decls.at(path) : nullptr;
+    }
+
+    Path local = path.with_prefix(this->path);
+
+    if (struct_decls.contains(local))
+        return struct_decls.contains(local) ? struct_decls.at(local) : nullptr;
+
+    return struct_decls.contains(path) ? struct_decls.at(path) : nullptr;
 }

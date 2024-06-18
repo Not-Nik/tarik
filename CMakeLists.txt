@@ -41,6 +41,8 @@ add_executable(tarik
         src/semantic/Macro.h
         src/semantic/Path.cpp
         src/semantic/Path.h
+        src/semantic/Structures.cpp
+        src/semantic/Structures.h
         src/semantic/Variables.cpp
         src/semantic/Variables.h
         src/syntactic/Parser.cpp

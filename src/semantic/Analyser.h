@@ -12,6 +12,7 @@
 #include <unordered_set>
 
 #include "Macro.h"
+#include "Structures.h"
 #include "error/Bucket.h"
 #include "semantic/ast/Statements.h"
 #include "syntactic/ast/Statements.h"
@@ -44,6 +45,7 @@ class Analyser {
     Type return_type = Type(VOID);
 
     Bucket *bucket;
+    StructureGraph structure_graph;
 
 public:
     Analyser(Bucket *bucket);
@@ -107,6 +109,7 @@ protected:
     SemanticVariable *get_variable(std::string name) const;
     aast::FuncDeclareStatement *get_func_decl(Path path) const;
     aast::StructStatement *get_struct(Path path) const;
+    aast::StructDeclareStatement *get_struct_decl(Path path) const;
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_
