@@ -62,6 +62,7 @@ protected:
     };
 
     void analyse_import(const std::vector<ast::Statement *> &statements);
+    void verify_structs(const std::vector<ast::Statement *> &statements);
 
     std::optional<aast::Statement *> verify_statement(ast::Statement *statement);
     std::optional<std::vector<aast::Statement *>> verify_statements(const std::vector<ast::Statement *> &statements);

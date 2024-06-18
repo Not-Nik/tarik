@@ -34,6 +34,7 @@ std::vector<aast::Statement *> Analyser::finish() {
 
 void Analyser::analyse(const std::vector<ast::Statement *> &statements) {
     analyse_import(statements);
+    verify_structs(statements);
     verify_statements(statements);
 }
 
@@ -75,6 +76,21 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
         }
     }
 }
+
+void Analyser::verify_structs(const std::vector<ast::Statement *> &statements) {
+    for (auto *statement : statements) {
+        if (statement->statement_type == ast::STRUCT_STMT) {
+            verify_struct((ast::StructStatement *) statement);
+        } else if (statement->statement_type == ast::IMPORT_STMT) {
+            auto *import_ = (ast::ImportStatement *) statement;
+
+            path = path.create_member(import_->name);
+            verify_structs(import_->block);
+            path = path.get_parent();
+        }
+    }
+}
+
 
 std::optional<aast::Statement *> Analyser::verify_statement(ast::Statement *statement) {
     bool allowed = true;
@@ -129,7 +145,8 @@ std::optional<aast::Statement *> Analyser::verify_statement(ast::Statement *stat
             break;
         }
         case ast::STRUCT_STMT:
-            return verify_struct((ast::StructStatement *) statement);
+            break;
+            //return verify_struct((ast::StructStatement *) statement);
         case ast::IMPORT_STMT:
             return verify_import((ast::ImportStatement *) statement);
         case ast::EXPR_STMT:
@@ -418,11 +435,10 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
     if (type.value().is_primitive()) {
         sem = new PrimitiveVariable(new_var);
     } else {
-        aast::StructStatement *st = get_struct(type.value().get_user());
-
-        // TODO: variables that use not-yet-defined structures, are just not verified at all
-        if (!st)
+        if (!is_struct_declared(type.value().get_user()))
             return {};
+
+        aast::StructStatement *st = get_struct(type.value().get_user());
 
         std::vector<SemanticVariable *> member_states;
         for (auto *member : st->members) {
@@ -951,19 +967,21 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
     if (!left.has_value())
         return {};
 
-    if (!bucket->error(left.value()->origin, "'{}' is not a structure", left.value()->type.str())
-               ->assert(!left.value()->type.is_primitive()))
-        return {};
-    Path struct_name = left.value()->type.get_user();
-    aast::StructStatement *st = get_struct(struct_name);
-    if (!bucket->error(left.value()->origin, "undefined structure '{}'", left.value()->type.str())
-               ->assert(st))
-        return {};
-
     if (!bucket->error(mae->right->origin, "expected identifier")
                ->assert(mae->right->expression_type == ast::NAME_EXPR))
         return {};
 
+    if (!bucket->error(left.value()->origin, "'{}' is not a structure", left.value()->type.str())
+               ->assert(!left.value()->type.is_primitive()))
+        return {};
+
+    Path struct_name = left.value()->type.get_user();
+
+    if (!bucket->error(left.value()->origin, "undefined structure '{}'", left.value()->type.str())
+               ->assert(is_struct_declared(struct_name)))
+        return {};
+
+    aast::StructStatement *st = get_struct(struct_name);
     std::string member_name = ((ast::NameExpression *) mae->right)->name;
 
     if (!bucket->error(mae->right->origin,
