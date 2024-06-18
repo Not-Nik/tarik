@@ -34,7 +34,7 @@ public:
     [[nodiscard]] bool is_global() const;
     [[nodiscard]] bool contains_pointer() const;
 
-    Path create_member(std::string name) const;
+    Path create_member(const std::string &name) const;
     Path create_member(Token token) const;
 
     Path get_parent() const;

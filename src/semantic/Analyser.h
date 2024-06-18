@@ -66,7 +66,7 @@ protected:
 
     std::optional<aast::Statement *> verify_statement(ast::Statement *statement);
     std::optional<std::vector<aast::Statement *>> verify_statements(const std::vector<ast::Statement *> &statements);
-    std::optional<aast::ScopeStatement *> verify_scope(ast::ScopeStatement *scope, std::string name = "");
+    std::optional<aast::ScopeStatement *> verify_scope(ast::ScopeStatement *scope, const std::string &name = "");
     std::optional<aast::FuncStatement *> verify_function(ast::FuncStatement *func);
     std::optional<aast::IfStatement *> verify_if(ast::IfStatement *if_);
     std::optional<aast::ElseStatement *> verify_else(ast::ElseStatement *else_);
@@ -82,11 +82,11 @@ protected:
                                                         bool member_acc = false);
 
     std::optional<aast::Expression *> verify_call_expression(ast::Expression *expression,
-                                                                 AccessType access = NORMAL,
-                                                                 bool member_acc = false);
+                                                             AccessType access = NORMAL,
+                                                             bool member_acc = false);
     std::optional<aast::Expression *> verify_macro_expression(ast::Expression *expression,
-                                                                 AccessType access = NORMAL,
-                                                                 bool member_acc = false);
+                                                              AccessType access = NORMAL,
+                                                              bool member_acc = false);
     std::optional<aast::BinaryExpression *> verify_binary_expression(ast::Expression *expression,
                                                                      AccessType access = NORMAL,
                                                                      bool member_acc = false);
@@ -97,20 +97,20 @@ protected:
                                                                      AccessType access = NORMAL,
                                                                      bool member_acc = false);
     std::optional<aast::NameExpression *> verify_name_expression(ast::Expression *expression,
-                                                                     AccessType access = NORMAL,
-                                                                     bool member_acc = false);
+                                                                 AccessType access = NORMAL,
+                                                                 bool member_acc = false);
 
     std::optional<Type> verify_type(Type type);
 
     bool does_always_return(ast::ScopeStatement *scope);
     bool is_var_declared(std::string name) const;
-    bool is_func_declared(Path path) const;
-    bool is_struct_declared(Path path) const;
+    bool is_func_declared(const Path &path) const;
+    bool is_struct_declared(const Path &path) const;
 
     SemanticVariable *get_variable(std::string name) const;
-    aast::FuncDeclareStatement *get_func_decl(Path path) const;
-    aast::StructStatement *get_struct(Path path) const;
-    aast::StructDeclareStatement *get_struct_decl(Path path) const;
+    aast::FuncDeclareStatement *get_func_decl(const Path &path) const;
+    aast::StructStatement *get_struct(const Path &path) const;
+    aast::StructDeclareStatement *get_struct_decl(const Path &path) const;
 };
 
 #endif //TARIK_SRC_SEMANTIC_ANALYSER_H_

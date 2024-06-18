@@ -51,6 +51,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
 
             std::vector<aast::VariableStatement *> arguments;
 
+            arguments.reserve(func->arguments.size());
             for (auto *var : func->arguments) {
                 arguments.push_back(new aast::VariableStatement(var->origin, var->type, var->name));
             }
@@ -90,7 +91,6 @@ void Analyser::verify_structs(const std::vector<ast::Statement *> &statements) {
         }
     }
 }
-
 
 std::optional<aast::Statement *> Analyser::verify_statement(ast::Statement *statement) {
     bool allowed = true;
@@ -146,7 +146,7 @@ std::optional<aast::Statement *> Analyser::verify_statement(ast::Statement *stat
         }
         case ast::STRUCT_STMT:
             break;
-            //return verify_struct((ast::StructStatement *) statement);
+        //return verify_struct((ast::StructStatement *) statement);
         case ast::IMPORT_STMT:
             return verify_import((ast::ImportStatement *) statement);
         case ast::EXPR_STMT:
@@ -167,7 +167,7 @@ std::optional<std::vector<aast::Statement *>> Analyser::verify_statements(
     return res;
 }
 
-std::optional<aast::ScopeStatement *> Analyser::verify_scope(ast::ScopeStatement *scope, std::string name) {
+std::optional<aast::ScopeStatement *> Analyser::verify_scope(ast::ScopeStatement *scope, const std::string &name) {
     size_t old_var_count = variables.size();
 
     for (auto *var : variables) {
@@ -673,7 +673,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
     if (is_struct_declared(func_parent) ||
         to_typesize(func_parent.str()) != (TypeSize) -1 ||
         func->path.contains_pointer()) {
-        if (func->arguments.size() > 0 && func->arguments[0]->name.raw == "this") {
+        if (!func->arguments.empty() && func->arguments[0]->name.raw == "this") {
             if (func->arguments[0]->type.pointer_level == arguments[0]->type.pointer_level + 1)
                 arguments[0] = new aast::PrefixExpression(arguments[0]->origin,
                                                           arguments[0]->type.get_pointer_to(),
@@ -691,7 +691,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                   ->assert(func->arguments[0]->type.is_assignable_from(arguments[0]->type));
             arg_offset = 1;
         } else
-            // function is static, but we always put in the `this` argument
+        // function is static, but we always put in the `this` argument
             arguments.erase(arguments.begin());
     }
 
@@ -1116,7 +1116,7 @@ bool Analyser::is_var_declared(std::string name) const {
                         }) != variables.end();
 }
 
-bool Analyser::is_func_declared(Path path) const {
+bool Analyser::is_func_declared(const Path &path) const {
     if (path.is_global()) {
         return func_decls.contains(path);
     }
@@ -1124,7 +1124,7 @@ bool Analyser::is_func_declared(Path path) const {
     return func_decls.contains(path) || func_decls.contains(path.with_prefix(this->path));
 }
 
-bool Analyser::is_struct_declared(Path path) const {
+bool Analyser::is_struct_declared(const Path &path) const {
     if (path.is_global()) {
         return struct_decls.contains(path);
     }
@@ -1142,7 +1142,7 @@ SemanticVariable *Analyser::get_variable(std::string name) const {
                          });
 }
 
-aast::FuncDeclareStatement *Analyser::get_func_decl(Path path) const {
+aast::FuncDeclareStatement *Analyser::get_func_decl(const Path &path) const {
     if (path.is_global()) {
         return func_decls.contains(path) ? func_decls.at(path) : nullptr;
     }
@@ -1155,7 +1155,7 @@ aast::FuncDeclareStatement *Analyser::get_func_decl(Path path) const {
     return func_decls.contains(path) ? func_decls.at(path) : nullptr;
 }
 
-aast::StructStatement *Analyser::get_struct(Path path) const {
+aast::StructStatement *Analyser::get_struct(const Path &path) const {
     if (path.is_global()) {
         return structures.contains(path) ? structures.at(path) : nullptr;
     }
@@ -1168,7 +1168,7 @@ aast::StructStatement *Analyser::get_struct(Path path) const {
     return structures.contains(path) ? structures.at(path) : nullptr;
 }
 
-aast::StructDeclareStatement *Analyser::get_struct_decl(Path path) const {
+aast::StructDeclareStatement *Analyser::get_struct_decl(const Path &path) const {
     if (path.is_global()) {
         return struct_decls.contains(path) ? struct_decls.at(path) : nullptr;
     }

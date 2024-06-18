@@ -30,7 +30,9 @@ std::vector<std::string> flatten_path(ast::Expression *path) {
     return {};
 }
 
-Path::Path(std::vector<std::string> parts, LexerRange origin) : parts(parts), origin(origin) {
+Path::Path(std::vector<std::string> parts, LexerRange origin)
+    : parts(parts),
+      origin(origin) {
     if (!this->parts.empty() && this->parts.front().empty()) {
         this->parts.erase(this->parts.begin());
         global = true;
@@ -68,7 +70,7 @@ bool Path::contains_pointer() const {
     return std::find(parts.begin(), parts.end(), "*") != parts.end();
 }
 
-Path Path::create_member(std::string name) const {
+Path Path::create_member(const std::string &name) const {
     std::vector member_parts = parts;
     member_parts.push_back(name);
     return Path(member_parts);
@@ -99,4 +101,3 @@ bool Path::operator==(const Path &other) const {
 bool Path::operator!=(const Path &other) const {
     return parts != other.parts;
 }
-
