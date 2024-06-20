@@ -256,6 +256,36 @@ public:
     }
 };
 
+class StructInitExpression : public Expression {
+public:
+    Expression *type;
+    std::vector<Expression *> fields;
+
+    StructInitExpression(const LexerRange &lp, Expression *t, std::vector<Expression *> f)
+        : Expression(STRUCT_INIT_EXPR, lp),
+          type(t),
+          fields(std::move(f)) {}
+
+    ~StructInitExpression() override {
+        for (auto *arg : fields) {
+            delete arg;
+        }
+        delete type;
+    }
+
+    [[nodiscard]] std::string print() const override {
+        std::string arg_string;
+        for (auto *arg : fields) {
+            arg_string += arg->print() + ", ";
+        }
+        if (!arg_string.empty()) {
+            arg_string.pop_back();
+            arg_string.pop_back();
+        }
+        return type->print() + " [ " + arg_string + " ]";
+    }
+};
+
 class CallExpression : public Expression {
 public:
     Expression *callee;

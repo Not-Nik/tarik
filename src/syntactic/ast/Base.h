@@ -82,6 +82,7 @@ enum ExprType {
     EMPTY_EXPR,
     CAST_EXPR,
     LIST_EXPR,
+    STRUCT_INIT_EXPR,
 };
 
 class Expression : public Statement {

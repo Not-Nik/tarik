@@ -17,7 +17,7 @@ Precedence Parser::get_precedence() {
         return static_cast<Precedence>(-1);
     }
     if (infix_parslets.count(lexer.peek().id) > 0)
-        return infix_parslets[lexer.peek().id]->get_type();
+        return infix_parslets.at(lexer.peek().id)->get_type();
     return static_cast<Precedence>(0);
 }
 
@@ -119,6 +119,7 @@ void Parser::init_parslets() {
 
     // Call
     infix_parslets.emplace(PAREN_OPEN, new CallParselet());
+    infix_parslets.emplace(BRACKET_OPEN, new StructInitParselet());
 
     // Assign expressions
     infix_parslets.emplace(EQUAL, new AssignParselet());
@@ -211,15 +212,18 @@ Expression *Parser::parse_expression(int precedence) {
                ->assert(prefix_parslets.contains(token.id)))
         return new EmptyExpression(token.origin);
     lexer.consume();
-    PrefixParselet *prefix = prefix_parslets[token.id];
+    PrefixParselet *prefix = prefix_parslets.at(token.id);
 
     Expression *left = prefix->parse(this, token);
 
     while (precedence < get_precedence()) {
-        token = lexer.consume();
+        token = lexer.peek();
 
-        InfixParselet *infix = infix_parslets[token.id];
-        left = infix->parse(this, token, left);
+        InfixParselet *infix = infix_parslets.at(token.id);
+        if (infix->can_parse(left))
+            left = infix->parse(this, lexer.consume(), left);
+        else
+            break;
     }
 
     return left;

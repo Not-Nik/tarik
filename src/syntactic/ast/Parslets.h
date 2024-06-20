@@ -22,6 +22,7 @@ class InfixParselet {
 public:
     virtual ast::Expression *parse(Parser *parser, const Token &, ast::Expression *left) = 0;
 
+    virtual bool can_parse(ast::Expression *left) { return true; }
     virtual ast::Precedence get_type() { return static_cast<ast::Precedence>(0); }
     virtual ~InfixParselet() = default;
 };
@@ -100,6 +101,31 @@ class AssignParselet : public InfixParselet {
 
     ast::Precedence get_type() override {
         return ast::ASSIGNMENT;
+    }
+};
+
+class StructInitParselet : public InfixParselet {
+    ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
+        std::vector<ast::Expression *> args;
+
+        while (!parser->is_peek(END) && !parser->is_peek(BRACKET_CLOSE)) {
+            args.push_back(parser->parse_expression());
+
+            if (!parser->is_peek(COMMA))
+                break;
+            parser->expect(COMMA);
+        }
+        LexerRange origin = left->origin + parser->expect(BRACKET_CLOSE).origin;
+
+        return new ast::StructInitExpression(origin, left, args);
+    }
+
+    bool can_parse(ast::Expression *left) override {
+        return left->expression_type == ast::NAME_EXPR || left->expression_type == ast::PATH_EXPR;
+    }
+
+    ast::Precedence get_type() override {
+        return ast::CALL;
     }
 };
 
