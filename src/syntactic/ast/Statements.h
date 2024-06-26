@@ -83,7 +83,10 @@ public:
 
     [[nodiscard]] std::string print() const override {
         std::string then_string = ScopeStatement::print();
-        return "if " + condition->print() + " " + then_string;
+        std::string if_string = "if " + condition->print() + " " + then_string;
+        if (else_statement)
+            if_string += " " + else_statement->print();
+        return if_string;
     }
 };
 
