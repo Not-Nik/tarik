@@ -30,14 +30,26 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string res = "{\n";
+        std::string res = "{";
         for (auto *st: block) {
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
                 t.push_back(';');
-            res += t + "\n";
+            // Add four spaces to the start of every line
+            size_t index = 0;
+            while (true) {
+                /* Locate the substring to replace. */
+                index = t.find('\n', index);
+                if (index == std::string::npos) break;
+
+                /* Make the replacement. */
+                t.replace(index, 1, "\n    ");
+
+                /* Advance index forward so the next iteration doesn't pick it up as well. */
+                index += 3;
+            }
+            res += "\n    " + t;
         }
-        res.pop_back();
         res += "\n}";
         return res;
     }
@@ -267,9 +279,9 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        std::string res = "struct " + path.str() + " {\n";
+        std::string res = "struct " + path.str() + " {";
         for (auto *mem: members) {
-            res += mem->print() + "\n";
+            res += "\n    " + mem->print();
         }
         return res + "\n}";
     }
