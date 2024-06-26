@@ -17,8 +17,8 @@
 #include "Variables.h"
 
 Analyser::Analyser(Bucket *bucket)
-    : bucket(bucket),
-      macros({{"as!", new CastMacro()}}) {}
+    : macros({{"as!", new CastMacro()}}),
+      bucket(bucket){}
 
 std::vector<aast::Statement *> Analyser::finish() {
     std::vector<aast::Statement *> res;

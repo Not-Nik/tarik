@@ -179,7 +179,7 @@ LexerRange CompoundState::get_moved_pos() const {
     return pos;
 }
 
-VariableState CompoundState::operator||(const VariableState &other) const {
+VariableState CompoundState::operator||(const VariableState &) const {
     return *this;
 }
 

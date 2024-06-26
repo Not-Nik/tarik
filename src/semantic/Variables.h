@@ -21,6 +21,7 @@ protected:
 
 public:
     VariableState() = default;
+    virtual ~VariableState() = default;
 
     virtual void make_definitely_defined(LexerRange pos);
     virtual void make_definitely_read();
@@ -96,8 +97,8 @@ public:
           compound_state(states) {}
 
     VariableState *state() override;
-    void pop_state() override {};
-    void push_state(VariableState _state) override {};
+    void pop_state() override {}
+    void push_state(VariableState) override {}
 };
 
 #endif //TARIK_SRC_SEMANTIC_VARIABLES_H

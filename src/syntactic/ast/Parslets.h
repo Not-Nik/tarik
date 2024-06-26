@@ -22,7 +22,7 @@ class InfixParselet {
 public:
     virtual ast::Expression *parse(Parser *parser, const Token &, ast::Expression *left) = 0;
 
-    virtual bool can_parse(ast::Expression *left) { return true; }
+    virtual bool can_parse(ast::Expression *) { return true; }
     virtual ast::Precedence get_type() { return static_cast<ast::Precedence>(0); }
     virtual ~InfixParselet() = default;
 };
@@ -105,7 +105,7 @@ class AssignParselet : public InfixParselet {
 };
 
 class StructInitParselet : public InfixParselet {
-    ast::Expression *parse(Parser *parser, const Token &token, ast::Expression *left) override {
+    ast::Expression *parse(Parser *parser, const Token &, ast::Expression *left) override {
         std::vector<ast::Expression *> args;
 
         while (!parser->is_peek(END) && !parser->is_peek(BRACKET_CLOSE)) {

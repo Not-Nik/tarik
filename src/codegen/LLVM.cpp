@@ -506,6 +506,27 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
         case aast::INT_EXPR: {
             auto *ie = (aast::IntExpression *) expression;
             size_t width = std::max(8, roundUp((size_t) std::bit_width((size_t) ie->n), size_t(8)));
+
+            if (ie->n >= 0) {
+                if (width == 8)
+                    ie->type = Type(U8);
+                else if (width == 16)
+                    ie->type = Type(U16);
+                else if (width == 32)
+                    ie->type = Type(U32);
+                else
+                    ie->type = Type(U64);
+            } else {
+                if (width == 8)
+                    ie->type = Type(I8);
+                else if (width == 16)
+                    ie->type = Type(I16);
+                else if (width == 32)
+                    ie->type = Type(I32);
+                else
+                    ie->type = Type(I64);
+            }
+
             return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
         }
         case aast::REAL_EXPR: {

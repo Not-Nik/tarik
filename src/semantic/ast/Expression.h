@@ -184,7 +184,7 @@ public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryExpression(const LexerRange &lp, const Type &type, BinOpType bot, Expression *l, Expression *r)
+    BinaryExpression(const LexerRange &, const Type &type, BinOpType bot, Expression *l, Expression *r)
         : Expression(to_expr_type(bot), l->origin + r->origin, type),
           bin_op_type(bot),
           left(l),

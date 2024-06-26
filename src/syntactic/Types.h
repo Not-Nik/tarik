@@ -106,7 +106,7 @@ public:
     Type()
         : type(VOID) {
         pointer_level = 0;
-    };
+    }
 
     explicit Type(TypeSize ts, int pl = 0)
         : type(ts),
