@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <ranges>
 
 #include "error/Error.h"
 #include "Path.h"
@@ -415,18 +416,7 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
         return {};
 
     Token name = var->name;
-    // If the name was used before, i.e. in a previous, separate scope
-    if (used_names.contains(name.raw)) {
-        // Find a replacement that wasn't
-        for (std::size_t i = 1; i < std::numeric_limits<std::size_t>::max(); i++) {
-            if (!used_names.contains(name.raw + std::to_string(i))) {
-                name.raw += std::to_string(i);
-                break;
-            }
-        }
-    }
-    // Store that we used the name before
-    used_names.emplace(name.raw);
+    name.raw = get_unused_var_name(name.raw);
     variable_names[var->name.raw] = name.raw;
 
     auto *new_var = new aast::VariableStatement(var->origin, type.value(), name);
@@ -564,7 +554,79 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 
                 return new aast::CastExpression(expression->origin, expr.value(), ce->target_type);
             }
-            return {};
+            break;
+        }
+        case ast::STRUCT_INIT_EXPR: {
+            auto *sie = (ast::StructInitExpression *) expression;
+
+            if (auto *gl = (ast::PrefixExpression *) sie->type;
+                sie->type->expression_type != ast::NAME_EXPR && sie->type->expression_type != ast::PATH_EXPR &&
+                (sie->type->expression_type != ast::PREFIX_EXPR || gl->prefix_type != ast::GLOBAL)) {
+                bucket->error(sie->type->origin, "expected type name");
+                return {};
+            }
+
+            std::optional type = verify_type(Type(Path::from_expression(sie->type)));
+            if (!type.has_value())
+                return {};
+
+            if (type->is_primitive()) {
+                // todo: pretend the primitve type has a single field of its own type
+                return {};
+            }
+
+            aast::StructStatement *struct_ = get_struct(type->get_user());
+
+            if (!bucket->error(sie->origin, "initialiser is missing fields")
+                       ->assert(sie->fields.size() >= struct_->members.size()) ||
+                !bucket->error(sie->origin, "initialiser has extraneous fields")
+                       ->assert(sie->fields.size() <= struct_->members.size())) {
+                return {};
+            }
+
+            Token var_name = Token::name("_" + type.value().func_name() + "_init");
+            var_name.raw = get_unused_var_name(var_name.raw);
+
+            auto *var = new aast::VariableStatement(sie->origin, type.value(), var_name);
+
+            std::vector<aast::Statement *> prelude = {var};
+            prelude.reserve(sie->fields.size() + 1);
+
+            for (auto [field, member] : std::views::zip(sie->fields, struct_->members)) {
+                std::optional field_verified = verify_expression(field);
+                if (!field_verified.has_value())
+                    continue;
+
+                if (member->type.is_float() && field_verified.value()->expression_type == aast::INT_EXPR) {
+                    auto *real = new aast::RealExpression(field_verified.value()->origin,
+                                                          (double) ((aast::IntExpression *) field_verified.value())->n);
+                    delete field_verified.value();
+                    field_verified = real;
+                }
+
+                if (bucket->error(field->origin,
+                                  "trying to initialise field of type '{}' with value of type '{}'",
+                                  member->type.str(),
+                                  field_verified.value()->type.str())
+                          ->assert(member->type.is_assignable_from(field_verified.value()->type))) {
+                    auto *init_name = new aast::NameExpression(field->origin, type.value(), var_name.raw);
+                    auto *member_name = new aast::NameExpression(field->origin, Type(), member->name.raw);
+
+                    auto *member_access = new aast::BinaryExpression(field->origin,
+                                                                     member->type,
+                                                                     aast::MEM_ACC,
+                                                                     init_name,
+                                                                     member_name);
+                    auto *assignment = new aast::BinaryExpression(field->origin,
+                                                                  member->type,
+                                                                  aast::ASSIGN,
+                                                                  member_access,
+                                                                  field_verified.value());
+                    prelude.push_back(assignment);
+                }
+            }
+
+            return new aast::NameExpression(sie->origin, type.value(), var_name.raw, prelude);
         }
         default:
             // todo: do more analysis here:
@@ -573,8 +635,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             bucket->error(expression->origin, "internal: unexpected, unhandled type of expression");
     }
 
-    return
-            {};
+    return {};
 }
 
 std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expression *expression,
@@ -790,7 +851,6 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
 
     return verify_expression(macro->apply(ce, ce->arguments));
 }
-
 
 std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     ast::Expression *expression,
@@ -1091,6 +1151,23 @@ std::optional<Type> Analyser::verify_type(Type type) {
         type.set_user(path);
     }
     return type;
+}
+
+std::string Analyser::get_unused_var_name(const std::string &candidate) {
+    std::string name = candidate;
+    // If the name was used before, i.e. in a previous, separate scope
+    if (used_names.contains(name)) {
+        // Find a replacement that wasn't
+        for (std::size_t i = 1; i < std::numeric_limits<std::size_t>::max(); i++) {
+            if (!used_names.contains(name + std::to_string(i))) {
+                name += std::to_string(i);
+                break;
+            }
+        }
+    }
+    // Store that we used the name before
+    used_names.emplace(name);
+    return name;
 }
 
 bool Analyser::does_always_return(ast::ScopeStatement *scope) {

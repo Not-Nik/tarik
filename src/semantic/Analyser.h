@@ -101,6 +101,7 @@ protected:
                                                                  bool member_acc = false);
 
     std::optional<Type> verify_type(Type type);
+    std::string get_unused_var_name(const std::string &candidate);
 
     bool does_always_return(ast::ScopeStatement *scope);
     bool is_var_declared(std::string name) const;
