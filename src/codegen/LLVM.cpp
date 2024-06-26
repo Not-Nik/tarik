@@ -169,8 +169,8 @@ void LLVM::generate_function(aast::FuncStatement *func) {
 
     auto it = func->arguments.begin();
     for (auto &arg : llvm_func->args()) {
+        arg.setName((*it)->name.raw);
         if ((*it)->written_to) {
-            arg.setName((*it)->name.raw);
             auto arg_var = builder.CreateAlloca(arg.getType(), 0u, nullptr, "stack_" + (*it)->name.raw);
             builder.CreateStore(&arg, arg_var);
             variables.emplace((*it)->name.raw, std::make_tuple(arg_var, arg.getType(), false));
