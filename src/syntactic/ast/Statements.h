@@ -9,6 +9,8 @@
 
 #include <map>
 #include <numeric>
+#include <utility>
+#include <utility>
 #include <vector>
 
 #include "Base.h"
@@ -32,7 +34,7 @@ public:
 
     [[nodiscard]] std::string print() const override {
         std::string res = "{";
-        for (auto *st: block) {
+        for (auto *st : block) {
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
                 t.push_back(';');
@@ -41,7 +43,8 @@ public:
             while (true) {
                 /* Locate the substring to replace. */
                 index = t.find('\n', index);
-                if (index == std::string::npos) break;
+                if (index == std::string::npos)
+                    break;
 
                 /* Make the replacement. */
                 t.replace(index, 1, "\n    ");
@@ -117,7 +120,7 @@ public:
     Expression *condition;
 
     explicit WhileStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(WHILE_STMT, o + cond->origin, block),
+        : ScopeStatement(WHILE_STMT, o + cond->origin, std::move(block)),
           condition(cond) {}
 
     ~WhileStatement() override {
@@ -157,7 +160,7 @@ public:
 
     VariableStatement(const LexerRange &o, Type t, Token n)
         : Statement(VARIABLE_STMT, o),
-          type(t),
+          type(std::move(t)),
           name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
@@ -180,12 +183,12 @@ public:
                   std::vector<Statement *> b,
                   bool va,
                   std::optional<Type> mo)
-        : ScopeStatement(FUNC_STMT, o, b),
+        : ScopeStatement(FUNC_STMT, o, std::move(b)),
           name(std::move(n)),
-          return_type(ret),
+          return_type(std::move(ret)),
           arguments(std::move(args)),
           var_arg(va),
-          member_of(mo) {}
+          member_of(std::move(mo)) {}
 
     ~FuncStatement() override {
         for (auto *arg : arguments) {
@@ -229,7 +232,7 @@ public:
           members(std::move(m)) {}
 
     ~StructStatement() override {
-        for (auto *m : members) {
+        for (const auto *m : members) {
             delete m;
         }
     }
@@ -242,7 +245,7 @@ public:
         return false;
     }
 
-    Type get_type(Path path = Path({})) {
+    Type get_type(const Path &path = Path({})) {
         return Type(path.create_member(this->name.raw), 0);
     }
 

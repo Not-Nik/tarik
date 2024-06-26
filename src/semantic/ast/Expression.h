@@ -7,6 +7,8 @@
 #ifndef TARIK_SRC_SEMANTIC_EXPRESSIONS_EXPRESSION_H_
 #define TARIK_SRC_SEMANTIC_EXPRESSIONS_EXPRESSION_H_
 
+#include <utility>
+
 #include "Base.h"
 #include "syntactic/Types.h"
 
@@ -16,7 +18,7 @@ class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(const LexerRange &lp, Type type, std::string n, std::vector<Statement *> p = {})
+    explicit NameExpression(const LexerRange &lp, const Type &type, std::string n, std::vector<Statement *> p = {})
         : Expression(NAME_EXPR, lp, type, p),
           name(std::move(n)) {}
 
@@ -51,7 +53,7 @@ class PrimitiveExpression : public Expression {
 public:
     PrimitiveType n;
 
-    PrimitiveExpression(LexerRange lp, PrimitiveType n)
+    PrimitiveExpression(const LexerRange &lp, PrimitiveType n)
         : Expression(expr_type, lp, Type(size, pointer_level)),
           n(n) {}
 
@@ -82,6 +84,8 @@ inline std::string to_string(PrefixType pt) {
             return "*";
         case LOG_NOT:
             return "!";
+        default:
+            std::unreachable();
     }
 }
 
@@ -90,8 +94,8 @@ public:
     PrefixType prefix_type;
     Expression *operand;
 
-    explicit PrefixExpression(const LexerRange &lp, Type type, PrefixType pt, Expression *op)
-        : Expression(PREFIX_EXPR, lp, type),
+    explicit PrefixExpression(const LexerRange &lp, const Type &type, PrefixType pt, Expression *op)
+        : Expression(PREFIX_EXPR, lp, std::move(type)),
           prefix_type(pt),
           operand(op) {}
 
@@ -180,7 +184,7 @@ public:
     BinOpType bin_op_type;
     Expression *left, *right;
 
-    BinaryExpression(const LexerRange &lp, Type type, BinOpType bot, Expression *l, Expression *r)
+    BinaryExpression(const LexerRange &lp, const Type &type, BinOpType bot, Expression *l, Expression *r)
         : Expression(to_expr_type(bot), l->origin + r->origin, type),
           bin_op_type(bot),
           left(l),
@@ -210,7 +214,7 @@ class CastExpression : public Expression {
 public:
     Expression *expression;
 
-    CastExpression(const LexerRange &lp, Expression *expr, Type target_type)
+    CastExpression(const LexerRange &lp, const Type &target_type, Expression *expr)
         : Expression(CAST_EXPR, lp, target_type),
           expression(expr) {}
 
@@ -228,7 +232,7 @@ public:
     Expression *callee;
     std::vector<Expression *> arguments;
 
-    CallExpression(const LexerRange &lp, Type type, Expression *c, std::vector<Expression *> args)
+    CallExpression(const LexerRange &lp, const Type &type, Expression *c, std::vector<Expression *> args)
         : Expression(CALL_EXPR, lp, type),
           callee(c),
           arguments(std::move(args)) {}

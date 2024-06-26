@@ -295,7 +295,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
                                                         func_path,
                                                         return_type.value(),
                                                         arguments,
-                                                        block,
+                                                        std::move(block),
                                                         func->var_arg));
 
             return functions.back();
@@ -323,11 +323,11 @@ std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
 
         std::vector block = std::move(scope.value()->block);
         delete scope.value();
-        auto new_if = new aast::IfStatement(if_->origin, condition.value(), block);
+        auto new_if = new aast::IfStatement(if_->origin, condition.value(), std::move(block));
 
         if (if_->else_statement && else_.has_value()) {
-            new_if->else_statement = new aast::ElseStatement(if_->else_statement->origin, else_.value()->block);
-            else_.value()->block.clear();
+            new_if->else_statement = new aast::ElseStatement(if_->else_statement->origin,
+                                                             std::move(else_.value()->block));
             delete else_.value();
         } else {
             return {};
@@ -385,7 +385,7 @@ std::optional<aast::WhileStatement *> Analyser::verify_while(ast::WhileStatement
 
         std::vector block = std::move(scope.value()->block);
         delete scope.value();
-        return new aast::WhileStatement(while_->origin, condition.value(), block);
+        return new aast::WhileStatement(while_->origin, condition.value(), std::move(block));
     } else {
         return {};
     }
@@ -552,7 +552,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                                 expr.value()->type.str());
                 error->assert(expr.value()->type.is_primitive() && ce->target_type.is_primitive());
 
-                return new aast::CastExpression(expression->origin, expr.value(), ce->target_type);
+                return new aast::CastExpression(expression->origin, ce->target_type, expr.value());
             }
             break;
         }

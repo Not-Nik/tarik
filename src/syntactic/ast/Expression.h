@@ -7,6 +7,8 @@
 #ifndef TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
 #define TARIK_SRC_SYNTACTIC_EXPRESSIONS_EXPRESSION_H_
 
+#include <utility>
+
 #include "Base.h"
 #include "syntactic/Types.h"
 
@@ -245,7 +247,7 @@ public:
     CastExpression(const LexerRange &lp, Expression *expr, Type tt)
         : Expression(CAST_EXPR, lp),
           expression(expr),
-          target_type(tt) {}
+          target_type(std::move(tt)) {}
 
     ~CastExpression() override {
         delete expression;

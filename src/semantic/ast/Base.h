@@ -8,6 +8,7 @@
 #define TARIK_SRC_SEMANTIC_EXPRESSIONS_BASE_H_
 
 #include <string>
+#include <utility>
 
 #include "lexical/Lexer.h"
 #include "syntactic/Types.h"
@@ -76,10 +77,10 @@ public:
     Type type;
     std::vector<Statement *> prelude;
 
-    explicit Expression(ExprType t, const LexerRange &lp, Type type, std::vector<Statement *> p = {})
+    explicit Expression(ExprType t, const LexerRange &lp, const Type &type, std::vector<Statement *> p = {})
         : Statement(EXPR_STMT, lp),
           type(type),
-          prelude(p) {
+          prelude(std::move(p)) {
         expression_type = t;
     }
 

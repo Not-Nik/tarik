@@ -8,6 +8,7 @@
 #define TARIK_SRC_SEMANTIC_EXPRESSIONS_STATEMENTS_H_
 
 #include <map>
+#include <utility>
 #include <vector>
 
 #include "Base.h"
@@ -21,17 +22,18 @@ public:
     std::vector<Statement *> block;
 
     ScopeStatement(StmtType t, const LexerRange &o, std::vector<Statement *> b)
-        : Statement(t, o), block(std::move(b)) {}
+        : Statement(t, o),
+          block(std::move(b)) {}
 
     ~ScopeStatement() override {
-        for (auto *st: block) {
+        for (auto *st : block) {
             delete st;
         }
     }
 
     [[nodiscard]] std::string print() const override {
         std::string res = "{";
-        for (auto *st: block) {
+        for (auto *st : block) {
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
                 t.push_back(';');
@@ -40,7 +42,8 @@ public:
             while (true) {
                 /* Locate the substring to replace. */
                 index = t.find('\n', index);
-                if (index == std::string::npos) break;
+                if (index == std::string::npos)
+                    break;
 
                 /* Make the replacement. */
                 t.replace(index, 1, "\n    ");
@@ -58,8 +61,7 @@ public:
 class ElseStatement : public ScopeStatement {
 public:
     explicit ElseStatement(const LexerRange &o, std::vector<Statement *> block)
-        : ScopeStatement(ELSE_STMT, o, std::move(block)) {
-    }
+        : ScopeStatement(ELSE_STMT, o, std::move(block)) {}
 
     [[nodiscard]] std::string print() const override {
         std::string then_string = ScopeStatement::print();
@@ -73,8 +75,8 @@ public:
     ElseStatement *else_statement = nullptr;
 
     IfStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(IF_STMT, o, std::move(block)), condition(cond) {
-    }
+        : ScopeStatement(IF_STMT, o, std::move(block)),
+          condition(cond) {}
 
     ~IfStatement() override {
         delete condition;
@@ -96,8 +98,8 @@ public:
     Expression *value;
 
     explicit ReturnStatement(const LexerRange &o, Expression *val)
-        : Statement(RETURN_STMT, o), value(val) {
-    }
+        : Statement(RETURN_STMT, o),
+          value(val) {}
 
     ~ReturnStatement() override {
         delete value;
@@ -117,8 +119,8 @@ public:
     Expression *condition;
 
     explicit WhileStatement(const LexerRange &o, Expression *cond, std::vector<Statement *> block)
-        : ScopeStatement(WHILE_STMT, o, block), condition(cond) {
-    }
+        : ScopeStatement(WHILE_STMT, o, std::move(block)),
+          condition(cond) {}
 
     ~WhileStatement() override {
         delete condition;
@@ -157,7 +159,9 @@ public:
     bool written_to = false;
 
     VariableStatement(const LexerRange &o, Type t, Token n)
-        : Statement(VARIABLE_STMT, o), type(t), name(std::move(n)) {}
+        : Statement(VARIABLE_STMT, o),
+          type(std::move(t)),
+          name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
         return type.str() + " " + name.raw + ";";
@@ -172,11 +176,14 @@ public:
     bool var_arg;
 
     FuncStCommon(Path p, Type ret, std::vector<VariableStatement *> args, bool va)
-        : path(std::move(p)), return_type(ret), arguments(std::move(args)), var_arg(va) {}
+        : path(std::move(p)),
+          return_type(std::move(ret)),
+          arguments(std::move(args)),
+          var_arg(va) {}
 
     [[nodiscard]] std::string head() const {
         std::string res = "fn " + path.str() + "(";
-        for (auto *arg: arguments) {
+        for (auto *arg : arguments) {
             res += arg->type.str() + " " + arg->name.raw + ", ";
         }
         if (res.back() != '(')
@@ -186,10 +193,11 @@ public:
 
     [[nodiscard]] std::string signature() const {
         std::string res = "(";
-        for (auto *arg: arguments) {
+        for (auto *arg : arguments) {
             res += arg->type.str() + ", ";
         }
-        if (res.back() != '(') res = res.substr(0, res.size() - 2);
+        if (res.back() != '(')
+            res = res.substr(0, res.size() - 2);
         return res + ") " + return_type.str();
     }
 };
@@ -201,7 +209,8 @@ public:
                          Type ret,
                          std::vector<VariableStatement *> args,
                          bool var_arg)
-        : Statement(FUNC_DECL_STMT, o), FuncStCommon(std::move(p), ret, args, var_arg) {}
+        : Statement(FUNC_DECL_STMT, o),
+          FuncStCommon(std::move(p), std::move(ret), std::move(args), var_arg) {}
 
     [[nodiscard]] std::string print() const override {
         return head();
@@ -216,10 +225,11 @@ public:
                   std::vector<VariableStatement *> args,
                   std::vector<Statement *> b,
                   bool var_arg)
-        : ScopeStatement(FUNC_STMT, o, std::move(b)), FuncStCommon(std::move(p), ret, std::move(args), var_arg) {}
+        : ScopeStatement(FUNC_STMT, o, std::move(b)),
+          FuncStCommon(std::move(p), std::move(ret), std::move(args), var_arg) {}
 
     ~FuncStatement() override {
-        for (auto *arg: arguments) {
+        for (auto *arg : arguments) {
             delete arg;
         }
     }
@@ -234,7 +244,8 @@ public:
     Path path;
 
     StructDeclareStatement(const LexerRange &o, Path p, StmtType type = STRUCT_DECL_STMT)
-        : Statement(type, o), path(std::move(p)) {}
+        : Statement(type, o),
+          path(std::move(p)) {}
 
     Type get_type(Path prefix = Path({})) const {
         return Type(path.with_prefix(std::move(prefix)), 0);
@@ -250,16 +261,17 @@ public:
     std::vector<VariableStatement *> members;
 
     StructStatement(const LexerRange &o, Path p, std::vector<VariableStatement *> m)
-        : StructDeclareStatement(o, std::move(p), STRUCT_STMT), members(std::move(m)) {}
+        : StructDeclareStatement(o, std::move(p), STRUCT_STMT),
+          members(std::move(m)) {}
 
     ~StructStatement() override {
-        for (auto *m: members) {
+        for (auto *m : members) {
             delete m;
         }
     }
 
     bool has_member(const std::string &n) {
-        for (auto *mem: members) {
+        for (auto *mem : members) {
             if (mem->name.raw == n)
                 return true;
         }
@@ -267,7 +279,7 @@ public:
     }
 
     Type get_member_type(const std::string &n) {
-        for (auto *mem: members) {
+        for (auto *mem : members) {
             if (mem->name.raw == n)
                 return mem->type;
         }
@@ -276,14 +288,15 @@ public:
 
     unsigned int get_member_index(const std::string &n) {
         for (size_t i = 0; i < members.size(); i++) {
-            if (members[i]->name.raw == n) return i;
+            if (members[i]->name.raw == n)
+                return i;
         }
         return -1;
     }
 
     [[nodiscard]] std::string print() const override {
         std::string res = "struct " + path.str() + " {";
-        for (auto *mem: members) {
+        for (auto *mem : members) {
             res += "\n    " + mem->print();
         }
         return res + "\n}";
@@ -295,7 +308,8 @@ public:
     std::string name;
 
     ImportStatement(const LexerRange &o, std::string n, std::vector<Statement *> s)
-        : ScopeStatement(IMPORT_STMT, o, std::move(s)), name(std::move(n)) {}
+        : ScopeStatement(IMPORT_STMT, o, std::move(s)),
+          name(std::move(n)) {}
 };
 } // namespace ast
 

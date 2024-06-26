@@ -89,10 +89,6 @@ class Expression : public Statement {
 public:
     ExprType expression_type;
 
-    Expression()
-        : Statement(),
-          expression_type(NAME_EXPR) {}
-
     explicit Expression(ExprType t, const LexerRange &lp)
         : Statement(EXPR_STMT, lp) { expression_type = t; }
 };
