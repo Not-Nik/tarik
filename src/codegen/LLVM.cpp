@@ -363,7 +363,8 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             llvm::Value *left = generate_expression(ce->left), *right = generate_expression(ce->right);
             bool unsigned_int = ce->left->type.is_unsigned_int() || ce->right->type.is_unsigned_int();
             // After validation, implicit casts are never from float to integer or vice versa
-            llvm::Type *result_type = make_llvm_type(ce->left->type.get_result(ce->right->type));
+            Type rt = ce->left->type.get_result(ce->right->type);
+            llvm::Type *result_type = make_llvm_type(rt);
             bool fp = result_type->isFloatingPointTy();
 
             // signed_int parameter doesn't matter, because we never cast from float to int or vice versa implicitly
@@ -573,11 +574,12 @@ std::tuple<llvm::Value *, llvm::Type *, bool> LLVM::get_var_on_stack(std::string
 }
 
 llvm::Type *LLVM::make_llvm_type(const Type &t) {
-    llvm::Type *res;
+    llvm::Type *res = nullptr;
     if (t.is_primitive()) {
         switch (t.get_primitive()) {
             case U8:
             case I8:
+            case STR:
                 res = llvm::Type::getInt8Ty(context);
                 break;
             case U16:

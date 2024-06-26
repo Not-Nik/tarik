@@ -28,7 +28,8 @@ enum TypeSize : std::uint8_t {
     U64,
     F32,
     F64,
-    BOOL
+    BOOL,
+    STR
 };
 
 inline TypeSize to_typesize(const std::string &s) {
@@ -56,6 +57,8 @@ inline TypeSize to_typesize(const std::string &s) {
         return F64;
     if (s == "bool")
         return BOOL;
+    if (s == "str")
+        return STR;
     if (s == "void")
         return VOID;
     return (TypeSize) -1;
@@ -86,6 +89,8 @@ inline std::string to_string(const TypeSize &ts) {
         return "f64";
     if (ts == BOOL)
         return "bool";
+    if (ts == STR)
+        return "str";
     if (ts == VOID)
         return "void";
     return "";
