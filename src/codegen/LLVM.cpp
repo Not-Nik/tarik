@@ -103,6 +103,7 @@ int LLVM::write_file(const std::string &to, Config config) {
 }
 
 void LLVM::generate_statement(aast::Statement *statement, bool is_last) {
+
     switch (statement->statement_type) {
         case aast::SCOPE_STMT:
             generate_scope((aast::ScopeStatement *) statement, is_last);
@@ -322,6 +323,7 @@ int roundUp(T numToRound, T multiple) {
 }
 
 llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
+    generate_statements(expression->prelude);
     switch (expression->expression_type) {
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;

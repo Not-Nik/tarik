@@ -211,6 +211,7 @@ VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool arg
 }
 
 void Analyser::analyse_expression(aast::Expression *expression, int depth) {
+    analyse_statements(expression->prelude);
     switch (expression->expression_type) {
         case aast::CALL_EXPR: {
             auto *ce = (aast::CallExpression *) expression;

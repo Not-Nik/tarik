@@ -16,8 +16,8 @@ class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(const LexerRange &lp, Type type, std::string n)
-        : Expression(NAME_EXPR, lp, type),
+    explicit NameExpression(const LexerRange &lp, Type type, std::string n, std::vector<Statement *> p = {})
+        : Expression(NAME_EXPR, lp, type, p),
           name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {

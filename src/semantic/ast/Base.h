@@ -74,10 +74,12 @@ class Expression : public Statement {
 public:
     ExprType expression_type;
     Type type;
+    std::vector<Statement *> prelude;
 
-    explicit Expression(ExprType t, const LexerRange &lp, Type type)
+    explicit Expression(ExprType t, const LexerRange &lp, Type type, std::vector<Statement *> p = {})
         : Statement(EXPR_STMT, lp),
-          type(type) {
+          type(type),
+          prelude(p) {
         expression_type = t;
     }
 
