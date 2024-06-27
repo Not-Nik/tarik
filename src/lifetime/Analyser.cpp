@@ -263,7 +263,8 @@ void Analyser::analyse_expression(aast::Expression *expression, int depth) {
         case aast::ASSIGN_EXPR: {
             auto *ae = (aast::BinaryExpression *) expression;
 
-            if (ae->left->flattens_to_member_access()) {
+            if (ae->left->flattens_to_member_access() &&
+                !(ae->left->type.pointer_level > 0 && ae->left->expression_type == aast::MEM_ACC_EXPR)) {
                 get_variable(ae->left->flatten_to_member_access())->assigned(statement_index);
             } else {
                 // In normal expressions, variables don't create a new lifetime
