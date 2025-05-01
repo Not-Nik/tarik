@@ -7,6 +7,7 @@
 #ifndef TARIK_SRC_ERROR_ERROR_H_
 #define TARIK_SRC_ERROR_ERROR_H_
 
+#include <format>
 #include <vector>
 
 #include "lexical/Token.h"

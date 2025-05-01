@@ -2,6 +2,8 @@
 
 #include "Structures.h"
 
+#include <stack>
+
 StructureNode::StructureNode(const aast::StructDeclareStatement *st)
     : statement(st) {}
 
