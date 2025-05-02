@@ -11,6 +11,7 @@
 #include <vector>
 #include <variant>
 #include <cstdint>
+#include <format>
 
 #include "lexical/Token.h"
 #include "semantic/Path.h"
@@ -97,6 +98,9 @@ inline std::string to_string(const TypeSize &ts) {
 }
 
 class Type {
+    template <class T, class C>
+    friend struct std::formatter;
+
     std::variant<TypeSize, Path> type;
 
 public:
@@ -120,7 +124,7 @@ public:
     [[nodiscard]] Type get_pointer_to() const {
         Type t;
         t.type = type;
-        t.pointer_level = pointer_level+1;
+        t.pointer_level = pointer_level + 1;
         t.origin = origin;
         return t;
     }
@@ -128,7 +132,7 @@ public:
     [[nodiscard]] Type get_deref() const {
         Type t;
         t.type = type;
-        t.pointer_level = pointer_level-1;
+        t.pointer_level = pointer_level - 1;
         t.origin = origin;
         return t;
     }
@@ -355,6 +359,21 @@ public:
     [[nodiscard]] std::string str() const;
     [[nodiscard]] std::string base() const;
     [[nodiscard]] std::string func_name() const;
+};
+
+template <>
+struct std::formatter<Type> : std::formatter<std::string> {
+    auto format(Type p, std::format_context &ctx) const {
+        if (auto *v = std::get_if<TypeSize>(&p.type)) {
+            return formatter<string>::format(
+                std::format("Type({})", to_string(*v)),
+                ctx);
+        } else if (auto *v = std::get_if<Path>(&p.type)) {
+            return formatter<string>::format(
+                std::format("Type({})", v->str()),
+                ctx);
+        }
+    }
 };
 
 #endif //TARIK_SRC_SYNTACTIC_EXPRESSIONS_TYPES_H_
