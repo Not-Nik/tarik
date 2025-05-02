@@ -5,22 +5,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 #include "comperr.h"
-#include "Testing.h"
-#include "cli/Arguments.h"
 
+#include "cli/Arguments.h"
 #include "codegen/LLVM.h"
 #include "lifetime/Analyser.h"
 #include "semantic/Analyser.h"
 #include "syntactic/Parser.h"
+#include "Version.h"
 
 #include <fstream>
 #include <iostream>
 #include <filesystem>
 
 namespace fs = std::filesystem;
-
-constinit const char *version_id = "Generic";
-constinit const char *version_string = "0.0.1a";
 
 int main(int argc, const char *argv[]) {
     ArgumentParser parser(argc, argv, "tarik");
@@ -51,7 +48,6 @@ int main(int argc, const char *argv[]) {
 
     // Miscellaneous
     Option *list_targets = parser.add_option("list-targets", "Miscellaneous", "List all available targets");
-    Option *test_option = parser.add_option("test", "Miscellaneous", "Run internal tarik tests");
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
 
     // Output
@@ -108,13 +104,6 @@ int main(int argc, const char *argv[]) {
                 std::cout << "    " << t << "\n";
             }
             return 0;
-        } else if (option == test_option) {
-            int r = test();
-            if (r)
-                std::cout << "Tests succeeded\n";
-            else
-                std::cerr << "Tests failed\n";
-            return !r;
         } else if (option == version) {
             LLVM::force_init();
             std::cout << version_id << " tarik compiler version " << version_string << "\n";

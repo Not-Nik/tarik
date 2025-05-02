@@ -12,10 +12,7 @@ add_subdirectory(src/libcomperr)
 
 add_compile_options(-pedantic -Wall -Wextra -Wpedantic)
 
-add_executable(tarik
-        src/main.cpp
-        src/Testing.cpp
-        src/Testing.h
+set(TARIK_COMPILER_SOURCES
         src/cli/Arguments.cpp
         src/cli/Arguments.h
         src/codegen/LLVM.cpp
@@ -54,7 +51,17 @@ add_executable(tarik
         src/syntactic/ast/Parslets.h
         src/syntactic/ast/Statements.h
         src/utf/Utf.cpp
-        src/utf/Utf.h)
+        src/utf/Utf.h
+        src/Version.h)
+
+add_library(tarik-lib STATIC ${TARIK_COMPILER_SOURCES})
+
+add_executable(tarik src/main.cpp)
+
+add_executable(tarik-testing
+        src/testing/TestMain.cpp
+        src/testing/Testing.cpp
+        src/testing/Testing.h)
 
 set(LLVM_LINK_COMPONENTS
         AArch64
@@ -88,7 +95,10 @@ set(LLVM_LINK_COMPONENTS
 
 llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_LINK_COMPONENTS})
 
-target_include_directories(tarik PUBLIC ${LLVM_INCLUDE_DIRS})
-target_include_directories(tarik PRIVATE src)
+target_include_directories(tarik-lib PUBLIC ${LLVM_INCLUDE_DIRS})
+target_include_directories(tarik-lib PUBLIC src)
 
-target_link_libraries(tarik comperr ${LLVM_LIBS})
+target_link_libraries(tarik-lib comperr ${LLVM_LIBS})
+
+target_link_libraries(tarik tarik-lib)
+target_link_libraries(tarik-testing tarik-lib)
