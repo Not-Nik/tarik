@@ -1,0 +1,15 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk pass
+
+struct empty_struct {}
+
+struct simple_struct {
+    i32 member;
+}
+
+struct recursive_struct {
+    simple_struct struct_member;
+}
+
+
