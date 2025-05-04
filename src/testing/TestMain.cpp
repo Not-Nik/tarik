@@ -122,14 +122,14 @@ void read_test_file(Tester &tester, const std::string &file_name) {
 }
 
 int main(int argc, const char *argv[]) {
-    ArgumentParser parser(argc, argv, "tarik");
+    ArgumentParser parser(argc, argv, "tarik-testing");
 
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
 
     if (argc > 1) {
         for (const auto &option : parser) {
             if (option == version) {
-                std::cout << version_id << " tarik compiler version " << version_string << "\n";
+                std::cout << version_id << " tarik compiler tester version " << version_string << "\n";
                 return 0;
             }
         }
