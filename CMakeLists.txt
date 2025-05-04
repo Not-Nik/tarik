@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.17)
 project(tarik)
 
-set(CMAKE_CXX_STANDARD 23 REQUIRED)
+find_package(llvm 20.1 REQUIRED)
 
-find_package(llvm 20.1.3 REQUIRED)
+set(CMAKE_CXX_STANDARD 23 REQUIRED)
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_definitions(${LLVM_DEFINITIONS_LIST})

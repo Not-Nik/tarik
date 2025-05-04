@@ -1,0 +1,35 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk pass
+
+fn main() i32 {
+    i32 integer = 1 + 2 * 3 / 4;
+    i32 another = integer.add(42);
+
+    if integer > another {
+        return -1;
+    }
+
+    i32 counter = 0;
+
+    while another > integer {
+        # todo: dont upcast with literals
+        #another = another - 2;
+        #counter = counter + 1;
+    }
+
+    f32 float = counter.as!(f32);
+
+    float = float / 0.7;
+
+    if float.as!(u32) == 3 {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+# todo: automatically allow copying primitives
+fn i32.add(*this, i32 other) i32 {
+    return *this + other;
+}
