@@ -17,8 +17,6 @@
 
 static int allocs = 0;
 
-void test();
-
 class Tester {
     bool st = true;
     int count_suc = 0;
@@ -28,7 +26,7 @@ public:
     void StartSegment(const std::string &name);
     void EndSegment() const;
 
-    void Assert(bool condition, std::string msg);
+    bool Assert(bool condition, std::string msg);
 
     template <class T, class U>
     void AssertEq(T t, U u);
@@ -46,5 +44,7 @@ void Tester::AssertEq(T t, U u) {
         Assert(t == u, std::format("\nFailed for expression '{}': found '{}'.", u, t));
     }
 }
+
+void selftest(Tester &tester);
 
 #endif //TARIK_SRC_TESTING_TESTING_H_

@@ -35,17 +35,6 @@ inline std::string to_string(const Type &t) {
 }
 }
 
-void Tester::Assert(bool condition, std::string msg) {
-    count_tested++;
-    if (!condition) {
-        std::print("{}", msg);
-    } else {
-        count_suc++;
-    }
-
-    st = st && condition;
-}
-
 void Tester::StartSegment(const std::string &name) {
     count_suc = 0;
     count_tested = 0;
@@ -54,33 +43,42 @@ void Tester::StartSegment(const std::string &name) {
 }
 
 void Tester::EndSegment() const {
-    if (count_tested > 0)
-        printf(" Done! (%i/%i succeeded)\n", count_suc, count_tested);
+    printf(" Done! (%i/%i succeeded)\n", count_suc, count_tested);
+}
+
+bool Tester::Assert(bool condition, std::string msg) {
+    count_tested++;
+    if (!condition) {
+        std::print("\n{}", msg);
+    } else {
+        count_suc++;
+    }
+
+    st = st && condition;
+    return condition;
 }
 
 void Tester::AssertTok(Lexer lexer, TokenType type, const std::string &tok) {
     std::string s = lexer.peek().raw;
     std::string &sr = s;
-    Assert(lexer.peek().raw == tok, std::format("\nFailed for token '{}': expected '{}'.", sr, tok));
+    Assert(lexer.peek().raw == tok, std::format("Failed for token '{}': expected '{}'.", sr, tok));
     lexer.consume();
 }
 
 void Tester::AssertTrue(bool condition) {
-    Assert(condition, "\nFailed");
+    Assert(condition, "Failed");
 }
 
 void Tester::AssertNoError(Bucket &bucket) {
-    Assert(bucket.get_error_count() == 0, "\nFailed to parse expression.\n");
-    bucket.print_errors();
+    if (!Assert(bucket.get_error_count() == 0, "Failed to parse expression.\n"))
+        bucket.print_errors();
 }
 
 
-void test() {
+void selftest(Tester &tester) {
     using ss = std::stringstream;
     int overhead = allocs;
     Bucket error_bucket;
-
-    Tester tester;
 
     tester.StartSegment("utility");
     {
