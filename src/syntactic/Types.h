@@ -218,9 +218,9 @@ public:
         if (is_unsigned_int()) {
             // either the other type is also unsigned, or we can cast
             // this one to a signed type without losing information
-            return t.is_unsigned_int() || get_integer_bitwidth() < 64;
+            return t.is_unsigned_int() || get_integer_bitwidth() < t.get_integer_bitwidth();
         }
-        return !t.is_unsigned_int() || t.get_integer_bitwidth() < 64;
+        return !t.is_unsigned_int() || t.get_integer_bitwidth() < get_integer_bitwidth();
     }
 
     [[nodiscard]] bool is_comparable(const Type &t) const {
@@ -255,9 +255,9 @@ public:
         if (is_unsigned_int()) {
             // either the other type is also unsigned, or we can cast
             // this one to a signed type without losing information
-            return t.is_unsigned_int() || get_integer_bitwidth() < 64;
+            return t.is_unsigned_int() || get_integer_bitwidth() < t.get_integer_bitwidth();
         }
-        return !t.is_unsigned_int() || t.get_integer_bitwidth() < 64;
+        return !t.is_unsigned_int() || t.get_integer_bitwidth() < get_integer_bitwidth();
     }
 
     // does t fit into this
