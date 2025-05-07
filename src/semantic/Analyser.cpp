@@ -740,7 +740,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                                                           arguments[0]->type.get_pointer_to(),
                                                           aast::REF,
                                                           arguments[0]);
-            else if (arguments[0]->flattens_to_member_access()) {
+            else if (arguments[0]->flattens_to_member_access() && !arguments[0]->type.is_copyable()) {
                 get_variable(arguments[0]->flatten_to_member_access())->state()->make_definitely_moved(
                     arguments[0]->origin);
             }

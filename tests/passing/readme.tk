@@ -28,7 +28,6 @@ fn main() i32 {
     }
 }
 
-# todo: automatically allow copying primitives
-fn i32.add(*this, i32 other) i32 {
-    return *this + other;
+fn i32.add(this, i32 other) i32 {
+    return this + other;
 }
