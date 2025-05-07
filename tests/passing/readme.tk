@@ -13,9 +13,8 @@ fn main() i32 {
     i32 counter = 0;
 
     while another > integer {
-        # todo: dont upcast with literals
-        #another = another - 2;
-        #counter = counter + 1;
+        another = another - 2;
+        counter = counter + 1;
     }
 
     f32 float = counter.as!(f32);

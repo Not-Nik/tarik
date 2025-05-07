@@ -182,7 +182,7 @@ public:
             }
 
             if (unsigned_type == U0)
-                signed_type = I64;
+                signed_type = std::max(signed_type, I8);
             else if (unsigned_type == U8)
                 signed_type = std::max(signed_type, I16);
             else if (unsigned_type == U16)
