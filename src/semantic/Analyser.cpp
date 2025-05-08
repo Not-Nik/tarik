@@ -512,11 +512,11 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
     case ast::EQ_EXPR:
     case ast::COMP_EXPR:
     case ast::ASSIGN_EXPR:
-        return verify_binary_expression(expression, access, member_acc);
+        return verify_binary_expression(expression, access);
     case ast::MEM_ACC_EXPR:
-        return verify_member_access_expression(expression, access, member_acc);
+        return verify_member_access_expression(expression, access);
     case ast::PREFIX_EXPR:
-        return verify_prefix_expression(expression, access, member_acc);
+        return verify_prefix_expression(expression);
     case ast::NAME_EXPR:
         return verify_name_expression(expression, access, member_acc);
     case ast::INT_EXPR:
@@ -655,7 +655,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
         std::optional callee_parent = verify_expression(mem->left);
 
         if (mem->right->expression_type == ast::MACRO_NAME_EXPR) {
-            return verify_macro_expression(expression, access, member_acc);
+            return verify_macro_expression(expression);
         } else if (mem->right->expression_type != ast::NAME_EXPR) {
             bucket->error(mem->right->origin, "expected function name");
             return {};
@@ -718,7 +718,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
 
         arguments.push_back(callee_parent.value());
     } else if (ce->callee->expression_type == ast::MACRO_NAME_EXPR) {
-        return verify_macro_expression(expression, access, member_acc);
+        return verify_macro_expression(expression);
     } else {
         bucket->error(ce->callee->origin, "calling of expressions is unimplemented");
         return {};
@@ -801,9 +801,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
     return new aast::CallExpression(expression->origin, func->return_type, callee, arguments);
 }
 
-std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Expression *expression,
-                                                                    AccessType access,
-                                                                    bool member_acc) {
+std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Expression *expression) {
     auto *ce = (ast::CallExpression *) expression;
     if (ce->callee->expression_type == ast::MEM_ACC_EXPR) {
         auto *mem = (ast::BinaryExpression *) ce->callee;
@@ -833,7 +831,7 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
                ->assert(ce->arguments.size() <= macro->arguments.size()))
         return {};
 
-    for (int i = 0; i < macro->arguments.size(); i++) {
+    for (size_t i = 0; i < macro->arguments.size(); i++) {
         ast::Expression *arg = ce->arguments[i];
         if (macro->arguments[i] == Macro::IDENTIFIER) {
             if (!bucket->error(arg->origin, "expected identifier")
@@ -854,8 +852,7 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
 
 std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     ast::Expression *expression,
-    AccessType access,
-    bool member_acc) {
+    AccessType access) {
     auto *ae = (ast::BinaryExpression *) expression;
 
     access = expression->expression_type == ast::ASSIGN_EXPR ? ASSIGNMENT : NORMAL;
@@ -918,8 +915,6 @@ std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     aast::BinOpType bot;
 
     switch (ae->bin_op_type) {
-    case ast::PATH:
-        break;
     case ast::ADD:
         bot = aast::ADD;
         break;
@@ -950,11 +945,12 @@ std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
     case ast::GRE:
         bot = aast::GRE;
         break;
-    case ast::MEM_ACC:
-        break;
     case ast::ASSIGN:
         bot = aast::ASSIGN;
         break;
+    case ast::PATH:
+    case ast::MEM_ACC:
+        std::unreachable();
     }
 
     return new aast::BinaryExpression(ae->origin,
@@ -966,8 +962,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
 
 std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expression(
     ast::Expression *expression,
-    AccessType access,
-    bool member_acc) {
+    AccessType access) {
     auto *mae = (ast::BinaryExpression *) expression;
 
     std::optional left = verify_expression(mae->left, access, true);
@@ -1018,9 +1013,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
 }
 
 std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
-    ast::Expression *expression,
-    AccessType access,
-    bool member_acc) {
+    ast::Expression *expression) {
     auto *pe = (ast::PrefixExpression *) expression;
     std::optional operand = verify_expression(pe->operand);
 
@@ -1070,7 +1063,7 @@ std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
         pt = aast::LOG_NOT;
         break;
     case ast::GLOBAL:
-        break;
+        std::unreachable();
     }
 
     return new aast::PrefixExpression(pe->origin, pe_type, pt, operand.value());

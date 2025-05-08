@@ -363,14 +363,15 @@ public:
 
 template <>
 struct std::formatter<Type> : std::formatter<std::string> {
-    auto format(Type p, std::format_context &ctx) const {
-        if (auto *v = std::get_if<TypeSize>(&p.type)) {
+    auto format(Type t, std::format_context &ctx) const {
+        if (auto *v = std::get_if<TypeSize>(&t.type)) {
             return formatter<string>::format(
                 std::format("Type({})", to_string(*v)),
                 ctx);
-        } else if (auto *v = std::get_if<Path>(&p.type)) {
+        } else {
+            Path p = std::get<Path>(t.type);
             return formatter<string>::format(
-                std::format("Type({})", v->str()),
+                std::format("Type({})", p.str()),
                 ctx);
         }
     }
