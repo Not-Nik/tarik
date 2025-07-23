@@ -2,18 +2,13 @@
 # /tk test
 # /tk fail
 
-# /tk error
-1 + 2;
-
-# /tk error
-{}
-
-# /tk error
-{ i32 var; }
-
 fn test_func() {
     {
         i32 var = 0;
+        # /tk error
+        i32 var;
+        # /tk error
+        u32 var;
     }
 
     # /tk error

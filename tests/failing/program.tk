@@ -1,0 +1,26 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk fail
+
+# /tk error
+1 + 2;
+
+# /tk error
+{}
+
+# /tk error
+{ i32 var; }
+
+fn test_func() {
+    # /tk error
+    fn test_func2() {}
+    # /tk error
+    struct test_struct {}
+}
+
+struct test_struct {
+    # /tk error
+    fn test_func2() {}
+    # /tk error
+    struct test_struct {}
+}
