@@ -359,8 +359,13 @@ Statement *Parser::parse_statement() {
         while (lexer.peek().id != CURLY_CLOSE) {
             std::optional<Type> maybe_type = type();
 
-            bucket->error(lexer.peek().origin, "expected type name")
-                  ->assert(maybe_type.has_value());
+            if (!bucket->error(lexer.peek().origin, "expected type name")
+                       ->assert(maybe_type.has_value())) {
+                while (lexer.peek().id != CURLY_CLOSE && lexer.peek().id != END) {
+                    lexer.consume();
+                }
+                break;
+            }
 
             Type member_type = maybe_type.value_or(Type());
 
@@ -369,7 +374,7 @@ Statement *Parser::parse_statement() {
             members.push_back(new VariableStatement(member_type.origin, member_type, member_name));
             expect(SEMICOLON);
         }
-        lexer.consume();
+        expect(CURLY_CLOSE);
 
         return new StructStatement(token.origin, name, members);
     } else if (token.id == IMPORT) {

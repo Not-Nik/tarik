@@ -15,12 +15,8 @@ fn test_func() {
     # /tk error
     fn test_func2() {}
     # /tk error
-    struct test_struct {}
+    struct test_struct2 {}
 }
 
-struct test_struct {
-    # /tk error
-    fn test_func2() {}
-    # /tk error
-    struct test_struct {}
-}
+struct unended {
+# /tk error

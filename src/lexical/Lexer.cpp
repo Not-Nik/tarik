@@ -153,7 +153,7 @@ Token Lexer::consume() {
                 break;
             }
             c = read_stream();
-            for (; c != '\"'; c = read_stream()) {
+            for (; c != '\"' && c != -1; c = read_stream()) {
                 tok.push_back(c);
             }
             post_process_string(tok);
@@ -162,7 +162,7 @@ Token Lexer::consume() {
         }
 
         if (c == '#') {
-            while (c != '\n')
+            while (c != '\n' && c != -1)
                 c = read_stream();
             while (isspace(peek_stream()))
                 read_stream();
