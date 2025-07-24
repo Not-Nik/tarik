@@ -17,6 +17,3 @@ fn test_func() {
     # /tk error
     struct test_struct2 {}
 }
-
-struct unended {
-# /tk error

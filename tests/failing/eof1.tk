@@ -1,0 +1,6 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk fail
+
+fn unended() {
+# /tk error
