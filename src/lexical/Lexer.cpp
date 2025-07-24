@@ -44,8 +44,8 @@ bool Lexer::operator_startswith(const std::string &c) {
     return std::any_of(operators.begin(),
                        operators.end(),
                        [c](auto op) {
-                            if (op.first.size() < c.size())
-                                return false;
+                           if (op.first.size() < c.size())
+                               return false;
                            return memcmp(op.first.data(), c.data(), c.size()) == 0;
                        });
 }
@@ -100,32 +100,32 @@ std::string post_process_string(std::string s) {
             s.erase(i);
             i++;
             switch (s[i]) {
-                case '?':
-                    s[i] = '\?';
-                    break;
-                case '\\':
-                    break;
-                case 'a':
-                    s[i] = '\a';
-                    break;
-                case 'b':
-                    s[i] = '\b';
-                    break;
-                case 'f':
-                    s[i] = '\f';
-                    break;
-                case 'n':
-                    s[i] = '\n';
-                    break;
-                case 'r':
-                    s[i] = '\r';
-                    break;
-                case 't':
-                    s[i] = '\t';
-                    break;
-                case 'v':
-                    s[i] = '\v';
-                    break;
+            case '?':
+                s[i] = '\?';
+                break;
+            case '\\':
+                break;
+            case 'a':
+                s[i] = '\a';
+                break;
+            case 'b':
+                s[i] = '\b';
+                break;
+            case 'f':
+                s[i] = '\f';
+                break;
+            case 'n':
+                s[i] = '\n';
+                break;
+            case 'r':
+                s[i] = '\r';
+                break;
+            case 't':
+                s[i] = '\t';
+                break;
+            case 'v':
+                s[i] = '\v';
+                break;
             }
         }
     }
@@ -142,7 +142,7 @@ Token Lexer::consume() {
 
     LexerPos actual_pos = pos;
 
-    while (!stream->eof()) {
+    while (stream->good()) {
         char c = read_stream();
         if (c < 0)
             break;
@@ -262,7 +262,7 @@ Token Lexer::consume() {
 
     LexerRange range = actual_pos - pos;
 
-    if (stream->eof() && tok.empty()) {
+    if (!stream->good() && tok.empty()) {
         return Token(END, "", range);
     }
 
