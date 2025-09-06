@@ -1,0 +1,20 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk fail
+
+fn test(i32 **a, i32 *b) {
+    *a = b;
+}
+
+fn test2() {
+    i32 t = 3;
+    i32 *a = &t;
+
+    {
+        i32 b = 4;
+        # /tk error
+        test(&a, &b);
+    }
+
+    *a;
+}

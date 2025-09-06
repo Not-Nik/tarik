@@ -1,0 +1,62 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk fail
+
+struct test_struct {}
+struct recursive_struct {
+    test_struct t;
+    i32 member;
+}
+
+fn struct_taking_func(test_struct ts) {}
+
+fn test(i32 ***arg_pointer) i32 {
+    # /tk warning
+    i32 ***arg_pointer_copy = arg_pointer;
+
+    # /tk warning
+    arg_pointer = arg_pointer_copy;
+    {
+        # /tk warning
+        test_struct ts = test_struct [ ];
+
+        # /tk warning
+        test_struct *pts = &ts;
+
+        struct_taking_func(ts);
+
+        ts = test_struct [ ];
+        pts = &ts;
+    }
+
+    {
+        recursive_struct rs = recursive_struct [ test_struct [ ], 1 ];
+        i32 *pts = &rs.member;
+
+        struct_taking_func(rs.t);
+
+        pts;
+    }
+
+
+    # /tk error
+    #i32 *pointer = &as!(5, i32);
+    # /tk error
+    u8 **str_ptr = &"test";
+    i32 store;
+
+    {
+        # /tk warning
+        i32 value = 5;
+        value = 4;
+        # /tk error
+        pointer = &value;
+        store = *&value;
+    }
+
+    i32 value = 10;
+    # /tk error
+    **arg_pointer = &value;
+
+    return ***arg_pointer;
+}
