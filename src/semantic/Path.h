@@ -25,7 +25,7 @@ class Path {
 public:
     LexerRange origin;
 
-    explicit Path(std::vector<std::string> parts, LexerRange origin = {});
+    explicit Path(std::vector<std::string> parts, LexerRange origin);
 
     static Path from_expression(ast::Expression *path);
 

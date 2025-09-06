@@ -245,7 +245,7 @@ public:
         return false;
     }
 
-    Type get_type(const Path &path = Path({})) {
+    Type get_type(const Path &path) {
         return Type(path.create_member(this->name.raw), 0);
     }
 
@@ -254,7 +254,7 @@ public:
             if (mem->name.raw == n)
                 return mem->type;
         }
-        return {};
+        return Type(VOID);
     }
 
     unsigned int get_member_index(const std::string &n) {

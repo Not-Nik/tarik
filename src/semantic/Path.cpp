@@ -73,7 +73,7 @@ bool Path::contains_pointer() const {
 Path Path::create_member(const std::string &name) const {
     std::vector member_parts = parts;
     member_parts.push_back(name);
-    return Path(member_parts);
+    return Path(member_parts, origin);
 }
 
 Path Path::create_member(Token token) const {
@@ -85,13 +85,13 @@ Path Path::create_member(Token token) const {
 Path Path::get_parent() const {
     std::vector parent_parts = parts;
     parent_parts.pop_back();
-    return Path(parent_parts);
+    return Path(parent_parts, origin);
 }
 
 Path Path::with_prefix(Path prefix) const {
     std::vector prefixed_parts = parts;
     prefixed_parts.insert(prefixed_parts.begin(), prefix.parts.begin(), prefix.parts.end());
-    return Path(prefixed_parts);
+    return Path(prefixed_parts, origin);
 }
 
 bool Path::operator==(const Path &other) const {

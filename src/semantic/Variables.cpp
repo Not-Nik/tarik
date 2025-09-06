@@ -115,15 +115,8 @@ bool CompoundState::is_definitely_undefined() const {
 }
 
 bool CompoundState::is_definitely_defined() const {
-    // empty structs are always defined, but can also be read, e.g., when they are assigned to another variable, i.e.
-    // my_empty_struct mes = my_empty_struct();
-    // my_empty_struct mes2 = mes; # <<-- mes is read here and now definitely not defined, i.e.
-    //                             # is_definitely_undefined() = false
-    //                             # is_definitely_defined() = false
-    //                             # is_maybe_undefined() = false
-    //                             # is_maybe_defined() = false
-    // similarly empty structs can be read when they are returned
-    bool state = true;
+    // empty structs should also be moved, and not be copy implicitly (even though there is no data to copy)
+    bool state = !children.empty();
     for (auto *child : children) {
         state = state && child->state()->is_definitely_defined();
     }
@@ -171,7 +164,8 @@ LexerRange CompoundState::get_defined_pos() const {
 LexerRange CompoundState::get_moved_pos() const {
     LexerRange pos = moved_pos;
     for (auto *child : children) {
-        if (!child->state()->is_maybe_moved()) continue;
+        if (!child->state()->is_maybe_moved())
+            continue;
         LexerRange child_pos = child->state()->get_moved_pos();
         if (child->state()->get_moved_pos() > pos)
             pos = child_pos;

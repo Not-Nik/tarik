@@ -193,7 +193,8 @@ VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool arg
         for (auto *member : st->members) {
             auto *temp = new aast::VariableStatement(var->origin,
                                                      member->type,
-                                                     Token::name(var->name.raw + "." + member->name.raw));
+                                                     Token::name(var->name.raw + "." + member->name.raw,
+                                                                 var->name.origin));
 
             VariableState *semantic_member = analyse_variable(temp, argument);
             member_states.push_back(semantic_member);

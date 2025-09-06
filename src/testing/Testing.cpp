@@ -82,7 +82,7 @@ void selftest(Tester &tester) {
 
     tester.StartSegment("utility");
     {
-        tester.AssertEq(Type(Path({"ÜberÄnderung"})).func_name(), "über_änderung");
+        tester.AssertEq(Type(Path({"ÜberÄnderung"}, LexerRange())).func_name(), "über_änderung");
     }
 
     tester.EndSegment();

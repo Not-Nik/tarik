@@ -158,7 +158,7 @@ public:
           raw(std::move(s)),
           origin(std::move(lp)) {}
 
-    static Token name(std::string s, LexerRange lp = {}) {
+    static Token name(std::string s, const LexerRange &lp) {
         return Token(NAME, std::move(s), lp);
     }
 

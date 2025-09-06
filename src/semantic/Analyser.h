@@ -34,7 +34,7 @@ class Analyser {
 
     std::unordered_map<std::string, Macro *> macros;
 
-    Path path = Path({});
+    Path path = Path({}, LexerRange());
 
     std::vector<SemanticVariable *> variables;
     std::unordered_map<std::string, std::string> variable_names;

@@ -43,7 +43,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
     for (auto *statement : statements) {
         if (statement->statement_type == ast::FUNC_STMT) {
             auto *func = (ast::FuncStatement *) (statement);
-            Path name = Path({});
+            Path name = Path({}, LexerRange());
             if (func->member_of.has_value()) {
                 name = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
             } else {
@@ -253,7 +253,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
     if (func->member_of.has_value())
         verify_type(func->member_of.value());
 
-    Path func_path = Path({});
+    Path func_path = Path({}, LexerRange());
     if (func->member_of.has_value()) {
         func_path = func->member_of.value().get_path().with_prefix(path).create_member(func->name.raw);
     } else {
@@ -434,7 +434,7 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
         for (auto *member : st->members) {
             auto *temp = new ast::VariableStatement(var->origin,
                                                     member->type,
-                                                    Token::name(name.raw + "." + member->name.raw));
+                                                    Token::name(name.raw + "." + member->name.raw, name.origin));
 
             std::optional semantic_member = verify_variable(temp);
             if (semantic_member.has_value())
@@ -584,7 +584,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             return {};
         }
 
-        Token var_name = Token::name("_" + type.value().func_name() + "_init");
+        Token var_name = Token::name("_" + type.value().func_name() + "_init", type.value().origin);
         var_name.raw = get_unused_var_name(var_name.raw);
 
         auto *var = new aast::VariableStatement(sie->origin, type.value(), var_name);
@@ -610,7 +610,8 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                               field_verified.value()->type.str())
                       ->assert(member->type.is_assignable_from(field_verified.value()->type))) {
                 auto *init_name = new aast::NameExpression(field->origin, type.value(), var_name.raw);
-                auto *member_name = new aast::NameExpression(field->origin, Type(), member->name.raw);
+                auto *member_name = new
+                        aast::NameExpression(field->origin, Type(VOID), member->name.raw);
 
                 auto *member_access = new aast::BinaryExpression(field->origin,
                                                                  member->type,
@@ -643,7 +644,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                                                                    bool member_acc) {
     auto *ce = (ast::CallExpression *) expression;
 
-    Path func_path = Path({});
+    Path func_path = Path({}, LexerRange());
     std::vector<aast::Expression *> arguments;
 
     if (auto *gl = (ast::PrefixExpression *) ce->callee;

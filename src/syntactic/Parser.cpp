@@ -47,6 +47,7 @@ std::optional<Type> Parser::type() {
               ->assert(size != (TypeSize) -1);
         t = Type(size);
     } else {
+        LexerRange range = peek.origin;
         std::vector path = {peek.raw};
         if (peek.id == DOUBLE_COLON) {
             path = {""};
@@ -55,16 +56,17 @@ std::optional<Type> Parser::type() {
 
         while (lexer.peek(peek_distance++).id == DOUBLE_COLON) {
             Token part = lexer.peek(peek_distance++);
-            if (part.id == NAME)
+            if (part.id == NAME) {
                 path.push_back(part.raw);
-            else {
+                range = range + part.origin;
+            } else {
                 return {};
             }
         }
 
         peek_distance--;
 
-        t = Type(Path(path));
+        t = Type(Path(path, range));
     }
     while (lexer.peek(peek_distance++).id == ASTERISK) {
         t.pointer_level++;
@@ -242,7 +244,7 @@ Statement *Parser::parse_statement() {
 
         std::optional<Type> member_of = type();
 
-        Token name = Token::name("$$not_assigned");
+        Token name = Token::name("$$not_assigned", token.origin);
         if (member_of.has_value()) {
             if (lexer.peek().id == PERIOD) {
                 lexer.consume();
@@ -304,9 +306,7 @@ Statement *Parser::parse_statement() {
         }
         LexerRange origin = token.origin + expect(PAREN_CLOSE).origin;
         Type t;
-        if (lexer.peek().id == CURLY_OPEN)
-            t = Type(VOID);
-        else {
+        if (lexer.peek().id != CURLY_OPEN) {
             std::optional<Type> ty = type();
             bucket->error(lexer.peek().origin, "exepcted type name")
                   ->assert(ty.has_value());

@@ -150,9 +150,9 @@ public:
     }
 
     [[nodiscard]] Path get_path() const {
-        Path path = Path({});
+        Path path = Path({}, origin);
         if (is_primitive()) {
-            path = Path({to_string(get_primitive())});
+            path = Path({to_string(get_primitive())}, origin);
         } else {
             path = get_user();
         }

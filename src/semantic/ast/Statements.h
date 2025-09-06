@@ -247,7 +247,7 @@ public:
         : Statement(type, o),
           path(std::move(p)) {}
 
-    Type get_type(Path prefix = Path({})) const {
+    Type get_type(Path prefix) const {
         return Type(path.with_prefix(std::move(prefix)), 0);
     }
 
