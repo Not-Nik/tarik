@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2021-2024
+// tarik (c) Nikolas Wipper 2021-2025
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -285,23 +285,22 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
 
     std::optional return_type = verify_type(func->return_type);
 
-    if (return_type.has_value()) {
-        this->return_type = return_type.value();
-        std::optional scope = verify_scope(func, func->name.raw);
-        if (scope.has_value()) {
-            std::vector block = std::move(scope.value()->block);
-            delete scope.value();
-            functions.push_back(new aast::FuncStatement(func->origin,
-                                                        func_path,
-                                                        return_type.value(),
-                                                        arguments,
-                                                        std::move(block),
-                                                        func->var_arg));
+    if (!return_type.has_value())
+        return {};
+    this->return_type = return_type.value();
+    std::optional scope = verify_scope(func, func->name.raw);
+    if (!scope.has_value())
+        return {};
+    std::vector block = std::move(scope.value()->block);
+    delete scope.value();
+    functions.push_back(new aast::FuncStatement(func->origin,
+                                                func_path,
+                                                return_type.value(),
+                                                arguments,
+                                                std::move(block),
+                                                func->var_arg));
 
-            return functions.back();
-        }
-    }
-    return {};
+    return functions.back();
 }
 
 std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
@@ -311,31 +310,29 @@ std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
     if (if_->else_statement)
         else_ = verify_scope(if_->else_statement);
 
-    if (condition.has_value() && scope.has_value()) {
-        // implicitely compare to 0 if condition isn't a bool already
-        if (condition.value()->type != Type(BOOL, 0)) {
-            condition = new aast::BinaryExpression(if_->condition->origin,
-                                                   Type(BOOL),
-                                                   aast::NEQ,
-                                                   condition.value(),
-                                                   new aast::IntExpression(if_->condition->origin, 0));
-        }
-
-        std::vector block = std::move(scope.value()->block);
-        delete scope.value();
-        auto new_if = new aast::IfStatement(if_->origin, condition.value(), std::move(block));
-
-        if (if_->else_statement && else_.has_value()) {
-            new_if->else_statement = new aast::ElseStatement(if_->else_statement->origin,
-                                                             std::move(else_.value()->block));
-            delete else_.value();
-        } else {
-            return {};
-        }
-        return new_if;
-    } else {
+    if (!condition.has_value() || !scope.has_value())
         return {};
+    // implicitely compare to 0 if condition isn't a bool already
+    if (condition.value()->type != Type(BOOL, 0)) {
+        condition = new aast::BinaryExpression(if_->condition->origin,
+                                               Type(BOOL),
+                                               aast::NEQ,
+                                               condition.value(),
+                                               new aast::IntExpression(if_->condition->origin, 0));
     }
+
+    std::vector block = std::move(scope.value()->block);
+    delete scope.value();
+    auto new_if = new aast::IfStatement(if_->origin, condition.value(), std::move(block));
+
+    if (!if_->else_statement || !else_.has_value())
+        return {};
+
+    new_if->else_statement = new aast::ElseStatement(if_->else_statement->origin,
+                                                     std::move(else_.value()->block));
+    delete else_.value();
+
+    return new_if;
 }
 
 std::optional<aast::ElseStatement *> Analyser::verify_else(ast::ElseStatement *else_) {
@@ -344,25 +341,24 @@ std::optional<aast::ElseStatement *> Analyser::verify_else(ast::ElseStatement *e
 }
 
 std::optional<aast::ReturnStatement *> Analyser::verify_return(ast::ReturnStatement *return_) {
-    if (return_->value) {
-        std::optional value = verify_expression(return_->value);
-        if (value.has_value()) {
-            bucket->error(return_->value->origin,
-                          "can't return value of type '{}' in function with return type '{}'",
-                          value.value()->type.str(),
-                          return_type.str())
-                  ->assert(return_type.is_assignable_from(value.value()->type));
-
-            return new aast::ReturnStatement(return_->origin, value.value());
-        }
-    } else {
+    if (!return_->value) {
         bucket->error(return_->origin, "function with return type should return a value")
               ->assert(return_type == Type(VOID));
 
         return new aast::ReturnStatement(return_->origin, nullptr);
     }
 
-    return {};
+    std::optional value = verify_expression(return_->value);
+    if (!value.has_value())
+        return {};
+
+    bucket->error(return_->value->origin,
+                  "can't return value of type '{}' in function with return type '{}'",
+                  value.value()->type.str(),
+                  return_type.str())
+          ->assert(return_type.is_assignable_from(value.value()->type));
+
+    return new aast::ReturnStatement(return_->origin, value.value());
 }
 
 std::optional<aast::WhileStatement *> Analyser::verify_while(ast::WhileStatement *while_) {
@@ -373,22 +369,21 @@ std::optional<aast::WhileStatement *> Analyser::verify_while(ast::WhileStatement
     std::optional scope = verify_scope(while_);
     last_loop = old_last_loop;
 
-    if (condition.has_value() && scope.has_value()) {
-        // implicitely compare to 0 if condition isn't a bool already
-        if (condition.value()->type != Type(BOOL, 0)) {
-            condition = new aast::BinaryExpression(while_->condition->origin,
-                                                   Type(BOOL),
-                                                   aast::NEQ,
-                                                   condition.value(),
-                                                   new aast::IntExpression(while_->condition->origin, 0));
-        }
-
-        std::vector block = std::move(scope.value()->block);
-        delete scope.value();
-        return new aast::WhileStatement(while_->origin, condition.value(), std::move(block));
-    } else {
+    if (!condition.has_value() || !scope.has_value())
         return {};
+
+    // implicitely compare to 0 if condition isn't a bool already
+    if (condition.value()->type != Type(BOOL, 0)) {
+        condition = new aast::BinaryExpression(while_->condition->origin,
+                                               Type(BOOL),
+                                               aast::NEQ,
+                                               condition.value(),
+                                               new aast::IntExpression(while_->condition->origin, 0));
     }
+
+    std::vector block = std::move(scope.value()->block);
+    delete scope.value();
+    return new aast::WhileStatement(while_->origin, condition.value(), std::move(block));
 }
 
 std::optional<aast::BreakStatement *> Analyser::verify_break(ast::BreakStatement *break_) {
@@ -494,10 +489,10 @@ std::optional<aast::ImportStatement *> Analyser::verify_import(ast::ImportStatem
     std::optional res = verify_statements(import_->block);
     path = path.get_parent();
 
-    if (res.has_value())
-        return new aast::ImportStatement(import_->origin, import_->name, res.value());
-    else
+    if (!res.has_value())
         return {};
+
+    return new aast::ImportStatement(import_->origin, import_->name, res.value());
 }
 
 std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *expression,
@@ -751,9 +746,10 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                           func->arguments[0]->type.str())
                   ->assert(func->arguments[0]->type.is_assignable_from(arguments[0]->type));
             arg_offset = 1;
-        } else
-        // function is static, but we always put in the `this` argument
+        } else {
+            // function is static, but we always put in the `this` argument
             arguments.erase(arguments.begin());
+        }
     }
 
     if (!bucket->error(ce->origin,
