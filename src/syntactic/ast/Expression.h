@@ -95,8 +95,8 @@ class TypeExpression : public Expression {
 public:
     Type type;
 
-    TypeExpression(Type t)
-        : Expression(TYPE_EXPR, t.origin),
+    TypeExpression(Type t, LexerRange origin)
+        : Expression(TYPE_EXPR, origin),
           type(t) {}
 
     [[nodiscard]] std::string print() const override {

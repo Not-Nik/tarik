@@ -168,7 +168,9 @@ class CallParselet : public InfixParselet {
             if (!type.has_value())
                 args.push_back(parser->parse_expression());
             else
-                args.push_back(new ast::TypeExpression(type.value()));
+                args.push_back(new ast::TypeExpression(type.value(),
+                                                       state.pos.as_zero_range() +
+                                                       parser->lexer.checkpoint().pos.as_zero_range()));
 
             if (!parser->is_peek(COMMA))
                 break;

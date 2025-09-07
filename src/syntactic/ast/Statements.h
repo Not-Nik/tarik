@@ -158,8 +158,8 @@ public:
     Type type;
     Token name;
 
-    VariableStatement(const LexerRange &o, Type t, Token n)
-        : Statement(VARIABLE_STMT, o),
+    VariableStatement(Type t, Token n)
+        : Statement(VARIABLE_STMT, n.origin),
           type(std::move(t)),
           name(std::move(n)) {}
 

@@ -266,7 +266,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
               ->assert(func_path != registered->path);
     }
 
-    bucket->error(func->return_type.origin, "function with return type doesn't always return")
+    bucket->error(func->origin, "function with return type doesn't always return")
           ->assert(func->return_type == Type(VOID) || does_always_return(func));
     std::vector<aast::VariableStatement *> arguments;
 
@@ -432,9 +432,8 @@ std::optional<SemanticVariable *> Analyser::verify_variable(ast::VariableStateme
 
         std::vector<SemanticVariable *> member_states;
         for (auto *member : st->members) {
-            auto *temp = new ast::VariableStatement(var->origin,
-                                                    member->type,
-                                                    Token::name(name.raw + "." + member->name.raw, name.origin));
+            auto *temp = new ast::VariableStatement(member->type,
+                                                    Token::name(name.raw + "." + member->name.raw, var->origin));
 
             std::optional semantic_member = verify_variable(temp);
             if (semantic_member.has_value())
@@ -472,7 +471,7 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
             if (!member_type.value().is_primitive()) {
                 StructureNode *field_node = structure_graph.get_node(get_struct_decl(member_type.value().get_user()));
 
-                if (!bucket->error(member_type.value().origin,
+                if (!bucket->error(member->origin,
                                    "'{}' recursively includes '{}'",
                                    member_type.value().str(),
                                    struct_->name.raw)
@@ -584,7 +583,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             return {};
         }
 
-        Token var_name = Token::name("_" + type.value().func_name() + "_init", type.value().origin);
+        Token var_name = Token::name("_" + type.value().func_name() + "_init", sie->origin);
         var_name.raw = get_unused_var_name(var_name.raw);
 
         auto *var = new aast::VariableStatement(sie->origin, type.value(), var_name);
@@ -1139,7 +1138,7 @@ std::optional<Type> Analyser::verify_type(Type type) {
             }
         }
 
-        bucket->error(type.origin, "undefied type '{}'", path.str())
+        bucket->error(path.origin, "undefied type '{}'", path.str())
               ->assert(is_struct_declared(path));
 
         type.set_user(path);

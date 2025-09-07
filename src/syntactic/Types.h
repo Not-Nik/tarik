@@ -105,27 +105,19 @@ class Type {
 
 public:
     int pointer_level;
-    LexerRange origin;
 
-    Type()
-        : type(VOID) {
-        pointer_level = 0;
-    }
-
-    explicit Type(TypeSize ts, int pl = 0)
+    Type(TypeSize ts = VOID, int pl = 0)
         : type(ts),
           pointer_level(pl) {}
 
     explicit Type(Path p, int pl = 0)
         : type(std::move(p)),
-          pointer_level(pl),
-          origin(p.origin) {}
+          pointer_level(pl) {}
 
     [[nodiscard]] Type get_pointer_to() const {
         Type t;
         t.type = type;
         t.pointer_level = pointer_level + 1;
-        t.origin = origin;
         return t;
     }
 
@@ -133,7 +125,6 @@ public:
         Type t;
         t.type = type;
         t.pointer_level = pointer_level - 1;
-        t.origin = origin;
         return t;
     }
 
@@ -150,9 +141,9 @@ public:
     }
 
     [[nodiscard]] Path get_path() const {
-        Path path = Path({}, origin);
+        Path path = Path({}, {});
         if (is_primitive()) {
-            path = Path({to_string(get_primitive())}, origin);
+            path = Path({to_string(get_primitive())}, {});
         } else {
             path = get_user();
         }

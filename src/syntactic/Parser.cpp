@@ -74,11 +74,6 @@ std::optional<Type> Parser::type() {
 
     peek_distance--;
 
-    // fixme: this is incredibly inefficient
-    t.origin = lexer.peek().origin + lexer.peek(peek_distance).origin;
-    if (!t.is_primitive())
-        t.get_user().origin = t.origin;
-
     for (int _ = 0; _ < peek_distance; _++)
         lexer.consume();
 
@@ -251,12 +246,12 @@ Statement *Parser::parse_statement() {
                 name = expect(NAME);
             } else {
                 // We read a type, but it's probably a function name instead
-                if (bucket->error(member_of.value().origin,
+                if (bucket->error(lexer.peek().origin,
                                   "expected function name")
                           ->assert(
                               !member_of.value().is_primitive() && member_of.value().get_user().get_parts().size() ==
                               1)) {
-                    name = Token::name(member_of.value().get_user().get_parts()[0], member_of.value().origin);
+                    name = Token::name(member_of.value().get_user().get_parts()[0], lexer.peek().origin);
                     member_of = {};
                 }
             }
@@ -280,7 +275,7 @@ Statement *Parser::parse_statement() {
                     this_type = this_type.get_pointer_to();
                 }
 
-                args.push_back(new VariableStatement(this_tok.origin, this_type, this_tok));
+                args.push_back(new VariableStatement(this_type, this_tok));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -298,7 +293,7 @@ Statement *Parser::parse_statement() {
 
                 Type arg_type = maybe_type.value_or(Type());
 
-                args.push_back(new VariableStatement(arg_type.origin, arg_type, expect(NAME)));
+                args.push_back(new VariableStatement(arg_type, expect(NAME)));
 
                 if (lexer.peek().id != PAREN_CLOSE)
                     expect(COMMA);
@@ -371,7 +366,7 @@ Statement *Parser::parse_statement() {
 
             Token member_name = expect(NAME);
 
-            members.push_back(new VariableStatement(member_type.origin, member_type, member_name));
+            members.push_back(new VariableStatement(member_type, member_name));
             expect(SEMICOLON);
         }
         expect(CURLY_CLOSE);
@@ -424,7 +419,7 @@ Statement *Parser::parse_statement() {
                     expect(SEMICOLON);
                 }
 
-                return new VariableStatement(token.origin, t, name);
+                return new VariableStatement(t, name);
             }
         }
     }
