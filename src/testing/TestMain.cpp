@@ -99,21 +99,32 @@ void read_test_file(Tester &tester, const std::string &file_name) {
             tester.AssertNoError(bucket);
         } else {
             std::vector<Error> errors = bucket.get_errors();
+            std::set<int> found_errors, found_warnings;
 
             for (auto &error : errors) {
-                if (error.kind == ErrorKind::ERROR && !expected_errors.contains(error.origin.l)) {
-                    tester.Assert(false,
-                                  std::format("Extra error in {}:{} : {}",
-                                              error.origin.l,
-                                              error.origin.p,
-                                              error.message));
-                } else if (error.kind == ErrorKind::WARNING && !expected_warnings.contains(error.origin.l)) {
-                    tester.Assert(false,
-                                  std::format("Extra warning in {}:{} : {}",
-                                              error.origin.l,
-                                              error.origin.p,
-                                              error.message));
+                if (error.kind == ErrorKind::ERROR) {
+                    if (tester.Assert(expected_errors.contains(error.origin.l),
+                                      std::format("Extra error in {}:{} : {}",
+                                                  error.origin.l,
+                                                  error.origin.p,
+                                                  error.message)))
+                        found_errors.insert(error.origin.l);
+                } else if (error.kind == ErrorKind::WARNING) {
+                    if (tester.Assert(expected_warnings.contains(error.origin.l),
+                                      std::format("Extra warning in {}:{} : {}",
+                                                  error.origin.l,
+                                                  error.origin.p,
+                                                  error.message)))
+                        found_warnings.insert(error.origin.l);
                 }
+            }
+
+            for (auto &l : expected_errors) {
+                tester.Assert(found_errors.contains(l), std::format("Expected error in line {}", l));
+            }
+
+            for (auto &l : expected_warnings) {
+                tester.Assert(found_warnings.contains(l), std::format("Expected warning in line {}", l));
             }
 
             tester.Assert(true, "");
