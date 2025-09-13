@@ -40,9 +40,9 @@ fn test(i32 ***arg_pointer) i32 {
 
 
     # /tk error
-    #i32 *pointer = &as!(5, i32);
+    i32 *pointer = &as!(5, i32);
     # /tk error
-    u8 **str_ptr = &"test";
+    str **str_ptr = &"test";
     i32 store;
 
     {
