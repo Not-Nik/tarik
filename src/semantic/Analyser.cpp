@@ -623,6 +623,8 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
 
         return new aast::NameExpression(sie->origin, type.value(), var_name.raw, prelude);
     }
+    case ast::EMPTY_EXPR:
+        break;
     default:
         // todo: do more analysis here:
         //  if it's a path, put an error after the expression: if the path points to a valid function, suggest
