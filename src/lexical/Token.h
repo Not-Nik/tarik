@@ -117,7 +117,8 @@ inline std::unordered_map<std::string, TokenType> keywords = {
     {"f32", TYPE},
     {"f64", TYPE},
     {"bool", TYPE},
-    {"str", TYPE}
+    {"str", TYPE},
+    {"void", TYPE},
 };
 
 std::string to_string(const TokenType &tt);
