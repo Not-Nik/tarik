@@ -13,3 +13,5 @@ fn i32.static_member_func() {}
 fn i32.copy_member_func(this) {}
 
 fn i32.reference_member_func(*this) {}
+
+extern!(void, extern_func, void);

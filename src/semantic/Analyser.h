@@ -25,6 +25,7 @@ class Analyser;
 
 class Analyser {
     friend class lifetime::Analyser;
+    friend class ExternMacro;
 
     std::vector<aast::FuncStatement *> functions;
     std::unordered_map<Path, aast::StructStatement *> structures;

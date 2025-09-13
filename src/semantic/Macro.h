@@ -10,25 +10,42 @@
 #include <vector>
 
 #include "ast/Expression.h"
+#include "syntactic/ast/Statements.h"
+
+class Analyser;
 
 class Macro {
 public:
     enum ArgumentType {
         TYPE,
         EXPRESSION,
-        IDENTIFIER
+        IDENTIFIER,
+        REPEAT
     };
 
     std::vector<ArgumentType> arguments;
 
-    virtual ast::Expression *apply(ast::Expression *macro_call, std::vector<ast::Expression *> arguments) = 0;
+    virtual ast::Expression *apply(Analyser *analyser,
+                                   ast::Expression *macro_call,
+                                   std::vector<ast::Expression *> arguments) = 0;
 };
 
 class CastMacro : public Macro {
 public:
     CastMacro();
 
-    ast::Expression *apply(ast::Expression *macro_call, std::vector<ast::Expression *> arguments) override;
+    ast::Expression *apply(Analyser *analyser,
+                           ast::Expression *macro_call,
+                           std::vector<ast::Expression *> arguments) override;
+};
+
+class ExternMacro : public Macro {
+public:
+    ExternMacro();
+
+    ast::Expression *apply(Analyser *analyser,
+                           ast::Expression *macro_call,
+                           std::vector<ast::Expression *> arguments) override;
 };
 
 #endif //TARIK_SRC_SEMANTIC_MACRO_H_

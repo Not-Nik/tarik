@@ -17,7 +17,7 @@
 #include "Variables.h"
 
 Analyser::Analyser(Bucket *bucket)
-    : macros({{"as!", new CastMacro()}}),
+    : macros({{"as!", new CastMacro()}, {"extern!", new ExternMacro()}}),
       bucket(bucket) {}
 
 std::vector<aast::Statement *> Analyser::finish() {
@@ -103,6 +103,12 @@ std::optional<aast::Statement *> Analyser::verify_statement(ast::Statement *stat
         allowed = bucket->error(statement->origin, "declaration not allowed here")
                         ->assert(level == 0);
         break;
+    case ast::EXPR_STMT:
+        if (((ast::Expression *) statement)->expression_type == ast::CALL_EXPR &&
+            ((ast::CallExpression *) statement)->callee->expression_type == ast::MACRO_NAME_EXPR) {
+            break;
+        }
+        [[fallthrough]];
     case ast::IF_STMT:
     case ast::ELSE_STMT:
     case ast::RETURN_STMT:
@@ -110,9 +116,8 @@ std::optional<aast::Statement *> Analyser::verify_statement(ast::Statement *stat
     case ast::BREAK_STMT:
     case ast::CONTINUE_STMT:
     case ast::VARIABLE_STMT:
-    case ast::EXPR_STMT:
     case ast::SCOPE_STMT:
-        allowed = bucket->error(statement->origin, "expected declaration")
+        allowed = bucket->error(statement->origin, "that statement is only allowed in a function")
                         ->assert(level > 0);
         [[fallthrough]];
     default:
@@ -815,22 +820,35 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
 
     Macro *macro = macros[((ast::MacroNameExpression *) ce->callee)->name];
 
+    if (!bucket->error(expression->origin, "undefined macro {}", ce->callee->print())->assert(!!macro))
+        return {};
+
+    size_t min_arguments = macro->arguments.size();
+    size_t max_arguments = macro->arguments.size();
+
+    if (macro->arguments.back() == Macro::REPEAT) {
+        min_arguments--;
+        max_arguments = std::numeric_limits<size_t>::max();
+    }
+
     if (!bucket->error(ce->origin,
                        "too few arguments, expected {} found {}",
                        macro->arguments.size(),
                        ce->arguments.size())
-               ->assert(ce->arguments.size() >= macro->arguments.size()))
+               ->assert(ce->arguments.size() >= min_arguments))
         return {};
 
     if (!bucket->error(ce->origin,
                        "too many arguments, expected {} found {}",
                        macro->arguments.size(),
                        ce->arguments.size())
-               ->assert(ce->arguments.size() <= macro->arguments.size()))
+               ->assert(ce->arguments.size() <= max_arguments))
         return {};
 
-    for (size_t i = 0; i < macro->arguments.size(); i++) {
-        ast::Expression *arg = ce->arguments[i];
+    for (size_t i = 0, j = 0; i < macro->arguments.size() && j < ce->arguments.size(); i++, j++) {
+        ast::Expression *arg = ce->arguments[j];
+        if (macro->arguments[i] == Macro::REPEAT)
+            i--;
         if (macro->arguments[i] == Macro::IDENTIFIER) {
             if (!bucket->error(arg->origin, "expected identifier")
                        ->assert(arg->expression_type == ast::NAME_EXPR ||
@@ -845,7 +863,7 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
         }
     }
 
-    return verify_expression(macro->apply(ce, ce->arguments));
+    return verify_expression(macro->apply(this, ce, ce->arguments));
 }
 
 std::optional<aast::BinaryExpression *> Analyser::verify_binary_expression(
