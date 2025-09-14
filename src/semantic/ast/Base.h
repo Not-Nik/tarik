@@ -69,6 +69,7 @@ enum ExprType {
     REAL_EXPR,
     STR_EXPR,
     CAST_EXPR,
+    VAR_EXPR,
 };
 
 class Expression : public Statement {

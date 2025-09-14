@@ -587,6 +587,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
         var_name.raw = get_unused_var_name(var_name.raw);
 
         auto *var = new aast::VariableStatement(sie->origin, type.value(), var_name);
+        auto *plain_var = new aast::VariableExpression(sie->origin, var);
 
         std::vector<aast::Statement *> prelude = {var};
         prelude.reserve(sie->fields.size() + 1);
@@ -608,14 +609,13 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
                               member->type.str(),
                               field_verified.value()->type.str())
                       ->assert(member->type.is_assignable_from(field_verified.value()->type))) {
-                auto *init_name = new aast::NameExpression(field->origin, type.value(), var_name.raw);
                 auto *member_name = new
-                        aast::NameExpression(field->origin, Type(VOID), member->name.raw);
+                        aast::NameExpression(field->origin, member->name.raw);
 
                 auto *member_access = new aast::BinaryExpression(field->origin,
                                                                  member->type,
                                                                  aast::MEM_ACC,
-                                                                 init_name,
+                                                                 plain_var,
                                                                  member_name);
                 auto *assignment = new aast::BinaryExpression(field->origin,
                                                               member->type,
@@ -626,7 +626,7 @@ std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *e
             }
         }
 
-        return new aast::NameExpression(sie->origin, type.value(), var_name.raw, prelude);
+        return new aast::VariableExpression(sie->origin, var, prelude);
     }
     case ast::EMPTY_EXPR:
         break;
@@ -799,7 +799,7 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
 
     // fixme: this needs to be a path expression kind of thing
     // fixme: in the very far future, this should have a function pointer type
-    auto *callee = new aast::NameExpression(ce->callee->origin, Type(), func_path.str());
+    auto *callee = new aast::NameExpression(ce->callee->origin, func_path.str());
 
     return new aast::CallExpression(expression->origin, func->return_type, callee, arguments);
 }
@@ -1025,7 +1025,7 @@ std::optional<aast::BinaryExpression *> Analyser::verify_member_access_expressio
                                       aast::MEM_ACC,
                                       left.value(),
                                       new
-                                      aast::NameExpression(mae->right->origin, Type(), member_name));
+                                      aast::NameExpression(mae->right->origin, member_name));
 }
 
 std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
@@ -1085,9 +1085,9 @@ std::optional<aast::PrefixExpression *> Analyser::verify_prefix_expression(
     return new aast::PrefixExpression(pe->origin, pe_type, pt, operand.value());
 }
 
-std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expression *expression,
-                                                                       AccessType access,
-                                                                       bool member_acc) {
+std::optional<aast::Expression *> Analyser::verify_name_expression(ast::Expression *expression,
+                                                                   AccessType access,
+                                                                   bool member_acc) {
     auto *ne = (ast::NameExpression *) expression;
     if (!bucket->error(expression->origin, "undefined variable '{}'", ne->name)
                ->assert(is_var_declared(ne->name)))
@@ -1099,7 +1099,7 @@ std::optional<aast::NameExpression *> Analyser::verify_name_expression(ast::Expr
 
     // Use the name of the variable, which might not be the one in the NameExpression, if the name was replaced to avoid
     // having the same variable name in a function twice (even if they are in separate scopes)
-    auto *new_expr = new aast::NameExpression(ne->origin, variable_type, var->var->name.raw);
+    auto *new_expr = new aast::VariableExpression(ne->origin, var->var);
 
     if (access == ASSIGNMENT)
         var->var->written_to = true;

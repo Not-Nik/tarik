@@ -45,32 +45,32 @@ void Analyser::analyse_statements(const std::vector<aast::Statement *> &statemen
 
 void Analyser::analyse_statement(aast::Statement *statement) {
     switch (statement->statement_type) {
-        case aast::SCOPE_STMT:
-            analyse_scope((aast::ScopeStatement *) statement);
-            break;
-        case aast::FUNC_STMT:
-            analyse_function((aast::FuncStatement *) statement);
-            break;
-        case aast::IF_STMT:
-            analyse_if((aast::IfStatement *) statement);
-            break;
-        case aast::RETURN_STMT:
-            analyse_return((aast::ReturnStatement *) statement);
-            break;
-        case aast::WHILE_STMT:
-            analyse_while((aast::WhileStatement *) statement);
-            break;
-        case aast::VARIABLE_STMT:
-            analyse_variable((aast::VariableStatement *) statement);
-            break;
-        case aast::IMPORT_STMT:
-            analyse_import((aast::ImportStatement *) statement);
-            break;
-        case aast::EXPR_STMT:
-            analyse_expression((aast::Expression *) statement);
-            break;
-        default:
-            break;
+    case aast::SCOPE_STMT:
+        analyse_scope((aast::ScopeStatement *) statement);
+        break;
+    case aast::FUNC_STMT:
+        analyse_function((aast::FuncStatement *) statement);
+        break;
+    case aast::IF_STMT:
+        analyse_if((aast::IfStatement *) statement);
+        break;
+    case aast::RETURN_STMT:
+        analyse_return((aast::ReturnStatement *) statement);
+        break;
+    case aast::WHILE_STMT:
+        analyse_while((aast::WhileStatement *) statement);
+        break;
+    case aast::VARIABLE_STMT:
+        analyse_variable((aast::VariableStatement *) statement);
+        break;
+    case aast::IMPORT_STMT:
+        analyse_import((aast::ImportStatement *) statement);
+        break;
+    case aast::EXPR_STMT:
+        analyse_expression((aast::Expression *) statement);
+        break;
+    default:
+        break;
     }
     statement_index++;
     if (current_function)
@@ -214,81 +214,81 @@ VariableState *Analyser::analyse_variable(aast::VariableStatement *var, bool arg
 void Analyser::analyse_expression(aast::Expression *expression, int depth) {
     analyse_statements(expression->prelude);
     switch (expression->expression_type) {
-        case aast::CALL_EXPR: {
-            auto *ce = (aast::CallExpression *) expression;
+    case aast::CALL_EXPR: {
+        auto *ce = (aast::CallExpression *) expression;
 
-            for (auto *argument : ce->arguments) {
-                analyse_expression(argument);
-                if (argument->flattens_to_member_access() && !argument->type.is_copyable()) {
-                    // Move if variable has non-copyable type
-                    get_variable(argument->flatten_to_member_access())->move(statement_index);
-                }
+        for (auto *argument : ce->arguments) {
+            analyse_expression(argument);
+            if (argument->flattens_to_member_access() && !argument->type.is_copyable()) {
+                // Move if variable has non-copyable type
+                get_variable(argument->flatten_to_member_access())->move(statement_index);
             }
-            break;
         }
-        case aast::DASH_EXPR:
-        case aast::DOT_EXPR:
-        case aast::EQ_EXPR:
-        case aast::COMP_EXPR: {
-            auto *be = (aast::BinaryExpression *) expression;
+        break;
+    }
+    case aast::DASH_EXPR:
+    case aast::DOT_EXPR:
+    case aast::EQ_EXPR:
+    case aast::COMP_EXPR: {
+        auto *be = (aast::BinaryExpression *) expression;
 
-            analyse_expression(be->left);
-            analyse_expression(be->right);
-            break;
-        }
-        case aast::MEM_ACC_EXPR: {
-            auto *mae = (aast::BinaryExpression *) expression;
+        analyse_expression(be->left);
+        analyse_expression(be->right);
+        break;
+    }
+    case aast::MEM_ACC_EXPR: {
+        auto *mae = (aast::BinaryExpression *) expression;
 
-            if (mae->left->type.pointer_level == 0) {
-                analyse_expression(mae->left);
+        if (mae->left->type.pointer_level == 0) {
+            analyse_expression(mae->left);
 
-                auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
-                analyse_expression(name);
-                delete name;
-            } else {
-                // Ignore depth of previous derefs
-                analyse_expression(mae->left, 1);
-            }
+            auto *name = new aast::NameExpression(mae->origin, mae->flatten_to_member_access());
+            analyse_expression(name);
+            delete name;
+        } else {
+            // Ignore depth of previous derefs
+            analyse_expression(mae->left, 1);
+        }
 
-            break;
+        break;
+    }
+    case aast::PREFIX_EXPR: {
+        auto *pe = (aast::PrefixExpression *) expression;
+        if (pe->prefix_type == aast::DEREF) {
+            analyse_expression(pe->operand, depth + 1);
+        } else {
+            analyse_expression(pe->operand);
         }
-        case aast::PREFIX_EXPR: {
-            auto *pe = (aast::PrefixExpression *) expression;
-            if (pe->prefix_type == aast::DEREF) {
-                analyse_expression(pe->operand, depth + 1);
-            } else {
-                analyse_expression(pe->operand);
-            }
-            break;
-        }
-        case aast::ASSIGN_EXPR: {
-            auto *ae = (aast::BinaryExpression *) expression;
+        break;
+    }
+    case aast::ASSIGN_EXPR: {
+        auto *ae = (aast::BinaryExpression *) expression;
 
-            if (ae->left->flattens_to_member_access() &&
-                !(ae->left->type.pointer_level > 0 && ae->left->expression_type == aast::MEM_ACC_EXPR)) {
-                get_variable(ae->left->flatten_to_member_access())->assigned(statement_index);
-            } else {
-                // In normal expressions, variables don't create a new lifetime
-                analyse_expression(ae->left);
-            }
-            analyse_expression(ae->right);
-            break;
+        if (ae->left->flattens_to_member_access() &&
+            !(ae->left->type.pointer_level > 0 && ae->left->expression_type == aast::MEM_ACC_EXPR)) {
+            get_variable(ae->left->flatten_to_member_access())->assigned(statement_index);
+        } else {
+            // In normal expressions, variables don't create a new lifetime
+            analyse_expression(ae->left);
         }
-        case aast::NAME_EXPR: {
-            auto *ne = (aast::NameExpression *) expression;
-            get_variable(ne->name)->used(statement_index, depth);
-            break;
-        }
-        case aast::INT_EXPR:
-        case aast::BOOL_EXPR:
-        case aast::REAL_EXPR:
-        case aast::STR_EXPR:
-            break;
-        case aast::CAST_EXPR: {
-            auto *ce = (aast::CastExpression *) expression;
-            analyse_expression(ce->expression);
-            break;
-        }
+        analyse_expression(ae->right);
+        break;
+    }
+    case aast::NAME_EXPR:
+    case aast::VAR_EXPR: {
+        get_variable(expression->flatten_to_member_access())->used(statement_index, depth);
+        break;
+    }
+    case aast::INT_EXPR:
+    case aast::BOOL_EXPR:
+    case aast::REAL_EXPR:
+    case aast::STR_EXPR:
+        break;
+    case aast::CAST_EXPR: {
+        auto *ce = (aast::CastExpression *) expression;
+        analyse_expression(ce->expression);
+        break;
+    }
     }
 }
 
@@ -300,34 +300,34 @@ void Analyser::verify_statements(const std::vector<aast::Statement *> &statement
 
 void Analyser::verify_statement(aast::Statement *statement) {
     switch (statement->statement_type) {
-        case aast::SCOPE_STMT:
-            verify_scope((aast::ScopeStatement *) statement);
-            break;
-        case aast::FUNC_STMT:
-            verify_function((aast::FuncStatement *) statement);
-            break;
-        case aast::IF_STMT:
-            verify_if((aast::IfStatement *) statement);
-            break;
-        case aast::RETURN_STMT:
-            verify_return((aast::ReturnStatement *) statement);
-            break;
-        case aast::WHILE_STMT:
-            verify_while((aast::WhileStatement *) statement);
-            break;
-        case aast::IMPORT_STMT:
-            verify_import((aast::ImportStatement *) statement);
-            break;
-        case aast::EXPR_STMT:
-            verify_expression((aast::Expression *) statement);
-            break;
-        case aast::ELSE_STMT:
-        case aast::BREAK_STMT:
-        case aast::CONTINUE_STMT:
-        case aast::VARIABLE_STMT:
-        case aast::STRUCT_STMT:
-        default:
-            break;
+    case aast::SCOPE_STMT:
+        verify_scope((aast::ScopeStatement *) statement);
+        break;
+    case aast::FUNC_STMT:
+        verify_function((aast::FuncStatement *) statement);
+        break;
+    case aast::IF_STMT:
+        verify_if((aast::IfStatement *) statement);
+        break;
+    case aast::RETURN_STMT:
+        verify_return((aast::ReturnStatement *) statement);
+        break;
+    case aast::WHILE_STMT:
+        verify_while((aast::WhileStatement *) statement);
+        break;
+    case aast::IMPORT_STMT:
+        verify_import((aast::ImportStatement *) statement);
+        break;
+    case aast::EXPR_STMT:
+        verify_expression((aast::Expression *) statement);
+        break;
+    case aast::ELSE_STMT:
+    case aast::BREAK_STMT:
+    case aast::CONTINUE_STMT:
+    case aast::VARIABLE_STMT:
+    case aast::STRUCT_STMT:
+    default:
+        break;
     }
     statement_index++;
 }
@@ -382,161 +382,162 @@ void Analyser::verify_import(aast::ImportStatement *import_) {
 
 Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigned) {
     switch (expression->expression_type) {
-        case aast::CALL_EXPR: {
-            auto *ce = (aast::CallExpression *) expression;
+    case aast::CALL_EXPR: {
+        auto *ce = (aast::CallExpression *) expression;
 
-            // Store all the lifetimes of the arguments on the caller side
-            std::vector<std::pair<Lifetime *, aast::Expression *>> lifetimes;
-            lifetimes.reserve(ce->arguments.size());
-            for (auto *argument : ce->arguments)
-                lifetimes.emplace_back(verify_expression(argument), argument);
+        // Store all the lifetimes of the arguments on the caller side
+        std::vector<std::pair<Lifetime *, aast::Expression *>> lifetimes;
+        lifetimes.reserve(ce->arguments.size());
+        for (auto *argument : ce->arguments)
+            lifetimes.emplace_back(verify_expression(argument), argument);
 
-            // Get the function to be called
-            Function &function = functions.at(ce->callee->print());
+        // Get the function to be called
+        Function &function = functions.at(ce->callee->print());
 
-            function.callers.emplace(current_function);
+        function.callers.emplace(current_function);
 
-            auto find_argument_index = [&function](const Lifetime *pointer) -> std::pair<int, int> {
-                int index = 0;
-                for (auto &argument : function.arguments) {
-                    Lifetime *lifetime = argument;
+        auto find_argument_index = [&function](const Lifetime *pointer) -> std::pair<int, int> {
+            int index = 0;
+            for (auto &argument : function.arguments) {
+                Lifetime *lifetime = argument;
 
-                    int depth = 0;
-                    while (lifetime) {
-                        if (lifetime == pointer)
-                            return std::make_pair(index, depth);
-                        lifetime = lifetime->next;
-                        depth++;
-                    }
-                    index++;
+                int depth = 0;
+                while (lifetime) {
+                    if (lifetime == pointer)
+                        return std::make_pair(index, depth);
+                    lifetime = lifetime->next;
+                    depth++;
                 }
-                return std::make_pair(-1, -1);
-            };
-
-            for (const auto &[longer, relations] : function.relations) {
-                for (const auto &[shorter, relation_origin] : relations) {
-                    auto a = find_argument_index(longer);
-                    auto b = find_argument_index(shorter);
-
-                    if (a.first == -1 || b.first == -1)
-                        continue;
-
-                    auto [local_longer, longer_expression] = lifetimes[a.first];
-                    auto [local_shorter, shorter_expression] = lifetimes[b.first];
-
-                    for (int i = 0; i < a.second + 1; i++) {
-                        local_longer = local_longer->next;
-                        longer_expression = longer_expression->get_inner();
-                    }
-
-                    for (int i = 0; i < b.second + 1; i++) {
-                        local_shorter = local_shorter->next;
-                        shorter_expression = shorter_expression->get_inner();
-                    }
-
-                    Error *error = bucket->error(longer_expression->origin, "value does not live long enough")
-                                         ->note(shorter_expression->origin,
-                                                "'{}' should live longer than '{}',...",
-                                                longer_expression->print(),
-                                                shorter_expression->print())
-                                         ->note(relation_origin, "...because of its usage here,...");
-
-                    // Todo: integrate this with print_lifetime_error
-                    if (local_longer->is_local()) {
-                        auto *local_local_longer = (LocalLifetime *) local_longer;
-                        error->note(current_function->statement_positions[local_local_longer->death - 1],
-                                    "...but it only lives until here");
-                    }
-
-                    error->assert(is_within(local_shorter, local_longer, ce->origin));
-                }
+                index++;
             }
+            return std::make_pair(-1, -1);
+        };
 
-            if (function.return_type) {
-                auto [arg_index, depth] = find_argument_index(function.return_type);
+        for (const auto &[longer, relations] : function.relations) {
+            for (const auto &[shorter, relation_origin] : relations) {
+                auto a = find_argument_index(longer);
+                auto b = find_argument_index(shorter);
 
-                auto [local_arg, arg_expression] = lifetimes[arg_index];
+                if (a.first == -1 || b.first == -1)
+                    continue;
 
-                for (int i = 0; i < depth + 1; i++) {
-                    local_arg = local_arg->next;
-                    arg_expression = arg_expression->get_inner();
+                auto [local_longer, longer_expression] = lifetimes[a.first];
+                auto [local_shorter, shorter_expression] = lifetimes[b.first];
+
+                for (int i = 0; i < a.second + 1; i++) {
+                    local_longer = local_longer->next;
+                    longer_expression = longer_expression->get_inner();
                 }
 
-                return LocalLifetime::temporary(local_arg, statement_index);
+                for (int i = 0; i < b.second + 1; i++) {
+                    local_shorter = local_shorter->next;
+                    shorter_expression = shorter_expression->get_inner();
+                }
+
+                Error *error = bucket->error(longer_expression->origin, "value does not live long enough")
+                                     ->note(shorter_expression->origin,
+                                            "'{}' should live longer than '{}',...",
+                                            longer_expression->print(),
+                                            shorter_expression->print())
+                                     ->note(relation_origin, "...because of its usage here,...");
+
+                // Todo: integrate this with print_lifetime_error
+                if (local_longer->is_local()) {
+                    auto *local_local_longer = (LocalLifetime *) local_longer;
+                    error->note(current_function->statement_positions[local_local_longer->death - 1],
+                                "...but it only lives until here");
+                }
+
+                error->assert(is_within(local_shorter, local_longer, ce->origin));
+            }
+        }
+
+        if (function.return_type) {
+            auto [arg_index, depth] = find_argument_index(function.return_type);
+
+            auto [local_arg, arg_expression] = lifetimes[arg_index];
+
+            for (int i = 0; i < depth + 1; i++) {
+                local_arg = local_arg->next;
+                arg_expression = arg_expression->get_inner();
             }
 
-            return LocalLifetime::temporary(nullptr, statement_index);
+            return LocalLifetime::temporary(local_arg, statement_index);
         }
-        case aast::DASH_EXPR:
-        case aast::DOT_EXPR:
-        case aast::EQ_EXPR:
-        case aast::COMP_EXPR: {
-            auto *be = (aast::BinaryExpression *) expression;
 
-            verify_expression(be->left);
-            verify_expression(be->right);
-            return LocalLifetime::temporary(nullptr, statement_index);
+        return LocalLifetime::temporary(nullptr, statement_index);
+    }
+    case aast::DASH_EXPR:
+    case aast::DOT_EXPR:
+    case aast::EQ_EXPR:
+    case aast::COMP_EXPR: {
+        auto *be = (aast::BinaryExpression *) expression;
+
+        verify_expression(be->left);
+        verify_expression(be->right);
+        return LocalLifetime::temporary(nullptr, statement_index);
+    }
+    case aast::MEM_ACC_EXPR: {
+        auto *mae = (aast::BinaryExpression *) expression;
+
+        Lifetime *lt = verify_expression(mae->left);
+
+        if (mae->left->type.pointer_level == 0) {
+            auto *name = new aast::NameExpression(mae->origin, mae->flatten_to_member_access());
+            lt = verify_expression(name);
+            delete name;
         }
-        case aast::MEM_ACC_EXPR: {
-            auto *mae = (aast::BinaryExpression *) expression;
 
-            Lifetime *lt = verify_expression(mae->left);
-
-            if (mae->left->type.pointer_level == 0) {
-                auto *name = new aast::NameExpression(mae->origin, mae->type, mae->flatten_to_member_access());
-                lt = verify_expression(name);
-                delete name;
-            }
-
-            return lt;
+        return lt;
+    }
+    case aast::PREFIX_EXPR: {
+        auto *pe = (aast::PrefixExpression *) expression;
+        Lifetime *lifetime = verify_expression(pe->operand, assigned);
+        if (pe->prefix_type == aast::REF) {
+            return LocalLifetime::temporary(lifetime, statement_index);
+        } else if (assigned && pe->prefix_type == aast::DEREF) {
+            return lifetime->next;
         }
-        case aast::PREFIX_EXPR: {
-            auto *pe = (aast::PrefixExpression *) expression;
-            Lifetime *lifetime = verify_expression(pe->operand, assigned);
-            if (pe->prefix_type == aast::REF) {
-                return LocalLifetime::temporary(lifetime, statement_index);
-            } else if (assigned && pe->prefix_type == aast::DEREF) {
-                return lifetime->next;
-            }
-            return LocalLifetime::temporary(lifetime->next, statement_index);
-        }
-        case aast::ASSIGN_EXPR: {
-            auto *ae = (aast::BinaryExpression *) expression;
+        return LocalLifetime::temporary(lifetime->next, statement_index);
+    }
+    case aast::ASSIGN_EXPR: {
+        auto *ae = (aast::BinaryExpression *) expression;
 
-            Lifetime *right_lifetime = verify_expression(ae->right);
-            Lifetime *left_lifetime = verify_expression(ae->left, true);
+        Lifetime *right_lifetime = verify_expression(ae->right);
+        Lifetime *left_lifetime = verify_expression(ae->left, true);
 
-            if (ae->right->flattens_to_member_access()) {
-                right_lifetime = LocalLifetime::temporary(right_lifetime->next, statement_index);
-            }
+        if (ae->right->flattens_to_member_access()) {
+            right_lifetime = LocalLifetime::temporary(right_lifetime->next, statement_index);
+        }
 
-            if (!is_within(left_lifetime, right_lifetime, ae->origin))
-                print_lifetime_error(bucket->error(ae->right->origin, "value does not live long enough"),
-                                     ae->left,
-                                     ae->right,
-                                     left_lifetime,
-                                     right_lifetime);
+        if (!is_within(left_lifetime, right_lifetime, ae->origin))
+            print_lifetime_error(bucket->error(ae->right->origin, "value does not live long enough"),
+                                 ae->left,
+                                 ae->right,
+                                 left_lifetime,
+                                 right_lifetime);
 
-            return LocalLifetime::static_(nullptr);
-        }
-        case aast::NAME_EXPR: {
-            auto *ne = (aast::NameExpression *) expression;
-            if (assigned)
-                return current_function->variables.at(ne->name)->current(statement_index);
-            // Get timeframe, where this variable has a value, i.e. can be accessed by a pointer
-            return current_function->variables.at(ne->name)->current_continuous(statement_index);
-        }
-        case aast::INT_EXPR:
-        case aast::BOOL_EXPR:
-        case aast::REAL_EXPR:
-            return LocalLifetime::temporary(nullptr, statement_index);
-        case aast::STR_EXPR:
-            return LocalLifetime::temporary(LocalLifetime::static_(nullptr), statement_index);
-        case aast::CAST_EXPR: {
-            auto *ce = (aast::CastExpression *) expression;
-            Lifetime *lt = verify_expression(ce->expression);
-            return LocalLifetime::temporary(lt->next, statement_index);
-        }
+        return LocalLifetime::static_(nullptr);
+    }
+    case aast::NAME_EXPR:
+    case aast::VAR_EXPR: {
+        if (assigned)
+            return current_function->variables.at(expression->flatten_to_member_access())->current(statement_index);
+        // Get timeframe, where this variable has a value, i.e. can be accessed by a pointer
+        return current_function->variables.at(expression->flatten_to_member_access())->current_continuous(
+            statement_index);
+    }
+    case aast::INT_EXPR:
+    case aast::BOOL_EXPR:
+    case aast::REAL_EXPR:
+        return LocalLifetime::temporary(nullptr, statement_index);
+    case aast::STR_EXPR:
+        return LocalLifetime::temporary(LocalLifetime::static_(nullptr), statement_index);
+    case aast::CAST_EXPR: {
+        auto *ce = (aast::CastExpression *) expression;
+        Lifetime *lt = verify_expression(ce->expression);
+        return LocalLifetime::temporary(lt->next, statement_index);
+    }
     }
 }
 

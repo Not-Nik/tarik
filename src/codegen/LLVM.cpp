@@ -444,8 +444,8 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             auto *pe = (aast::PrefixExpression *) expression;
 
             if (pe->prefix_type == aast::REF) {
-                if (pe->operand->expression_type == aast::NAME_EXPR) {
-                    auto [var, type, is_arg] = get_var_on_stack(((aast::NameExpression *) pe->operand)->name);
+                if (pe->operand->expression_type == aast::VAR_EXPR) {
+                    auto [var, type, is_arg] = get_var_on_stack(pe->operand->flatten_to_member_access());
                     return var;
                 } else if (pe->operand->expression_type == aast::MEM_ACC_EXPR) {
                     return generate_member_access((aast::BinaryExpression *) pe->operand);
@@ -477,8 +477,8 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             auto *ae = (aast::BinaryExpression *) expression;
             llvm::Value *dest;
             llvm::Type *dest_type;
-            if (ae->left->expression_type == aast::NAME_EXPR) {
-                auto [var, type, is_arg] = get_var_on_stack(((aast::NameExpression *) ae->left)->name);
+            if (ae->left->expression_type == aast::VAR_EXPR) {
+                auto [var, type, is_arg] = get_var_on_stack(ae->left->flatten_to_member_access());
                 dest = var;
                 dest_type = type;
             } else if (ae->left->expression_type == aast::MEM_ACC_EXPR) {
@@ -495,59 +495,59 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
             }
             return builder.CreateStore(generate_cast(generate_expression(ae->right), dest_type), dest);
         }
-        case aast::NAME_EXPR: {
-            auto *ne = (aast::NameExpression *) expression;
-            auto [var, type, is_arg] = variables.at(ne->name);
-            if (is_arg)
-                return var;
+    case aast::VAR_EXPR: {
+        auto *ne = (aast::VariableExpression *) expression;
+        auto [var, type, is_arg] = variables.at(ne->flatten_to_member_access());
+        if (is_arg)
+            return var;
+        else
+            return builder.CreateLoad(type, var, "load_temp");
+    }
+    case aast::INT_EXPR: {
+        auto *ie = (aast::IntExpression *) expression;
+        size_t width = std::max(8, roundUp((size_t) std::bit_width((size_t) ie->n), size_t(8)));
+
+        if (ie->n >= 0) {
+            if (width == 8)
+                ie->type = Type(U8);
+            else if (width == 16)
+                ie->type = Type(U16);
+            else if (width == 32)
+                ie->type = Type(U32);
             else
-                return builder.CreateLoad(type, var, "load_temp");
+                ie->type = Type(U64);
+        } else {
+            if (width == 8)
+                ie->type = Type(I8);
+            else if (width == 16)
+                ie->type = Type(I16);
+            else if (width == 32)
+                ie->type = Type(I32);
+            else
+                ie->type = Type(I64);
         }
-        case aast::INT_EXPR: {
-            auto *ie = (aast::IntExpression *) expression;
-            size_t width = std::max(8, roundUp((size_t) std::bit_width((size_t) ie->n), size_t(8)));
 
-            if (ie->n >= 0) {
-                if (width == 8)
-                    ie->type = Type(U8);
-                else if (width == 16)
-                    ie->type = Type(U16);
-                else if (width == 32)
-                    ie->type = Type(U32);
-                else
-                    ie->type = Type(U64);
-            } else {
-                if (width == 8)
-                    ie->type = Type(I8);
-                else if (width == 16)
-                    ie->type = Type(I16);
-                else if (width == 32)
-                    ie->type = Type(I32);
-                else
-                    ie->type = Type(I64);
-            }
-
-            return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
-        }
-        case aast::REAL_EXPR: {
-            auto *re = (aast::RealExpression *) expression;
-            return llvm::ConstantFP::get(llvm::Type::getDoubleTy(context), re->n);
-        }
-        case aast::STR_EXPR: {
-            auto *se = (aast::StringExpression *) expression;
-            return builder.CreateGlobalStringPtr(se->n, "string_value");
-        }
-        case aast::BOOL_EXPR: {
-            auto *be = (aast::BoolExpression *) expression;
-            return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
-        }
-        case aast::CAST_EXPR: {
-            auto *ce = (aast::CastExpression *) expression;
-            return generate_cast(generate_expression(ce->expression),
-                                 make_llvm_type(ce->type),
-                                 ce->expression->type.is_signed_int()
-                                 || ce->type.is_signed_int());
-        }
+        return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, width), ie->n, true);
+    }
+    case aast::REAL_EXPR: {
+        auto *re = (aast::RealExpression *) expression;
+        return llvm::ConstantFP::get(llvm::Type::getDoubleTy(context), re->n);
+    }
+    case aast::STR_EXPR: {
+        auto *se = (aast::StringExpression *) expression;
+        return builder.CreateGlobalStringPtr(se->n, "string_value");
+    }
+    case aast::BOOL_EXPR: {
+        auto *be = (aast::BoolExpression *) expression;
+        return llvm::ConstantInt::get(llvm::Type::getIntNTy(context, 1), be->n, false);
+    }
+    case aast::CAST_EXPR: {
+        auto *ce = (aast::CastExpression *) expression;
+        return generate_cast(generate_expression(ce->expression),
+                             make_llvm_type(ce->type),
+                             ce->expression->type.is_signed_int()
+                             || ce->type.is_signed_int());
+    }
     }
     return nullptr;
 }
@@ -656,8 +656,8 @@ llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
     std::string struct_;
     bool pointer = mae->left->type.pointer_level > 0;
 
-    if (mae->left->expression_type == aast::NAME_EXPR) {
-        std::string var_name = ((aast::NameExpression *) mae->left)->name;
+    if (mae->left->expression_type == aast::VAR_EXPR) {
+        std::string var_name = mae->left->flatten_to_member_access();
         auto [var, type, is_arg] = variables.at(var_name);
 
         left = var;

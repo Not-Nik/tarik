@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "Base.h"
+#include "Statements.h"
 #include "syntactic/Types.h"
 
 namespace aast
@@ -18,8 +19,8 @@ class NameExpression : public Expression {
 public:
     std::string name;
 
-    explicit NameExpression(const LexerRange &lp, const Type &type, std::string n, std::vector<Statement *> p = {})
-        : Expression(NAME_EXPR, lp, type, p),
+    explicit NameExpression(const LexerRange &lp, std::string n)
+        : Expression(NAME_EXPR, lp, Type()),
           name(std::move(n)) {}
 
     [[nodiscard]] std::string print() const override {
@@ -32,6 +33,27 @@ public:
 
     std::string flatten_to_member_access() const override {
         return name;
+    }
+};
+
+class VariableExpression : public Expression {
+public:
+    class VariableStatement *var;
+
+    explicit VariableExpression(const LexerRange &lp, VariableStatement *var, std::vector<Statement *> p = {})
+        : Expression(VAR_EXPR, lp, var->type, p),
+          var(var) {}
+
+    [[nodiscard]] std::string print() const override {
+        return var->name.raw;
+    }
+
+    bool flattens_to_member_access() const override {
+        return true;
+    }
+
+    std::string flatten_to_member_access() const override {
+        return var->name.raw;
     }
 };
 
