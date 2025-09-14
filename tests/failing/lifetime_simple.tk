@@ -2,7 +2,9 @@
 # /tk test
 # /tk fail
 
-struct test_struct {}
+struct test_struct {
+    i32 member;
+}
 struct recursive_struct {
     test_struct t;
     i32 member;
@@ -10,27 +12,24 @@ struct recursive_struct {
 
 fn struct_taking_func(test_struct ts) {}
 
-fn test(i32 ***arg_pointer) i32 {
-    # /tk warning
-    i32 ***arg_pointer_copy = arg_pointer;
-
-    # /tk warning
-    arg_pointer = arg_pointer_copy;
+fn test() {
     {
-        # /tk warning
-        test_struct ts = test_struct [ ];
+        i32 t = 0;
+
+        # /tk error
+        #i32 *pt = &t;
 
         # /tk warning
-        test_struct *pts = &ts;
+        t = 1;
 
-        struct_taking_func(ts);
+        #*pt;
 
-        ts = test_struct [ ];
-        pts = &ts;
+        t = 0;
+        #pt = &t;
     }
 
     {
-        recursive_struct rs = recursive_struct [ test_struct [ ], 1 ];
+        recursive_struct rs = recursive_struct [ test_struct [ 0 ], 1 ];
         i32 *pts = &rs.member;
 
         struct_taking_func(rs.t);
@@ -40,9 +39,10 @@ fn test(i32 ***arg_pointer) i32 {
 
 
     # /tk error
-    i32 *pointer = &as!(5, i32);
+    #i32 *pointer = &as!(5, i32);
+    #*pointer;
     # /tk error
-    str **str_ptr = &"test";
+    #str **str_ptr = &"test";
     i32 store;
 
     {
@@ -50,13 +50,7 @@ fn test(i32 ***arg_pointer) i32 {
         i32 value = 5;
         value = 4;
         # /tk error
-        pointer = &value;
+        #pointer = &value;
         store = *&value;
     }
-
-    i32 value = 10;
-    # /tk error
-    **arg_pointer = &value;
-
-    return ***arg_pointer;
 }

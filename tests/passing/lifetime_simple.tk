@@ -1,0 +1,24 @@
+# tarik (c) Nikolas Wipper 2025
+# /tk test
+# /tk pass
+
+struct test_struct {
+    i32 member;
+}
+struct recursive_struct {
+    test_struct t;
+    i32 member;
+}
+
+fn struct_taking_func(test_struct ts) {}
+
+fn test() {
+    { # This should compile, because only individual members are accessed
+        recursive_struct rs = recursive_struct [ test_struct [ 0 ], 1 ];
+        i32 *pts = &rs.member;
+
+        struct_taking_func(rs.t);
+
+        pts;
+    }
+}
