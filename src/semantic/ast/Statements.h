@@ -31,15 +31,20 @@ public:
         }
     }
 
-    [[nodiscard]] std::string print() const override {
-        std::string res = "{";
-        for (auto *st : block) {
+    static std::string print_statements(std::vector<Statement *> stmts, bool indent = true) {
+        std::string res;
+        for (auto *st : stmts) {
             std::string t = st->print();
-            if (st->statement_type == EXPR_STMT)
+            if (st->statement_type == EXPR_STMT) {
                 t.push_back(';');
+                std::string prelude = print_statements(((Expression *) st)->collect_prelude(), false);
+                if (!prelude.empty())
+                    prelude.erase(0, 1);
+                t = prelude + t;
+            }
             // Add four spaces to the start of every line
             size_t index = 0;
-            while (true) {
+            while (indent) {
                 /* Locate the substring to replace. */
                 index = t.find('\n', index);
                 if (index == std::string::npos)
@@ -51,10 +56,19 @@ public:
                 /* Advance index forward so the next iteration doesn't pick it up as well. */
                 index += 3;
             }
-            res += "\n    " + t;
+            if (indent)
+                res += "\n    " + t;
+            else
+                res += "\n" + t;
         }
-        res += "\n}";
+        if (!stmts.empty()) {
+            res += '\n';
+        }
         return res;
+    }
+
+    [[nodiscard]] std::string print() const override {
+        return "{" + print_statements(block) + "}";
     }
 };
 
@@ -84,8 +98,9 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
+        std::string prelude = print_statements(condition->collect_prelude(), false);
         std::string then_string = ScopeStatement::print();
-        std::string if_string = "if " + condition->print() + " " + then_string;
+        std::string if_string = prelude + "if " + condition->print() + " " + then_string;
         if (else_statement)
             if_string += " " + else_statement->print();
         return if_string;
@@ -106,10 +121,12 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
-        if (value)
-            return "return " + value->print() + ";";
-        else
+        if (value) {
+            std::string prelude = ScopeStatement::print_statements(value->collect_prelude(), false);
+            return prelude + "return " + value->print() + ";";
+        } else {
             return "return;";
+        }
     }
 };
 
@@ -127,8 +144,9 @@ public:
     }
 
     [[nodiscard]] std::string print() const override {
+        std::string prelude = print_statements(condition->collect_prelude(), false);
         std::string then_string = ScopeStatement::print();
-        return "while " + condition->print() + " " + then_string;
+        return prelude + "while " + condition->print() + " " + then_string;
     }
 };
 

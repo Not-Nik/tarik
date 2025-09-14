@@ -132,6 +132,10 @@ public:
     Expression *get_inner() override {
         return operand;
     }
+
+    std::vector<Statement *> collect_prelude() override {
+        return operand->collect_prelude();
+    }
 };
 
 enum BinOpType {
@@ -230,6 +234,14 @@ public:
     std::string flatten_to_member_access() const override {
         return left->flatten_to_member_access() + "." + right->flatten_to_member_access();
     }
+
+    std::vector<Statement *> collect_prelude() override {
+        std::vector<Statement *> prel = left->collect_prelude();
+        std::vector<Statement *> prel2 = right->collect_prelude();
+
+        prel.insert(prel.end(), prel2.begin(), prel2.end());
+        return prel;
+    }
 };
 
 class CastExpression : public Expression {
@@ -246,6 +258,10 @@ public:
 
     [[nodiscard]] std::string print() const override {
         return "as!(" + expression->print() + ", " + type.str() + ")";
+    }
+
+    std::vector<Statement *> collect_prelude() override {
+        return expression->collect_prelude();
     }
 };
 
@@ -276,6 +292,17 @@ public:
             arg_string.pop_back();
         }
         return callee->print() + "(" + arg_string + ")";
+    }
+
+    std::vector<Statement *> collect_prelude() override {
+        std::vector<Statement *> prel = callee->collect_prelude();
+
+        for (auto arg : arguments) {
+            std::vector<Statement *> arg_prel = arg->collect_prelude();
+            prel.insert(prel.end(), arg_prel.begin(), arg_prel.end());
+        }
+
+        return prel;
     }
 };
 } // namespace ast
