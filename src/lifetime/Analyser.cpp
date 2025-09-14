@@ -381,6 +381,7 @@ void Analyser::verify_import(aast::ImportStatement *import_) {
 }
 
 Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigned) {
+    verify_statements(expression->prelude);
     switch (expression->expression_type) {
     case aast::CALL_EXPR: {
         auto *ce = (aast::CallExpression *) expression;
