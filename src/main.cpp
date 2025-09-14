@@ -148,7 +148,7 @@ int main(int argc, const char *argv[]) {
     fs::path output_path = input_path;
     if (output_filename.empty()) {
         std::string new_extension;
-        if (emit_ast) {
+        if (emit_ast || emit_aast) {
             new_extension = ".re.tk";
         } else if (emit_llvm) {
             new_extension = ".ll";
