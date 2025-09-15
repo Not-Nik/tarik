@@ -832,15 +832,15 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
     }
 
     if (!bucket->error(ce->origin,
-                       "too few arguments, expected {} found {}",
-                       macro->arguments.size(),
+                       "too few arguments, expected at least {} found {}",
+                       min_arguments,
                        ce->arguments.size())
                ->assert(ce->arguments.size() >= min_arguments))
         return {};
 
     if (!bucket->error(ce->origin,
                        "too many arguments, expected {} found {}",
-                       macro->arguments.size(),
+                       min_arguments,
                        ce->arguments.size())
                ->assert(ce->arguments.size() <= max_arguments))
         return {};
