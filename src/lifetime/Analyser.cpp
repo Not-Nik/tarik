@@ -5,6 +5,7 @@
 #include "Variable.h"
 
 #include <iostream>
+#include <ranges>
 #include <utility>
 
 namespace lifetime
@@ -12,7 +13,11 @@ namespace lifetime
 Analyser::Analyser(Bucket *bucket, ::Analyser *analyser)
     : bucket(bucket),
       structures(analyser->structures),
-      declarations(analyser->func_decls) {}
+      declarations(analyser->func_decls) {
+    for (const auto &func : declarations | std::views::values) {
+        functions.emplace(func->path.str(), Function {func});
+    }
+}
 
 void Analyser::analyse(const std::vector<aast::Statement *> &statements) {
     analyse_statements(statements);
@@ -29,7 +34,7 @@ void Analyser::analyse(const std::vector<aast::Statement *> &statements) {
             for (auto *caller : callers) {
                 std::size_t relation_count = caller->relations.size();
 
-                verify_function(caller->statement);
+                verify_statement(caller->statement);
 
                 changed = changed || relation_count > caller->relations.size();
             }

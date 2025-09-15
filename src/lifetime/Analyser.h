@@ -15,7 +15,7 @@
 namespace lifetime
 {
 struct Function {
-    aast::FuncStatement *statement;
+    aast::Statement *statement;
 
     Lifetime *return_type = nullptr;
     LexerRange return_deduction;
