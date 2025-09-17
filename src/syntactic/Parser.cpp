@@ -260,7 +260,6 @@ Statement *Parser::parse_statement() {
         }
 
         std::vector<VariableStatement *> args;
-        bool var_arg = false;
 
         if (!check_expect(PAREN_OPEN)) {
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE)
@@ -282,11 +281,6 @@ Statement *Parser::parse_statement() {
             }
 
             while (lexer.peek().id != END && lexer.peek().id != PAREN_CLOSE) {
-                if (lexer.peek().id == TRIPLE_PERIOD) {
-                    var_arg = true;
-                    lexer.consume();
-                    break;
-                }
                 std::optional<Type> maybe_type = type();
                 bucket->error(lexer.peek().origin, "exepcted type name")
                       ->assert(maybe_type.has_value());
@@ -310,7 +304,7 @@ Statement *Parser::parse_statement() {
 
         std::vector<Statement *> body = block();
 
-        return new FuncStatement(origin, name, t, args, body, var_arg, member_of);
+        return new FuncStatement(origin, name, t, args, body, member_of);
     } else if (token.id == RETURN) {
         lexer.consume();
         Expression *val = nullptr;

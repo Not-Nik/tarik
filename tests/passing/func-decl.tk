@@ -6,8 +6,6 @@ fn blank_func() {}
 
 fn parameter_func(i32 param) {}
 
-fn vararg_func(...) {}
-
 fn i32.static_member_func() {}
 
 fn i32.copy_member_func(this) {}

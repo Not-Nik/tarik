@@ -173,7 +173,6 @@ public:
     Token name;
     Type return_type;
     std::vector<VariableStatement *> arguments;
-    bool var_arg;
     std::optional<Type> member_of;
 
     FuncStatement(const LexerRange &o,
@@ -181,13 +180,11 @@ public:
                   Type ret,
                   std::vector<VariableStatement *> args,
                   std::vector<Statement *> b,
-                  bool va,
                   std::optional<Type> mo)
         : ScopeStatement(FUNC_STMT, o, std::move(b)),
           name(std::move(n)),
           return_type(std::move(ret)),
           arguments(std::move(args)),
-          var_arg(va),
           member_of(std::move(mo)) {}
 
     ~FuncStatement() override {

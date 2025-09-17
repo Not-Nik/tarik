@@ -62,7 +62,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
                                                               name,
                                                               func->return_type,
                                                               arguments,
-                                                              func->var_arg));
+                                                              false));
         } else if (statement->statement_type == ast::STRUCT_STMT) {
             auto *struct_ = (ast::StructStatement *) statement;
 
@@ -285,9 +285,6 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
         }
     }
 
-    if (func->var_arg)
-        bucket->warning(func->origin, "function uses var args, but they cannot be accessed");
-
     std::optional return_type = verify_type(func->return_type);
 
     if (!return_type.has_value())
@@ -303,7 +300,7 @@ std::optional<aast::FuncStatement *> Analyser::verify_function(ast::FuncStatemen
                                                 return_type.value(),
                                                 arguments,
                                                 std::move(block),
-                                                func->var_arg));
+                                                false));
 
     return functions.back();
 }
