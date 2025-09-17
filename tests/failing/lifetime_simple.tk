@@ -17,15 +17,15 @@ fn test() {
         i32 t = 0;
 
         # /tk error
-        #i32 *pt = &t;
+        i32 *pt = &t;
 
         # /tk warning
         t = 1;
 
-        #*pt;
+        *pt;
 
         t = 0;
-        #pt = &t;
+        pt = &t;
     }
 
     {
@@ -39,10 +39,10 @@ fn test() {
 
 
     # /tk error
-    #i32 *pointer = &as!(5, i32);
-    #*pointer;
+    i32 *pointer = &as!(5, i32);
+    *pointer;
     # /tk error
-    #str **str_ptr = &"test";
+    str **str_ptr = &"test";
     i32 store;
 
     {
