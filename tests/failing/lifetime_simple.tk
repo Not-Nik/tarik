@@ -50,7 +50,8 @@ fn test() {
         i32 value = 5;
         value = 4;
         # /tk error
-        #pointer = &value;
+        pointer = &value;
         store = *&value;
     }
+    *pointer;
 }

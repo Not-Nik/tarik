@@ -2,6 +2,8 @@
 
 #include "Variable.h"
 
+#include <print>
+
 namespace lifetime
 {
 Lifetime::Lifetime(Lifetime *next)
@@ -87,7 +89,7 @@ void VariableState::used(std::size_t at, int depth) {
 void VariableState::assigned(std::size_t at) {
     // If values last_death was set previously, because it was moved, don't overwrite that
     if (!values.empty() && values.back()->last_death == 0)
-        values.back()->set_last_death(at);
+        values.back()->set_last_death(at - 1);
 
     auto *lt = new LocalLifetime(nullptr, at);
     Lifetime *target = lt;
@@ -118,14 +120,13 @@ void VariableState::kill(std::size_t at) {
 
 void VariableState::move(std::size_t at) {
     // Moving only ends the values lifetime
-    values.back()->set_last_death(at);
+    values.back()->set_last_death(at - 1);
 }
 
 LocalLifetime *VariableState::current(std::size_t at) {
     for (auto *lifetime : values) {
-        if (lifetime->birth <= at) {
-            if (lifetime->last_death >= at)
-                return lifetime;
+        if (lifetime->birth <= at && lifetime->last_death >= at) {
+            return lifetime;
         }
     }
     return new LocalLifetime(nullptr, 0);
@@ -133,13 +134,11 @@ LocalLifetime *VariableState::current(std::size_t at) {
 
 LocalLifetime *VariableState::current_continuous(std::size_t at) {
     LocalLifetime *res = nullptr;
-    bool found_current = false;
 
     for (auto *lifetime : values) {
         if (lifetime->birth <= at && lifetime->death >= at) {
             res = lifetime;
-            found_current = true;
-        } else if (found_current && res->death == lifetime->birth) {
+        } else if (res && res->death == lifetime->birth) {
             res->death = lifetime->death;
             res->last_death = lifetime->last_death;
         }
