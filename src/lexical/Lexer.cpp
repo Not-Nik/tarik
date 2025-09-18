@@ -97,8 +97,7 @@ Token Lexer::peek(int dist) {
 std::string post_process_string(std::string s) {
     for (size_t i = 0; i < s.size(); i++) {
         if (s[i] == '\\') {
-            s.erase(i);
-            i++;
+            s.erase(i, 1);
             switch (s[i]) {
             case '?':
                 s[i] = '\?';
@@ -156,7 +155,7 @@ Token Lexer::consume() {
             for (; c != '\"' && c != -1; c = read_stream()) {
                 tok.push_back(c);
             }
-            post_process_string(tok);
+            tok = post_process_string(tok);
             string = true;
             break;
         }
