@@ -90,7 +90,7 @@ void selftest(Tester &tester) {
 
     {
         ss c(
-            "hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 . \"a string\"# comment should be ignored\nback");
+            "hello under_score test4 4test ( ) +-===- > fn i32 42 12.34 . \"a string\\nwith a line break\"# comment should be ignored\nback");
         Lexer lexer(&c);
 
         tester.AssertTok(lexer, NAME, "hello");
@@ -112,7 +112,7 @@ void selftest(Tester &tester) {
         tester.AssertTok(lexer, INTEGER, "42");
         tester.AssertTok(lexer, REAL, "12.34");
         tester.AssertTok(lexer, PERIOD, ".");
-        tester.AssertTok(lexer, STRING, "a string");
+        tester.AssertTok(lexer, STRING, "a string\nwith a line break");
         tester.AssertTok(lexer, NAME, "back");
     }
 
