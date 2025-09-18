@@ -774,27 +774,36 @@ std::optional<aast::Expression *> Analyser::verify_call_expression(ast::Expressi
                ->assert(func->var_arg || ce->arguments.size() <= func->arguments.size() - arg_offset))
         return {};
 
-    for (size_t i = arg_offset; i < std::min(func->arguments.size(), ce->arguments.size() + arg_offset); i++) {
-        aast::VariableStatement *arg_var = func->arguments[i];
+    size_t arg_count;
+
+    if (func->var_arg)
+        arg_count = ce->arguments.size();
+    else
+        arg_count = std::min(func->arguments.size(), ce->arguments.size() + arg_offset);
+
+    for (size_t i = arg_offset; i < arg_count; i++) {
         ast::Expression *arg = ce->arguments[i - arg_offset];
 
         std::optional argument = verify_expression(arg, MOVE);
 
         if (argument.has_value()) {
-            if (arg_var->type.is_float() && argument.value()->expression_type == aast::INT_EXPR) {
-                auto *real = new aast::RealExpression(argument.value()->origin,
-                                                      (double) ((aast::IntExpression *) argument.value())->n);
-                delete argument.value();
-                argument = real;
+            if (i < func->arguments.size()) {
+                aast::VariableStatement *arg_var = func->arguments[i];
+                if (arg_var->type.is_float() && argument.value()->expression_type == aast::INT_EXPR) {
+                    auto *real = new aast::RealExpression(argument.value()->origin,
+                                                          (double) ((aast::IntExpression *) argument.value())->n);
+                    delete argument.value();
+                    argument = real;
+                }
+
+                bucket->error(arg->origin,
+                              "passing value of type '{}' to argument of type '{}'",
+                              argument.value()->type.str(),
+                              arg_var->type.str())
+                      ->assert(arg_var->type.is_assignable_from(argument.value()->type));
             }
 
             arguments.push_back(argument.value());
-
-            bucket->error(arg->origin,
-                          "passing value of type '{}' to argument of type '{}'",
-                          argument.value()->type.str(),
-                          arg_var->type.str())
-                  ->assert(arg_var->type.is_assignable_from(argument.value()->type));
         }
     }
 
