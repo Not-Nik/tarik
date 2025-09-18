@@ -17,7 +17,11 @@
 #include "Variables.h"
 
 Analyser::Analyser(Bucket *bucket)
-    : macros({{"as!", new CastMacro()}, {"extern!", new ExternMacro()}}),
+    : macros({
+          {"as!", new CastMacro()},
+          {"extern!", new ExternMacro<false>()},
+          {"extern_va!", new ExternMacro<true>()}
+      }),
       bucket(bucket) {}
 
 std::vector<aast::Statement *> Analyser::finish() {

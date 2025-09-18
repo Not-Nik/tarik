@@ -23,13 +23,15 @@ ast::Expression *CastMacro::apply(Analyser *analyser,
     return new ast::CastExpression(macro_call->origin, arguments[0], target);
 }
 
-ExternMacro::ExternMacro() {
+template <bool VARIABLE_ARGS>
+ExternMacro<VARIABLE_ARGS>::ExternMacro() {
     arguments = {TYPE, IDENTIFIER, TYPE, REPEAT};
 }
 
-ast::Expression *ExternMacro::apply(Analyser *analyser,
-                                    ast::Expression *macro_call,
-                                    std::vector<ast::Expression *> arguments) {
+template <bool VARIABLE_ARGS>
+ast::Expression *ExternMacro<VARIABLE_ARGS>::apply(Analyser *analyser,
+                                                   ast::Expression *macro_call,
+                                                   std::vector<ast::Expression *> arguments) {
     Type return_type = analyser->verify_type(((ast::TypeExpression *) arguments[0])->type).value_or(Type());
     Path func_path = Path::from_expression(arguments[1]);
     std::vector<aast::VariableStatement *> func_args;
@@ -55,7 +57,10 @@ ast::Expression *ExternMacro::apply(Analyser *analyser,
                                                                 func_path,
                                                                 return_type,
                                                                 func_args,
-                                                                false));
+                                                                VARIABLE_ARGS));
 
     return new ast::EmptyExpression(macro_call->origin);
 }
+
+template class ExternMacro<true>;
+template class ExternMacro<false>;

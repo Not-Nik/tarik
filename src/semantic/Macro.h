@@ -39,6 +39,7 @@ public:
                            std::vector<ast::Expression *> arguments) override;
 };
 
+template <bool VARIABLE_ARGS>
 class ExternMacro : public Macro {
 public:
     ExternMacro();

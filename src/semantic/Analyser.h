@@ -25,6 +25,7 @@ class Analyser;
 
 class Analyser {
     friend class lifetime::Analyser;
+    template <bool VARIABLE_ARGS>
     friend class ExternMacro;
 
     std::vector<aast::FuncStatement *> functions;
