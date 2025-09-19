@@ -149,14 +149,17 @@ void LLVM::generate_statement(aast::Statement *statement, bool is_last) {
     }
 }
 
-void LLVM::generate_statements(const std::vector<aast::Statement *> &statements, bool is_last) {
+bool LLVM::generate_statements(const std::vector<aast::Statement *> &statements, bool is_last) {
     for (auto it = statements.begin(); it != statements.end(); ++it) {
         generate_statement(*it, is_last && it + 1 == statements.end());
+        if ((*it)->statement_type == aast::RETURN_STMT)
+            return false;
     }
+    return true;
 }
 
-void LLVM::generate_scope(aast::ScopeStatement *scope, bool is_last) {
-    generate_statements(scope->block, is_last);
+bool LLVM::generate_scope(aast::ScopeStatement *scope, bool is_last) {
+    return generate_statements(scope->block, is_last);
 }
 
 void LLVM::generate_function(aast::FuncStatement *func) {
@@ -219,18 +222,21 @@ void LLVM::generate_if(aast::IfStatement *if_, bool is_last) {
     }
     builder.SetInsertPoint(if_block);
 
-    generate_scope(if_, false);
-    if (!is_last)
+    bool should_br = generate_scope(if_, false);
+    if (!is_last && should_br)
         builder.CreateBr(endif_block);
 
     if (else_block) {
         builder.SetInsertPoint(else_block);
-        generate_scope(if_->else_statement, is_last);
-        if (!is_last)
+        bool should_br_else = generate_scope(if_->else_statement, is_last);
+        should_br = should_br and should_br_else;
+        if (!is_last && should_br)
             builder.CreateBr(endif_block);
+    } else {
+        should_br = true;
     }
 
-    if (!is_last) {
+    if (!is_last && should_br) {
         current_function->insert(current_function->end(), endif_block);
         builder.SetInsertPoint(endif_block);
     }

@@ -53,7 +53,7 @@ public:
     int write_file(const std::string &to, Config config);
 
     void generate_statement(aast::Statement *s, bool is_last);
-    void generate_statements(const std::vector<aast::Statement *> &s, bool is_last = true);
+    bool generate_statements(const std::vector<aast::Statement *> &s, bool is_last = true);
 
     static bool is_valid_triple(const std::string &triple) {
         std::string err;
@@ -69,7 +69,7 @@ public:
     }
 
 protected:
-    void generate_scope(aast::ScopeStatement *scope, bool is_last);
+    bool generate_scope(aast::ScopeStatement *scope, bool is_last);
     void generate_function(aast::FuncStatement *func);
     void generate_func_decl(aast::FuncDeclareStatement *decl);
     void generate_if(aast::IfStatement *if_, bool is_last);
