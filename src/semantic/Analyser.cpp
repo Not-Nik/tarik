@@ -332,7 +332,7 @@ std::optional<aast::IfStatement *> Analyser::verify_if(ast::IfStatement *if_) {
     auto new_if = new aast::IfStatement(if_->origin, condition.value(), std::move(block));
 
     if (!if_->else_statement || !else_.has_value())
-        return {};
+        return new_if;
 
     new_if->else_statement = new aast::ElseStatement(if_->else_statement->origin,
                                                      std::move(else_.value()->block));
