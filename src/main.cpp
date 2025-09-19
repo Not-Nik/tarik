@@ -17,6 +17,8 @@
 #include <iostream>
 #include <filesystem>
 
+#include "System.h"
+
 namespace fs = std::filesystem;
 
 int main(int argc, const char *argv[]) {
@@ -65,6 +67,10 @@ int main(int argc, const char *argv[]) {
     bool emit_aast = false, emit_ast = false, emit_llvm = false;
     std::string output_filename;
     std::vector<fs::path> search_paths;
+
+    fs::path executable_path = get_executable_path(argv[0]);
+
+    search_paths.push_back(executable_path.parent_path().parent_path() / "lib");
 
     for (const auto &option : parser) {
         if (option == search_path) {

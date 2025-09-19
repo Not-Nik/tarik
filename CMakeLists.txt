@@ -52,7 +52,9 @@ set(TARIK_COMPILER_SOURCES
         src/syntactic/ast/Statements.h
         src/utf/Utf.cpp
         src/utf/Utf.h
-        src/Version.h)
+        src/Version.h
+        src/System.cpp
+        src/System.h)
 
 add_library(tarik-lib STATIC ${TARIK_COMPILER_SOURCES})
 
