@@ -28,7 +28,7 @@ int main(int argc, const char *argv[]) {
                                             "Add an import search path",
                                             true,
                                             "path",
-                                            's');
+                                            'I');
 
     // Code Generation
     Option *code_model = parser.add_option("Ccode-model", "Code Generation", "Set the code model", true, "model");
