@@ -1,5 +1,5 @@
-fn puts(u8 *s) i32;
-fn printf(u8 *s, ...) i32;
+extern!(i32, puts, str*);
+extern_va!(i32, printf, str*);
 
 fn main(i32 argc, u8 **argv) i32 {
     if argc > 1 {

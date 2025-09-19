@@ -1,4 +1,4 @@
-fn printf(u8 *s, ...) i32;
+extern_va!(i32, printf, str*);
 
 fn fib(u32 n) u32 {
     if n < 2 {
@@ -9,7 +9,7 @@ fn fib(u32 n) u32 {
 
 fn main() i32 {
     u32 fib_of_42 = fib(42);
-    printf("The 42nd Fibonacci number is %i.", fib(42));
+    printf("The 42nd Fibonacci number is %i.\n", fib_of_42);
 
     return 0;
 }

@@ -4,3 +4,7 @@ cmake-build-debug/
 .cache/
 
 compile_commands.json
+
+*.o
+*.re.tk
+*.ll

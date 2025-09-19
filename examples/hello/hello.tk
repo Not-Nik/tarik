@@ -1,4 +1,4 @@
-fn puts(u8 *s) i32;
+extern!(i32, puts, str*);
 
 fn main() i32 {
     puts("Hello, World!");
