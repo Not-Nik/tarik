@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.17)
 project(tarik)
 
-find_package(llvm 20.1 REQUIRED)
+find_package(llvm 21.1 REQUIRED)
 
 set(CMAKE_CXX_STANDARD 23 REQUIRED)
 

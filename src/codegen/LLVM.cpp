@@ -65,11 +65,13 @@ int LLVM::write_file(const std::string &to, Config config) {
         return 1;
     }
 
+    llvm::Triple triple(config.triple);
+
     const char *cpu = "generic";
     const char *features = "";
 
     llvm::TargetOptions opt;
-    auto *target_machine = target->createTargetMachine(config.triple,
+    auto *target_machine = target->createTargetMachine(triple,
                                                        cpu,
                                                        features,
                                                        opt,
@@ -80,7 +82,7 @@ int LLVM::write_file(const std::string &to, Config config) {
                                                        config.optimisation_level);
 
     module->setDataLayout(target_machine->createDataLayout());
-    module->setTargetTriple(config.triple);
+    module->setTargetTriple(triple);
 
     std::error_code EC;
     llvm::raw_fd_ostream stream(to, EC, llvm::sys::fs::CD_CreateAlways);
@@ -632,7 +634,7 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
     }
 
     for (int i = 0; i < t.pointer_level; i++) {
-        res = llvm::PointerType::getUnqual(res);
+        res = llvm::PointerType::getUnqual(context);
     }
 
     return res;
@@ -675,7 +677,7 @@ llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
         builder.CreateStore(left, instance);
         left = instance;
     } else if (pointer) {
-        left = builder.CreateLoad(llvm::PointerType::getUnqual(struct_type), left, "deref_temp");
+        left = builder.CreateLoad(llvm::PointerType::getUnqual(context), left, "deref_temp");
     }
 
     return builder.CreateStructGEP(struct_type, left, member_index, "member_load_temp");

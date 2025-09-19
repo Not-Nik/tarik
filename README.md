@@ -53,7 +53,7 @@ tarik is inspired by
 
 ## Building
 
-To build tarik you will need a C++ compiler, LLVM 20.1 and CMake >= 3.17.
+To build tarik you will need a C++ compiler, LLVM 21.1 and CMake >= 3.17.
 
 Then the build procedure is as usual with cmake:
 
