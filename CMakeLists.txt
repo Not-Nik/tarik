@@ -102,3 +102,6 @@ target_link_libraries(tarik-lib comperr ${LLVM_LIBS})
 
 target_link_libraries(tarik tarik-lib)
 target_link_libraries(tarik-testing tarik-lib)
+
+install(TARGETS tarik
+        RUNTIME DESTINATION bin)

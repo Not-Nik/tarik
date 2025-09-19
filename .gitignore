@@ -3,6 +3,9 @@ cmake-build-debug/
 .idea/
 .cache/
 
+build/
+install/
+
 compile_commands.json
 
 *.o
