@@ -204,6 +204,10 @@ public:
         for (auto *arg : arguments) {
             res += arg->type.str() + " " + arg->name.raw + ", ";
         }
+
+        if (var_arg)
+            res += "..., ";
+
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
         return res + ") " + return_type.str();
@@ -214,6 +218,10 @@ public:
         for (auto *arg : arguments) {
             res += arg->type.str() + ", ";
         }
+
+        if (var_arg)
+            res += "..., ";
+
         if (res.back() != '(')
             res = res.substr(0, res.size() - 2);
         return res + ") " + return_type.str();
