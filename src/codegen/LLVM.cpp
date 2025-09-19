@@ -535,7 +535,7 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
     }
     case aast::STR_EXPR: {
         auto *se = (aast::StringExpression *) expression;
-        return builder.CreateGlobalStringPtr(se->n, "string_value");
+        return builder.CreateGlobalString(se->n, "string_value");
     }
     case aast::BOOL_EXPR: {
         auto *be = (aast::BoolExpression *) expression;
@@ -632,7 +632,7 @@ llvm::Type *LLVM::make_llvm_type(const Type &t) {
     }
 
     for (int i = 0; i < t.pointer_level; i++) {
-        res = res->getPointerTo();
+        res = llvm::PointerType::getUnqual(res);
     }
 
     return res;
@@ -675,7 +675,7 @@ llvm::Value *LLVM::generate_member_access(aast::BinaryExpression *mae) {
         builder.CreateStore(left, instance);
         left = instance;
     } else if (pointer) {
-        left = builder.CreateLoad(struct_type->getPointerTo(), left, "deref_temp");
+        left = builder.CreateLoad(llvm::PointerType::getUnqual(struct_type), left, "deref_temp");
     }
 
     return builder.CreateStructGEP(struct_type, left, member_index, "member_load_temp");

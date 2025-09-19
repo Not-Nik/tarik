@@ -95,7 +95,7 @@ set(LLVM_LINK_COMPONENTS
 
 llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_LINK_COMPONENTS})
 
-target_include_directories(tarik-lib PUBLIC ${LLVM_INCLUDE_DIRS})
+target_include_directories(tarik-lib SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
 target_include_directories(tarik-lib PUBLIC src)
 
 target_link_libraries(tarik-lib comperr ${LLVM_LIBS})
