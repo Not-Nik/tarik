@@ -2,6 +2,21 @@
 
 #include "Serialise.h"
 
+template <>
+void serialise(std::ostream &os, std::vector<aast::Statement *> vec) {
+    size_t i = 0;
+    std::stringstream buffer;
+    for (auto el : vec) {
+        auto old_size = buffer.tellp();
+        serialise(buffer, el);
+        if (old_size < buffer.tellp()) {
+            i++;
+        }
+    }
+    serialise(os, i);
+    os << buffer.rdbuf();
+}
+
 void serialise(std::ostream &os, size_t siz) {
     os.write(reinterpret_cast<const char *>(&siz), sizeof(siz));
 }
@@ -29,6 +44,7 @@ void serialise(std::ostream &os, Path path) {
 }
 
 void serialise(std::ostream &os, Type type) {
+    serialise(os, (size_t) type.pointer_level);
     if (type.is_primitive()) {
         serialise(os, true);
         serialise(os, (size_t) type.get_primitive());
@@ -36,7 +52,6 @@ void serialise(std::ostream &os, Type type) {
         serialise(os, false);
         serialise(os, type.get_user());
     }
-    serialise(os, (size_t) type.pointer_level);
 }
 
 void serialise(std::ostream &os, Token token) {
@@ -69,9 +84,6 @@ void serialise(std::ostream &os, aast::StructStatement *decl) {
 void serialise(std::ostream &os, aast::ImportStatement *imp) {
     if (imp->local) {
         serialise(os, imp->block);
-    } else {
-        serialise(os, (size_t) imp->statement_type);
-        serialise(os, imp->path);
     }
 }
 

@@ -3,7 +3,7 @@
 #ifndef TARIK_SRC_TLIB_SERIALISE_H
 #define TARIK_SRC_TLIB_SERIALISE_H
 
-#include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -12,7 +12,7 @@
 void serialise(std::ostream& os, size_t siz);
 void serialise(std::ostream& os, bool bol);
 void serialise(std::ostream& os, const std::string &string);
-void serialise(std::ostream& os, const LexerRange& path);
+void serialise(std::ostream &os, const LexerRange &range);
 void serialise(std::ostream& os, Path path);
 void serialise(std::ostream& os, Type type);
 void serialise(std::ostream& os, Token token);

@@ -4,6 +4,8 @@
 
 #include "tlib/Serialise.h"
 
+#include <fstream>
+
 void Export::generate_statements(const std::vector<aast::Statement *> &s) {
     serialise(buffer, s);
 }

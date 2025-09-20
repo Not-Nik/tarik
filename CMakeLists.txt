@@ -58,7 +58,11 @@ set(TARIK_COMPILER_SOURCES
         src/tlib/Serialise.cpp
         src/tlib/Serialise.h
         src/tlib/Export.cpp
-        src/tlib/Export.h)
+        src/tlib/Export.h
+        src/tlib/Deserialise.cpp
+        src/tlib/Deserialise.h
+        src/tlib/Import.cpp
+        src/tlib/Import.h)
 
 add_library(tarik-lib STATIC ${TARIK_COMPILER_SOURCES})
 
@@ -68,6 +72,8 @@ add_executable(tarik-testing
         src/testing/TestMain.cpp
         src/testing/Testing.cpp
         src/testing/Testing.h)
+
+add_executable(tlib src/tlib/TLibMain.cpp)
 
 set(LLVM_LINK_COMPONENTS
         AArch64
@@ -108,6 +114,7 @@ target_link_libraries(tarik-lib comperr ${LLVM_LIBS})
 
 target_link_libraries(tarik tarik-lib)
 target_link_libraries(tarik-testing tarik-lib)
+target_link_libraries(tlib tarik-lib)
 
-install(TARGETS tarik
+install(TARGETS tarik tlib
         RUNTIME DESTINATION bin)
