@@ -18,6 +18,7 @@
 #include <filesystem>
 
 #include "System.h"
+#include "tlib/Export.h"
 
 namespace fs = std::filesystem;
 
@@ -61,10 +62,17 @@ int main(int argc, const char *argv[]) {
                                                 "Output",
                                                 "Parse code, and re-emit it based on the internal AST");
     Option *emit_llvm_option = parser.add_option("emit-llvm", "Output", "Emit generated LLVM IR");
+
+    Option *emit_lib_option = parser.add_option("lib",
+                                                "Output",
+                                                "Emit library file, if object file is emitted",
+                                                false,
+                                                "",
+                                                'l');
     Option *output_option = parser.add_option("output", "Output", "Output to file", true, "file", 'o');
 
     LLVM::Config config;
-    bool emit_aast = false, emit_ast = false, emit_llvm = false;
+    bool emit_aast = false, emit_ast = false, emit_llvm = false, emit_lib = false;
     std::string output_filename;
     std::vector<fs::path> search_paths;
 
@@ -125,6 +133,8 @@ int main(int argc, const char *argv[]) {
             emit_ast = true;
         } else if (option == emit_llvm_option) {
             emit_llvm = true;
+        } else if (option == emit_lib_option) {
+            emit_lib = true;
         } else if (option == output_option) {
             output_filename = option.argument;
         }
@@ -216,6 +226,11 @@ int main(int argc, const char *argv[]) {
                     generator.dump_ir(output_path);
                 else
                     result = generator.write_file(output_path, config);
+                if (emit_lib) {
+                    Export exporter;
+                    exporter.generate_statements(analysed_statements);
+                    exporter.write_file(output_path.replace_extension(".tlib"));
+                }
             }
         }
 

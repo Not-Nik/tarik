@@ -54,7 +54,11 @@ set(TARIK_COMPILER_SOURCES
         src/utf/Utf.h
         src/Version.h
         src/System.cpp
-        src/System.h)
+        src/System.h
+        src/tlib/Serialise.cpp
+        src/tlib/Serialise.h
+        src/tlib/Export.cpp
+        src/tlib/Export.h)
 
 add_library(tarik-lib STATIC ${TARIK_COMPILER_SOURCES})
 
