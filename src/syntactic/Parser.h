@@ -22,6 +22,12 @@ class PrefixParselet;
 
 class InfixParselet;
 
+struct ImportPath {
+    bool local;
+    Path path;
+    std::filesystem::path file;
+};
+
 class Parser {
     friend class CallParselet;
 
@@ -53,7 +59,7 @@ public:
     bool check_expect(TokenType raw);
     bool is_peek(TokenType raw);
 
-    std::filesystem::path find_import();
+    ImportPath find_import();
 
     ast::Expression *parse_expression(int precedence = 0);
 

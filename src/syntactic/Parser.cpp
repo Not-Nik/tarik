@@ -133,7 +133,7 @@ Parser::Parser(const std::filesystem::path &f, Bucket *bucket, std::vector<std::
     : lexer(f),
       bucket(bucket),
       search_paths(std::move(paths)) {
-    imported.push_back(absolute(f));
+    imported.push_back(canonical(f));
     init_parslets();
 }
 
@@ -172,13 +172,13 @@ bool Parser::is_peek(TokenType raw) {
     return lexer.peek().id == raw;
 }
 
-std::filesystem::path Parser::find_import() {
+ImportPath Parser::find_import() {
     Token next = expect(NAME);
 
-    std::filesystem::path import_;
+    Path path = Path({}, next.origin);
 
     while (next.id == NAME) {
-        import_ /= next.raw;
+        path = path.create_member(next);
         if (is_peek(PERIOD)) {
             lexer.consume();
             next = expect(NAME);
@@ -186,17 +186,21 @@ std::filesystem::path Parser::find_import() {
             break;
     }
 
+    std::filesystem::path import_;
+    for (auto &part : path.get_parts())
+        import_ /= part;
+
     import_.replace_extension(".tk");
 
     if (exists(import_))
-        return import_;
+        return {true, path, import_};
 
-    for (const auto &path : search_paths) {
-        if (exists(path / import_)) {
-            return path / import_;
+    for (const auto &search_path : search_paths) {
+        if (exists(search_path / import_)) {
+            return {false, path, search_path / import_};
         }
     }
-    return import_;
+    return {false, Path({}, {}), {}};
 }
 
 Expression *Parser::parse_expression(int precedence) {
@@ -369,12 +373,11 @@ Statement *Parser::parse_statement() {
     } else if (token.id == IMPORT) {
         lexer.consume();
 
-        std::filesystem::path import_path = find_import();
+        ImportPath imp = find_import();
         std::vector<Statement *> statements;
-        if (exists(import_path)) {
-            if (std::find(imported.begin(), imported.end(), absolute(import_path)) == imported.end()) {
-                imported.push_back(absolute(import_path));
-                Parser p(import_path, bucket, search_paths);
+        if (exists(imp.file)) {
+            if (std::find(imported.begin(), imported.end(), canonical(imp.file)) == imported.end()) {
+                Parser p(imp.file, bucket, search_paths);
                 do {
                     statements.push_back(p.parse_statement());
                 } while (statements.back());
@@ -383,19 +386,11 @@ Statement *Parser::parse_statement() {
         } else {
             bucket->error(token.origin,
                           "tried to import '{}', but file can't be found",
-                          import_path.string());
+                          imp.file.string());
         }
         expect(SEMICOLON);
 
-        ImportStatement *res;
-        for (auto part = --import_path.end(); ; part--) {
-            res = new ImportStatement(token.origin, part->stem(), statements);
-            statements = {res};
-
-            if (part == import_path.begin())
-                break;
-        }
-        return res;
+        return new ImportStatement(token.origin, imp.path, imp.local, statements);
     } else if (Token peek = lexer.peek(1); peek.id == NAME || peek.id == ASTERISK || peek.id == DOUBLE_COLON) {
         Lexer::State state = lexer.checkpoint();
         if (std::optional<Type> ty = type(); ty.has_value()) {

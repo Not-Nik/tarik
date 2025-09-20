@@ -70,11 +70,13 @@ int main(int argc, const char *argv[]) {
 
     fs::path executable_path = get_executable_path(argv[0]);
 
-    search_paths.push_back(executable_path.parent_path().parent_path() / "lib");
+    if (!executable_path.empty()) {
+        search_paths.push_back(executable_path.parent_path().parent_path() / "lib");
+    }
 
     for (const auto &option : parser) {
         if (option == search_path) {
-            search_paths.emplace_back(option.argument);
+            search_paths.emplace_back(std::filesystem::canonical(option.argument));
         } else if (option == code_model) {
             if (option.argument == "tiny")
                 config.code_model = llvm::CodeModel::Tiny;

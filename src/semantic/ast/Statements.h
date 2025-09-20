@@ -331,11 +331,13 @@ public:
 
 class ImportStatement : public ScopeStatement {
 public:
-    std::string name;
+    Path path;
+    bool local;
 
-    ImportStatement(const LexerRange &o, std::string n, std::vector<Statement *> s)
+    ImportStatement(const LexerRange &o, Path p, bool l, std::vector<Statement *> s)
         : ScopeStatement(IMPORT_STMT, o, std::move(s)),
-          name(std::move(n)) {}
+          path(std::move(p)),
+          local(l) {}
 };
 } // namespace ast
 

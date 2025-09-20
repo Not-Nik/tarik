@@ -76,9 +76,13 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
         } else if (statement->statement_type == ast::IMPORT_STMT) {
             auto *import_ = (ast::ImportStatement *) statement;
 
-            path = path.create_member(import_->name);
+            Path old_path = path;
+            if (import_->local)
+                path = import_->path.with_prefix(path);
+            else
+                path = import_->path;
             analyse_import(import_->block);
-            path = path.get_parent();
+            path = old_path;
         }
     }
 }
@@ -90,9 +94,13 @@ void Analyser::verify_structs(const std::vector<ast::Statement *> &statements) {
         } else if (statement->statement_type == ast::IMPORT_STMT) {
             auto *import_ = (ast::ImportStatement *) statement;
 
-            path = path.create_member(import_->name);
+            Path old_path = path;
+            if (import_->local)
+                path = import_->path.with_prefix(path);
+            else
+                path = import_->path;
             verify_structs(import_->block);
-            path = path.get_parent();
+            path = old_path;
         }
     }
 }
@@ -491,14 +499,18 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
 }
 
 std::optional<aast::ImportStatement *> Analyser::verify_import(ast::ImportStatement *import_) {
-    path = path.create_member(import_->name);
+    Path old_path = path;
+    if (import_->local)
+        path = import_->path.with_prefix(path);
+    else
+        path = import_->path;
     std::optional res = verify_statements(import_->block);
-    path = path.get_parent();
+    path = old_path;
 
     if (!res.has_value())
         return {};
 
-    return new aast::ImportStatement(import_->origin, import_->name, res.value());
+    return new aast::ImportStatement(import_->origin, import_->path, import_->local, res.value());
 }
 
 std::optional<aast::Expression *> Analyser::verify_expression(ast::Expression *expression,
