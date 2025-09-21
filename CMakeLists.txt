@@ -86,3 +86,4 @@ target_link_libraries(tlib tarik-lib)
 
 install(TARGETS tarik tlib
         RUNTIME DESTINATION bin)
+install(DIRECTORY lib DESTINATION .)
