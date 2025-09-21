@@ -49,7 +49,9 @@ int main(int argc, const char *argv[]) {
     std::vector<aast::Statement *> statements = import_statements(input);
 
     if (!merge.empty()) {
-        std::vector<aast::Statement *> merge_statements = import_statements(input);
+        std::vector<aast::Statement *> merge_statements = import_statements(merge);
+
+        lift_up_undefined(merge_statements, Path({merge.stem()}, {}));
 
         Export exporter;
         exporter.generate_statements(statements);
