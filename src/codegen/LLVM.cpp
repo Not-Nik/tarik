@@ -17,6 +17,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Support/FileSystem.h>
@@ -94,6 +95,10 @@ int LLVM::write_file(const std::string &to, Config config) {
     if (target_machine->addPassesToEmitFile(pass, stream, nullptr, file_type)) {
         // damn
         std::cerr << "couldn't open '" << to << "'\n";
+        return 1;
+    }
+
+    if (llvm::verifyModule(*module, &llvm::errs())) {
         return 1;
     }
 
