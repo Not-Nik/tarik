@@ -376,10 +376,13 @@ Statement *Parser::parse_statement() {
         if (exists(imp.file)) {
             if (std::find(imported.begin(), imported.end(), canonical(imp.file)) == imported.end()) {
                 Parser p(imp.file, bucket, search_paths);
+                std::filesystem::path cwd = std::filesystem::current_path();
+                std::filesystem::current_path(canonical(imp.file).parent_path());
                 do {
                     statements.push_back(p.parse_statement());
                 } while (statements.back());
                 statements.pop_back();
+                std::filesystem::current_path(cwd);
             }
         } else {
             bucket->error(token.origin,
