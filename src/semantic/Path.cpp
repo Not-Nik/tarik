@@ -84,7 +84,8 @@ Path Path::create_member(Token token) const {
 
 Path Path::get_parent() const {
     std::vector parent_parts = parts;
-    parent_parts.pop_back();
+    if (!parent_parts.empty())
+        parent_parts.pop_back();
     return Path(parent_parts, origin);
 }
 

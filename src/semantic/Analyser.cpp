@@ -78,7 +78,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
 
             Path old_path = path;
             if (import_->local)
-                path = import_->path.with_prefix(path);
+                path = import_->path.with_prefix(path.get_parent());
             else
                 path = import_->path;
             analyse_import(import_->block);
@@ -96,7 +96,7 @@ void Analyser::verify_structs(const std::vector<ast::Statement *> &statements) {
 
             Path old_path = path;
             if (import_->local)
-                path = import_->path.with_prefix(path);
+                path = import_->path.with_prefix(path.get_parent());
             else
                 path = import_->path;
             verify_structs(import_->block);
@@ -501,7 +501,7 @@ std::optional<aast::StructStatement *> Analyser::verify_struct(ast::StructStatem
 std::optional<aast::ImportStatement *> Analyser::verify_import(ast::ImportStatement *import_) {
     Path old_path = path;
     if (import_->local)
-        path = import_->path.with_prefix(path);
+        path = import_->path.with_prefix(path.get_parent());
     else
         path = import_->path;
     std::optional res = verify_statements(import_->block);

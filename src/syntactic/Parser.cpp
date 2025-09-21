@@ -175,29 +175,23 @@ bool Parser::is_peek(TokenType raw) {
 ImportPath Parser::find_import() {
     Token next = expect(NAME);
 
-    Path path = Path({}, next.origin);
+    Path path = Path({next.raw}, next.origin);
 
-    while (next.id == NAME) {
-        path = path.create_member(next);
-        if (is_peek(PERIOD)) {
-            lexer.consume();
-            next = expect(NAME);
-        } else
-            break;
-    }
-
-    std::filesystem::path import_;
-    for (auto &part : path.get_parts())
-        import_ /= part;
+    std::filesystem::path import_ = next.raw;
 
     import_.replace_extension(".tk");
 
-    if (exists(import_))
+    if (exists(import_)) {
         return {true, path, import_};
+    }
+
+    if (exists(next.raw / import_)) {
+        return {true, path.create_member(next.raw), next.raw / import_};
+    }
 
     for (const auto &search_path : search_paths) {
-        if (exists(search_path / import_)) {
-            return {false, path, search_path / import_};
+        if (exists(search_path / next.raw)) {
+            return {false, path, search_path / next.raw};
         }
     }
     return {false, Path({}, {}), {}};
