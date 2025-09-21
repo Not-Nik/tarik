@@ -190,8 +190,12 @@ ImportPath Parser::find_import() {
     }
 
     for (const auto &search_path : search_paths) {
-        if (exists(search_path / next.raw)) {
+        if (exists(search_path / import_)) {
             return {false, path, search_path / next.raw};
+        }
+
+        if (exists(search_path / next.raw / import_)) {
+            return {false, path.create_member(next.raw), search_path / next.raw / import_};
         }
     }
     return {false, Path({}, {}), {}};
