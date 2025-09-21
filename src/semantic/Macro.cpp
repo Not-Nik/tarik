@@ -34,6 +34,12 @@ ast::Expression *ExternMacro<VARIABLE_ARGS>::apply(Analyser *analyser,
                                                    std::vector<ast::Expression *> arguments) {
     Type return_type = analyser->verify_type(((ast::TypeExpression *) arguments[0])->type).value_or(Type());
     Path func_path = Path::from_expression(arguments[1]);
+
+    if (!analyser->bucket->error(arguments[1]->origin, "extern function with path name is unsupported")
+                 ->assert(func_path.size() == 1)) {
+        return new ast::EmptyExpression(macro_call->origin);
+    }
+
     std::vector<aast::VariableStatement *> func_args;
     for (ast::Expression *argument : std::ranges::drop_view {arguments, 2}) {
         Type arg_type = analyser->verify_type(((ast::TypeExpression *) argument)->type).value_or(Type());
@@ -55,6 +61,7 @@ ast::Expression *ExternMacro<VARIABLE_ARGS>::apply(Analyser *analyser,
     analyser->func_decls.emplace(func_path,
                                  new aast::FuncDeclareStatement(macro_call->origin,
                                                                 func_path,
+                                                                func_path.name(),
                                                                 return_type,
                                                                 func_args,
                                                                 VARIABLE_ARGS));

@@ -40,6 +40,10 @@ public:
     Path get_parent() const;
     Path with_prefix(Path prefix) const;
 
+    std::string name() const;
+
+    size_t size() const;
+
     bool operator==(const Path &) const;
     bool operator!=(const Path &) const;
 };

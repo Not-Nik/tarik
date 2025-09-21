@@ -29,6 +29,7 @@ class LLVM {
     std::unordered_map<std::string, std::tuple<llvm::Value *, llvm::Type *, bool>> variables;
     std::unordered_map<std::string, llvm::StructType *> structures;
     std::unordered_map<std::string, aast::StructStatement *> struct_statements;
+    std::unordered_map<std::string, std::string> function_maps;
 
 public:
     static inline std::string default_triple = llvm::sys::getDefaultTargetTriple();

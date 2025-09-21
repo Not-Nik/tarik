@@ -64,6 +64,7 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
             func_decls.emplace(name,
                                new aast::FuncDeclareStatement(statement->origin,
                                                               name,
+                                                              std::string(),
                                                               func->return_type,
                                                               arguments,
                                                               false));

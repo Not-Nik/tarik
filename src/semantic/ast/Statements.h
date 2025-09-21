@@ -230,16 +230,20 @@ public:
 
 class FuncDeclareStatement : public Statement, public FuncStCommon {
 public:
+    std::string linker_name;
+
     FuncDeclareStatement(const LexerRange &o,
                          Path p,
+                         std::string ln,
                          Type ret,
                          std::vector<VariableStatement *> args,
                          bool var_arg)
         : Statement(FUNC_DECL_STMT, o),
-          FuncStCommon(std::move(p), std::move(ret), std::move(args), var_arg) {}
+          FuncStCommon(std::move(p), std::move(ret), std::move(args), var_arg),
+          linker_name(std::move(ln)) {}
 
     [[nodiscard]] std::string print() const override {
-        return head();
+        return head() + (linker_name.empty() ? "" : " # links as '_" + linker_name + "'");
     }
 };
 

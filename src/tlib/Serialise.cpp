@@ -69,6 +69,7 @@ void serialise(std::ostream &os, aast::FuncDeclareStatement *decl) {
     serialise(os, (size_t) decl->statement_type);
     serialise(os, decl->origin);
     serialise(os, decl->path);
+    serialise(os, decl->linker_name);
     serialise(os, decl->return_type);
     serialise(os, decl->arguments);
     serialise(os, decl->var_arg);

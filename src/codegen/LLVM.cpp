@@ -99,6 +99,7 @@ int LLVM::write_file(const std::string &to, Config config) {
     }
 
     if (llvm::verifyModule(*module, &llvm::errs())) {
+        module->print(llvm::errs(), nullptr);
         return 1;
     }
 
@@ -203,11 +204,18 @@ void LLVM::generate_func_decl(aast::FuncDeclareStatement *decl) {
     llvm::FunctionType *func_type = make_llvm_function_type(decl);
     functions.emplace(decl->path.str(), func_type);
 
+    std::string func_name = decl->linker_name;
+    if (func_name.empty())
+        func_name = decl->path.str();
+
     llvm::Function *llvm_func = llvm::Function::Create(func_type,
                                                        llvm::Function::ExternalLinkage,
-                                                       decl->path.str(),
+                                                       func_name,
                                                        module.get());
     function_bodies.emplace(decl->path.str(), llvm_func);
+
+    if (!decl->linker_name.empty())
+        function_maps.emplace(decl->path.str(), decl->linker_name);
 }
 
 void LLVM::generate_if(aast::IfStatement *if_, bool is_last) {
@@ -343,7 +351,11 @@ llvm::Value *LLVM::generate_expression(aast::Expression *expression) {
 
             if (ce->callee->expression_type == aast::NAME_EXPR) {
                 std::string name = ((aast::NameExpression *) ce->callee)->name;
-                function = module->getOrInsertFunction(name, functions.at(name));
+                llvm::FunctionType *func_type = functions.at(name);
+                if (function_maps.contains(name)) {
+                    name = function_maps.at(name);
+                }
+                function = module->getOrInsertFunction(name, func_type);
             } else {
                 throw "__unimplemented(expression_calling)";
             }

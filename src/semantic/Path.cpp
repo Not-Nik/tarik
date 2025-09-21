@@ -95,6 +95,14 @@ Path Path::with_prefix(Path prefix) const {
     return Path(prefixed_parts, origin);
 }
 
+std::string Path::name() const {
+    return parts.back();
+}
+
+size_t Path::size() const {
+    return parts.size();
+}
+
 bool Path::operator==(const Path &other) const {
     return parts == other.parts;
 }

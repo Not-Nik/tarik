@@ -71,13 +71,15 @@ void deserialise(std::istream &is, aast::FuncDeclareStatement *&decl) {
     deserialise(is, origin);
     Path path = Path({}, {});
     deserialise(is, path);
+    std::string linker_name;
+    deserialise(is, linker_name);
     Type return_type;
     deserialise(is, return_type);
     std::vector<aast::VariableStatement *> arguments;
     deserialise(is, arguments);
     bool var_arg;
     deserialise(is, var_arg);
-    decl = new aast::FuncDeclareStatement(origin, path, return_type, arguments, var_arg);
+    decl = new aast::FuncDeclareStatement(origin, path, linker_name, return_type, arguments, var_arg);
 }
 
 void deserialise(std::istream &is, aast::StructStatement *&decl) {
