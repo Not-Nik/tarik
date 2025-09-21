@@ -75,42 +75,10 @@ add_executable(tarik-testing
 
 add_executable(tlib src/tlib/TLibMain.cpp)
 
-set(LLVM_LINK_COMPONENTS
-        AArch64
-        AMDGPU
-        ARM
-        AVR
-        BPF
-        Core
-        Hexagon
-        Lanai
-        LoongArch
-        MC
-        Mips
-        MSP430
-        nativecodegen
-        NVPTX
-        PowerPC
-        RISCV
-        Sparc
-        SPIRV
-        Support
-        SystemZ
-        VE
-        WebAssembly
-        X86
-        XCore
-        objcarcopts
-        scalaropts
-        transformutils
-)
-
-llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_LINK_COMPONENTS})
-
 target_include_directories(tarik-lib SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
 target_include_directories(tarik-lib PUBLIC src)
 
-target_link_libraries(tarik-lib comperr ${LLVM_LIBS})
+target_link_libraries(tarik-lib comperr LLVM)
 
 target_link_libraries(tarik tarik-lib)
 target_link_libraries(tarik-testing tarik-lib)

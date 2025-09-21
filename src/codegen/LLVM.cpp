@@ -37,7 +37,6 @@ void LLVM::force_init() {
         llvm::InitializeAllTargetInfos();
         llvm::InitializeAllTargets();
         llvm::InitializeAllTargetMCs();
-        llvm::InitializeAllAsmParsers();
         llvm::InitializeAllAsmPrinters();
         initialised = true;
     }
