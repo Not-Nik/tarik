@@ -444,8 +444,9 @@ Lifetime *Analyser::verify_expression(aast::Expression *expression, bool assigne
                                      ->note(shorter_expression->origin,
                                             "'{}' should live longer than '{}',...",
                                             longer_expression->print(),
-                                            shorter_expression->print())
-                                     ->note(relation_origin, "...because of its usage here,...");
+                                            shorter_expression->print());
+                if (relation_origin.has_value())
+                    error->note(relation_origin.value(), "...because of its usage here,...");
 
                 // Todo: integrate this with print_lifetime_error
                 if (local_longer->is_local()) {
@@ -659,7 +660,8 @@ void Analyser::print_lifetime_error(Error *error,
 
 bool Analyser::is_shorter(Lifetime *shorter,
                           Lifetime *longer,
-                          std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations) const {
+                          std::map<Lifetime *, std::vector<std::pair<Lifetime *, std::optional<LexerRange>>>> relations)
+const {
     // Perform DFS to see if there's a path from `a` to `b`
     std::unordered_set<Lifetime *> visited;
     std::stack<Lifetime *> stack;

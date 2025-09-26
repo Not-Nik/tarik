@@ -1,9 +1,10 @@
-// tarik (c) Nikolas Wipper 2024
+// tarik (c) Nikolas Wipper 2024-2025
 
 #ifndef TARIK_SRC_LIFETIME_ANALYSER_H_
 #define TARIK_SRC_LIFETIME_ANALYSER_H_
 
 #include <map>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -24,7 +25,7 @@ struct Function {
     std::vector<LexerRange> statement_positions;
 
     std::map<std::string, VariableState *> variables;
-    std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations;
+    std::map<Lifetime *, std::vector<std::pair<Lifetime *, std::optional<LexerRange>>>> relations;
 
     std::unordered_set<Function *> callers;
 };
@@ -81,7 +82,8 @@ private:
 
     bool is_shorter(Lifetime *shorter,
                     Lifetime *longer,
-                    std::map<Lifetime *, std::vector<std::pair<Lifetime *, LexerRange>>> relations) const;
+                    std::map<Lifetime *, std::vector<std::pair<Lifetime *, std::optional<LexerRange>>>> relations)
+    const;
 };
 } // lifetime
 
