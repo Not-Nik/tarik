@@ -2,6 +2,8 @@
 
 tarik is a minimal, compiled language, designed for low-level programming.
 
+> It's pronounced tɑˈɽik, but you're probably gonna say ˈtæɹik; both are valid.
+
 ## Hello World
 
 ```rust
