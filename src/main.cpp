@@ -63,7 +63,11 @@ int main(int argc, const char *argv[]) {
                                             " - syn - name.syn.tk - Code based on the syntactic AST",
                                             "aast|ast|asm|llvm|obj");
 
-    Option *output_option = parser.add_option("output", "Output", "Output to file", "file", 'o');
+    Option *output_option = parser.add_option("output",
+                                              "Output",
+                                              "Set output file stem, extension is ignored",
+                                              "file",
+                                              'o');
 
     LLVM::Config config;
     bool emit_aast = false, emit_ast = false, emit_asm = false, emit_llvm = false, emit_obj = false, emit_lib = false;
@@ -136,10 +140,7 @@ int main(int argc, const char *argv[]) {
             else if (option.argument == "obj")
                 emit_obj = true;
         } else if (option == output_option) {
-            if (option.argument.rfind('.') > option.argument.find('/'))
-                output_filename = option.argument + ".none";
-            else
-                output_filename = option.argument;
+            output_filename = option.argument;
         }
     }
 
