@@ -16,12 +16,13 @@
 #include "syntactic/ast/Expression.h"
 #include "Variables.h"
 
-Analyser::Analyser(Bucket *bucket)
+Analyser::Analyser(Bucket *bucket, std::unordered_map<std::string, std::vector<aast::Statement *>> libraries)
     : macros({
           {"as!", new CastMacro()},
           {"extern!", new ExternMacro<false>()},
           {"extern_va!", new ExternMacro<true>()}
       }),
+      libraries(libraries),
       bucket(bucket) {}
 
 std::vector<aast::Statement *> Analyser::finish() {
@@ -77,13 +78,29 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
         } else if (statement->statement_type == ast::IMPORT_STMT) {
             auto *import_ = (ast::ImportStatement *) statement;
 
-            Path old_path = path;
-            if (import_->local)
+            if (import_->local) {
+                Path old_path = path;
                 path = import_->path.with_prefix(path.get_parent());
-            else
-                path = import_->path;
-            analyse_import(import_->block);
-            path = old_path;
+                analyse_import(import_->block);
+                path = old_path;
+            } else {
+                if (!bucket->error(import_->path.origin,
+                                   "tried to import '{}', but file can't be found",
+                                   import_->path.str())
+                           ->assert(libraries.contains(import_->path.str()))) {
+                    continue;
+                }
+                std::vector<aast::Statement *> &statements = libraries.at(import_->path.str());
+                for (auto *statement : statements) {
+                    if (statement->statement_type == aast::FUNC_DECL_STMT) {
+                        auto *fd = (aast::FuncDeclareStatement *) statement;
+                        func_decls.emplace(fd->path, fd);
+                    } else if (statement->statement_type == aast::STRUCT_DECL_STMT) {
+                        auto *sd = (aast::StructDeclareStatement *) statement;
+                        struct_decls.emplace(sd->path, sd);
+                    }
+                }
+            }
         }
     }
 }

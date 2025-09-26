@@ -28,7 +28,7 @@ void add_seen_if_path(Path &path, std::unordered_set<std::string> &seen_roots) {
 
 void add_prefix_if_seen(Path &path, std::unordered_set<std::string> seen_roots, const Path &prefix) {
     std::vector<std::string> parts = path.get_parts();
-    if (parts.size() > 1 && seen_roots.contains(parts[0])) {
+    if (parts.size() == 1 || seen_roots.contains(parts[0])) {
         path = path.with_prefix(prefix);
     }
 }

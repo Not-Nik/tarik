@@ -35,6 +35,7 @@ class Analyser {
     std::unordered_map<Path, aast::FuncDeclareStatement *> func_decls;
 
     std::unordered_map<std::string, Macro *> macros;
+    std::unordered_map<std::string, std::vector<aast::Statement *>> libraries;
 
     Path path = Path({}, LexerRange());
 
@@ -50,7 +51,7 @@ class Analyser {
     StructureGraph structure_graph;
 
 public:
-    Analyser(Bucket *bucket);
+    Analyser(Bucket *bucket, std::unordered_map<std::string, std::vector<aast::Statement *>> libraries);
 
     std::vector<aast::Statement *> finish();
 

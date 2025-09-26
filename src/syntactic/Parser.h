@@ -50,8 +50,8 @@ class Parser {
     void init_parslets();
 
 public:
-    explicit Parser(std::istream *code, Bucket *bucket, std::vector<std::filesystem::path> paths = {});
-    explicit Parser(const std::filesystem::path &f, Bucket *bucket, std::vector<std::filesystem::path> paths = {});
+    explicit Parser(std::istream *code, Bucket *bucket);
+    explicit Parser(const std::filesystem::path &f, Bucket *bucket);
 
     ~Parser();
 

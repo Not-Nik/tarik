@@ -122,17 +122,15 @@ void Parser::init_parslets() {
     infix_parslets.emplace(EQUAL, new AssignParselet());
 }
 
-Parser::Parser(std::istream *code, Bucket *bucket, std::vector<std::filesystem::path> paths)
+Parser::Parser(std::istream *code, Bucket *bucket)
     : lexer(code),
-      bucket(bucket),
-      search_paths(std::move(paths)) {
+      bucket(bucket) {
     init_parslets();
 }
 
-Parser::Parser(const std::filesystem::path &f, Bucket *bucket, std::vector<std::filesystem::path> paths)
+Parser::Parser(const std::filesystem::path &f, Bucket *bucket)
     : lexer(f),
-      bucket(bucket),
-      search_paths(std::move(paths)) {
+      bucket(bucket) {
     imported.push_back(canonical(f));
     init_parslets();
 }
@@ -189,16 +187,7 @@ ImportPath Parser::find_import() {
         return {true, path.create_member(next.raw), next.raw / import_};
     }
 
-    for (const auto &search_path : search_paths) {
-        if (exists(search_path / import_)) {
-            return {false, path, search_path / next.raw};
-        }
-
-        if (exists(search_path / next.raw / import_)) {
-            return {false, path.create_member(next.raw), search_path / next.raw / import_};
-        }
-    }
-    return {false, Path({}, {}), {}};
+    return {false, path, {}};
 }
 
 Expression *Parser::parse_expression(int precedence) {
@@ -373,9 +362,9 @@ Statement *Parser::parse_statement() {
 
         ImportPath imp = find_import();
         std::vector<Statement *> statements;
-        if (exists(imp.file)) {
+        if (!imp.file.empty()) {
             if (std::find(imported.begin(), imported.end(), canonical(imp.file)) == imported.end()) {
-                Parser p(imp.file, bucket, search_paths);
+                Parser p(imp.file, bucket);
                 std::filesystem::path cwd = std::filesystem::current_path();
                 std::filesystem::current_path(canonical(imp.file).parent_path());
                 do {
@@ -384,10 +373,6 @@ Statement *Parser::parse_statement() {
                 statements.pop_back();
                 std::filesystem::current_path(cwd);
             }
-        } else {
-            bucket->error(token.origin,
-                          "tried to import '{}', but file can't be found",
-                          imp.file.string());
         }
         expect(SEMICOLON);
 

@@ -19,6 +19,7 @@
 
 #include "System.h"
 #include "tlib/Export.h"
+#include "tlib/Import.h"
 
 namespace fs = std::filesystem;
 
@@ -26,9 +27,9 @@ int main(int argc, const char *argv[]) {
     ArgumentParser parser(argc, argv, "tarik");
 
     // Code Analsis
-    Option *search_path = parser.add_option("search-path",
+    Option *search_path = parser.add_option("import",
                                             "Code Analysis",
-                                            "Add an import search path",
+                                            "Import declarations from a .tlib file",
                                             true,
                                             "path",
                                             'I');
@@ -74,17 +75,20 @@ int main(int argc, const char *argv[]) {
     LLVM::Config config;
     bool emit_aast = false, emit_ast = false, emit_llvm = false, emit_lib = false;
     std::string output_filename;
-    std::vector<fs::path> search_paths;
+    std::unordered_map<std::string, std::vector<aast::Statement *>> libraries;
 
     fs::path executable_path = get_executable_path(argv[0]);
 
-    if (!executable_path.empty()) {
-        search_paths.push_back(executable_path.parent_path().parent_path() / "lib");
-    }
-
     for (const auto &option : parser) {
         if (option == search_path) {
-            search_paths.emplace_back(std::filesystem::canonical(option.argument));
+            std::filesystem::path input = option.argument;
+            std::vector<aast::Statement *> statements = import_statements(input);
+            if (libraries.contains(input.stem())) {
+                std::cerr << "warning: Duplicate library '" << input.stem() << "' ignored\n";
+                continue;
+            }
+            lift_up_undefined(statements, Path({input.stem()}, {}));
+            libraries.emplace(input.stem(), statements);
         } else if (option == code_model) {
             if (option.argument == "tiny")
                 config.code_model = llvm::CodeModel::Tiny;
@@ -184,7 +188,7 @@ int main(int argc, const char *argv[]) {
     }
 
     Bucket error_bucket;
-    Parser p(input_path, &error_bucket, search_paths);
+    Parser p(input_path, &error_bucket);
 
     std::vector<ast::Statement *> statements;
     do {
@@ -202,7 +206,7 @@ int main(int argc, const char *argv[]) {
     } else {
         std::vector<aast::Statement *> analysed_statements;
         if (error_bucket.get_error_count() == 0) {
-            Analyser analyser(&error_bucket);
+            Analyser analyser(&error_bucket, libraries);
             analyser.analyse(statements);
             analysed_statements = analyser.finish();
 
