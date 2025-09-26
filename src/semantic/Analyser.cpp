@@ -867,7 +867,7 @@ std::optional<aast::Expression *> Analyser::verify_macro_expression(ast::Express
     size_t max_arguments = macro->arguments.size();
 
     if (macro->arguments.back() == Macro::REPEAT) {
-        min_arguments--;
+        min_arguments -= 2;
         max_arguments = std::numeric_limits<size_t>::max();
     }
 
