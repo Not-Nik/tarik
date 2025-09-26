@@ -15,6 +15,7 @@
 
 #include "Base.h"
 #include "syntactic/Types.h"
+#include "utf/Utf.h"
 
 namespace ast
 {
@@ -38,20 +39,7 @@ public:
             std::string t = st->print();
             if (st->statement_type == EXPR_STMT)
                 t.push_back(';');
-            // Add four spaces to the start of every line
-            size_t index = 0;
-            while (true) {
-                /* Locate the substring to replace. */
-                index = t.find('\n', index);
-                if (index == std::string::npos)
-                    break;
-
-                /* Make the replacement. */
-                t.replace(index, 1, "\n    ");
-
-                /* Advance index forward so the next iteration doesn't pick it up as well. */
-                index += 3;
-            }
+            replace_all(t, "\n", "\n    ");
             res += "\n    " + t;
         }
         res += "\n}";

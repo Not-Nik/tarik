@@ -11,6 +11,8 @@
 #include <iostream>
 #include <algorithm>
 
+#include "utf/Utf.h"
+
 unsigned int Option::option_count = 0;
 
 ArgumentParser::ArgumentParser(int argc, const char *argv[], std::string toolName) {
@@ -75,7 +77,7 @@ void ArgumentParser::help() {
 
         std::sort(options.begin(),
                   options.end(),
-                  [](Option *first, Option *second) {
+                  [](const Option *first, const Option *second) {
                       return first->name < second->name;
                   });
 
@@ -86,10 +88,19 @@ void ArgumentParser::help() {
         }
     }
 
-    for (const auto &hs : help_strings) {
-        std::cout << hs.first;
-        if (!hs.second.empty())
-            std::cout << std::string(longest - hs.first.size() + 3, ' ') << hs.second;
+    for (auto &[usage, description] : help_strings) {
+        std::cout << usage;
+        if (!description.empty()) {
+            std::string spaces = std::string(std::min(longest, 24uz) + 3, ' ');
+            if (usage.size() > 24) {
+                std::cout << "\n" << spaces;
+            } else {
+                std::cout << std::string(std::min(longest, 24uz) - usage.size() + 3, ' ');
+            }
+            replace_all(description, "\n", "\n" + spaces);
+
+            std::cout << description;
+        }
         std::cout << "\n";
     }
 }

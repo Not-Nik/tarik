@@ -52,23 +52,21 @@ int main(int argc, const char *argv[]) {
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
 
     // Output
-    Option *emit_aast_option = parser.add_option("emit-aast",
-                                                 "Output",
-                                                 "Parse code, analyse, and re-emit it based on the internal AST");
-    Option *emit_assembly = parser.add_option("emit-assembly", "Output", "Emit Assembly", 's');
-    Option *emit_ast_option = parser.add_option("emit-ast",
-                                                "Output",
-                                                "Parse code, and re-emit it based on the internal AST");
-    Option *emit_llvm_option = parser.add_option("emit-llvm", "Output", "Emit generated LLVM IR");
+    Option *emit_option = parser.add_option("emit",
+                                            "Output",
+                                            "Add type to the list of emitted output.\n"
+                                            " - asm - name.s - Assembly code\n"
+                                            " - lib - name.tlib - Library metadata\n"
+                                            " - llvm - name.ll - LLVM IR\n"
+                                            " - obj - name.o - Object file\n"
+                                            " - sem - name.sem.tk - Code based on the semantic AST\n"
+                                            " - syn - name.syn.tk - Code based on the syntactic AST",
+                                            "aast|ast|asm|llvm|obj");
 
-    Option *emit_lib_option = parser.add_option("lib",
-                                                "Output",
-                                                "Emit library file, if object file is emitted",
-                                                'l');
     Option *output_option = parser.add_option("output", "Output", "Output to file", "file", 'o');
 
     LLVM::Config config;
-    bool emit_aast = false, emit_ast = false, emit_llvm = false, emit_lib = false;
+    bool emit_aast = false, emit_ast = false, emit_asm = false, emit_llvm = false, emit_obj = false, emit_lib = false;
     std::string output_filename;
     std::unordered_map<std::string, std::vector<aast::Statement *>> libraries;
 
@@ -124,24 +122,25 @@ int main(int argc, const char *argv[]) {
             std::cout << version_id << " tarik compiler version " << version_string << "\n";
             std::cout << "Default target: " << LLVM::default_triple << "\n";
             return 0;
-        } else if (option == emit_aast_option) {
-            emit_aast = true;
-        } else if (option == emit_assembly) {
-            config.output = LLVM::Config::Output::Assembly;
-        } else if (option == emit_ast_option) {
-            emit_ast = true;
-        } else if (option == emit_llvm_option) {
-            emit_llvm = true;
-        } else if (option == emit_lib_option) {
-            emit_lib = true;
+        } else if (option == emit_option) {
+            if (option.argument == "sem")
+                emit_aast = true;
+            else if (option.argument == "syn")
+                emit_ast = true;
+            else if (option.argument == "asm")
+                emit_asm = true;
+            else if (option.argument == "lib")
+                emit_lib = true;
+            else if (option.argument == "llvm")
+                emit_llvm = true;
+            else if (option.argument == "obj")
+                emit_obj = true;
         } else if (option == output_option) {
-            output_filename = option.argument;
+            if (option.argument.rfind('.') > option.argument.find('/'))
+                output_filename = option.argument + ".none";
+            else
+                output_filename = option.argument;
         }
-    }
-
-    if (emit_ast && emit_llvm) {
-        std::cerr << "error: Options 're-emit' and 'emit-llvm' are mutually-exclusive\n";
-        return 1;
     }
 
     if (parser.get_inputs().size() > 1) {
@@ -162,25 +161,19 @@ int main(int argc, const char *argv[]) {
         return 1;
     }
 
-    fs::path output_path = input_path;
+    fs::path aast_path, ast_path, asm_path, llvm_path, obj_path, lib_path;
     if (output_filename.empty()) {
-        std::string new_extension;
-        if (emit_ast || emit_aast) {
-            new_extension = ".re.tk";
-        } else if (emit_llvm) {
-            new_extension = ".ll";
-        } else if (config.output == LLVM::Config::Output::Assembly) {
-            new_extension = ".s";
-        } else {
-            new_extension = ".o";
-        }
-        output_path.replace_extension(new_extension);
-    } else
-        output_path = output_filename;
-
-    if (output_path.has_parent_path() && !exists(output_path.parent_path())) {
-        create_directories(output_path.parent_path());
+        aast_path = ast_path = asm_path = llvm_path = obj_path = lib_path = input_path;
+    } else {
+        aast_path = ast_path = asm_path = llvm_path = obj_path = lib_path = output_filename;
     }
+
+    aast_path.replace_extension(".sem.tk");
+    ast_path.replace_extension(".syn.tk");
+    asm_path.replace_extension(".s");
+    llvm_path.replace_extension(".ll");
+    obj_path.replace_extension(".o");
+    lib_path.replace_extension(".tlib");
 
     Bucket error_bucket;
     Parser p(input_path, &error_bucket);
@@ -193,49 +186,52 @@ int main(int argc, const char *argv[]) {
 
     int result = 0;
     if (emit_ast) {
-        std::ofstream out(output_path);
+        std::ofstream out(ast_path);
         for (auto *s : statements) {
             out << s->print() << "\n\n";
         }
         out.put('\n');
-    } else {
-        std::vector<aast::Statement *> analysed_statements;
-        if (error_bucket.get_error_count() == 0) {
-            Analyser analyser(&error_bucket, libraries);
-            analyser.analyse(statements);
-            analysed_statements = analyser.finish();
-
-            if (error_bucket.get_error_count() == 0) {
-                lifetime::Analyser lifetime_analyser(&error_bucket, &analyser);
-                lifetime_analyser.analyse(analysed_statements);
-            }
-        }
+    }
+    std::vector<aast::Statement *> analysed_statements;
+    if (error_bucket.get_error_count() == 0) {
+        Analyser analyser(&error_bucket, libraries);
+        analyser.analyse(statements);
+        analysed_statements = analyser.finish();
 
         if (error_bucket.get_error_count() == 0) {
-            if (emit_aast) {
-                std::ofstream out(output_path);
-                for (auto *s : analysed_statements) {
-                    out << s->print() << "\n\n";
-                }
-                out.put('\n');
-            } else {
-                LLVM generator(input);
-                generator.generate_statements(analysed_statements);
-                if (emit_llvm)
-                    generator.dump_ir(output_path);
-                else
-                    result = generator.write_file(output_path, config);
-                if (emit_lib) {
-                    Export exporter;
-                    exporter.generate_statements(analysed_statements);
-                    exporter.write_file(output_path.replace_extension(".tlib"));
-                }
-            }
+            lifetime::Analyser lifetime_analyser(&error_bucket, &analyser);
+            lifetime_analyser.analyse(analysed_statements);
         }
-
-        std::for_each(analysed_statements.begin(), analysed_statements.end(), [](auto &p) { delete p; });
     }
 
+    if (error_bucket.get_error_count() == 0) {
+        if (emit_aast) {
+            std::ofstream out(aast_path);
+            for (auto *s : analysed_statements) {
+                out << s->print() << "\n\n";
+            }
+            out.put('\n');
+        }
+        LLVM generator(input);
+        generator.generate_statements(analysed_statements);
+        if (emit_asm) {
+            config.output = LLVM::Config::Output::Assembly;
+            result = generator.write_file(asm_path, config);
+        }
+        if (emit_llvm)
+            generator.dump_ir(llvm_path);
+        if (emit_obj) {
+            config.output = LLVM::Config::Output::Object;
+            result = generator.write_file(obj_path, config);
+        }
+        if (emit_lib) {
+            Export exporter;
+            exporter.generate_statements(analysed_statements);
+            exporter.write_file(lib_path);
+        }
+    }
+
+    std::for_each(analysed_statements.begin(), analysed_statements.end(), [](auto &p) { delete p; });
     std::for_each(statements.begin(), statements.end(), [](auto &p) { delete p; });
     error_bucket.print_errors();
 
