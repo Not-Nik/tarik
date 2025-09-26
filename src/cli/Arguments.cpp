@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2024
+// tarik (c) Nikolas Wipper 2020-2025
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -33,14 +33,21 @@ Option *ArgumentParser::add_option(Option option, const std::string &category) {
     return options[category].back();
 }
 
-Option *ArgumentParser::add_option(std::string name,
-                                   std::string category,
+Option *ArgumentParser::add_option(std::string name_,
+                                   const std::string &category,
                                    std::string description,
-                                   bool has_arg,
                                    std::string
                                    argument_name,
                                    char short_name) {
-    Option o(std::move(name), std::move(description), has_arg, std::move(argument_name), short_name);
+    Option o(std::move(name_), std::move(description), true, std::move(argument_name), short_name);
+    return add_option(std::move(o), category);
+}
+
+Option *ArgumentParser::add_option(std::string name_,
+                                   const std::string &category,
+                                   std::string description,
+                                   char short_name) {
+    Option o(std::move(name_), std::move(description), false, "", short_name);
     return add_option(std::move(o), category);
 }
 

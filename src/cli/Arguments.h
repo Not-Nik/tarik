@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2024
+// tarik (c) Nikolas Wipper 2020-2025
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -8,6 +8,7 @@
 #define TARIK_SRC_CLI_ARGUMENTS_H_
 
 #include <map>
+#include <utility>
 #include <vector>
 #include <string>
 
@@ -104,10 +105,13 @@ public:
 
     Option *add_option(Option option, const std::string &category);
     Option *add_option(std::string name,
-                       std::string category,
+                       const std::string &category,
                        std::string description,
-                       bool has_arg = false,
-                       std::string argument_name = "",
+                       std::string argument_name,
+                       char short_name = 0);
+    Option *add_option(std::string name,
+                       const std::string &category,
+                       std::string description,
                        char short_name = 0);
 
     ParsedOption parse_next_arg();

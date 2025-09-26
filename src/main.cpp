@@ -1,4 +1,4 @@
-// tarik (c) Nikolas Wipper 2020-2024
+// tarik (c) Nikolas Wipper 2020-2025
 
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -30,23 +30,20 @@ int main(int argc, const char *argv[]) {
     Option *search_path = parser.add_option("import",
                                             "Code Analysis",
                                             "Import declarations from a .tlib file",
-                                            true,
                                             "path",
                                             'I');
 
     // Code Generation
-    Option *code_model = parser.add_option("Ccode-model", "Code Generation", "Set the code model", true, "model");
+    Option *code_model = parser.add_option("Ccode-model", "Code Generation", "Set the code model", "model");
     Option *optimise = parser.add_option("Coptimise",
                                          "Code Generation",
                                          "Set the optimisation level",
-                                         true,
                                          "level",
                                          'O');
     Option *pic = parser.add_option("Cpic", "Code Generation", "Enable PIC");
     Option *override_triple = parser.add_option("Ctarget",
                                                 "Code Generation",
                                                 "Set the target-triple (defaults to '" + LLVM::default_triple + "')",
-                                                true,
                                                 "triple",
                                                 't');
 
@@ -58,7 +55,7 @@ int main(int argc, const char *argv[]) {
     Option *emit_aast_option = parser.add_option("emit-aast",
                                                  "Output",
                                                  "Parse code, analyse, and re-emit it based on the internal AST");
-    Option *emit_assembly = parser.add_option("emit-assembly", "Output", "Emit Assembly", false, "", 's');
+    Option *emit_assembly = parser.add_option("emit-assembly", "Output", "Emit Assembly", 's');
     Option *emit_ast_option = parser.add_option("emit-ast",
                                                 "Output",
                                                 "Parse code, and re-emit it based on the internal AST");
@@ -67,10 +64,8 @@ int main(int argc, const char *argv[]) {
     Option *emit_lib_option = parser.add_option("lib",
                                                 "Output",
                                                 "Emit library file, if object file is emitted",
-                                                false,
-                                                "",
                                                 'l');
-    Option *output_option = parser.add_option("output", "Output", "Output to file", true, "file", 'o');
+    Option *output_option = parser.add_option("output", "Output", "Output to file", "file", 'o');
 
     LLVM::Config config;
     bool emit_aast = false, emit_ast = false, emit_llvm = false, emit_lib = false;
