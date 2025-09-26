@@ -1,4 +1,3 @@
 # tarik (c) Nikolas Wipper 2025
 
-import arg;
-import io;
+struct va_list {}

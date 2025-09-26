@@ -1,0 +1,55 @@
+# tarik (c) Nikolas Wipper 2025
+
+struct FILE {}
+
+extern!(i32, remove, str*);
+extern!(i32, rename, str*, str*);
+extern!(FILE*, tmpfile);
+extern!(str*, tmpnam, str*);
+extern!(i32, fclose, FILE*);
+extern!(i32, fflush, FILE*);
+extern!(FILE*, fopen, str*, str*);
+extern!(FILE*, freopen, str*, str*, FILE*);
+extern!(void, setbuf, FILE*, str*);
+extern!(i32, setvbuf, FILE*, str*, i32, u64);
+
+extern_va!(i32, printf, str*);
+extern_va!(i32, scanf, str*);
+extern_va!(i32, snprintf, str*, u64, str*);
+extern_va!(i32, sprintf, str*, str*);
+extern_va!(i32, sscanf, str*, str*);
+
+extern!(i32, vfprintf, FILE*, str*, arg::va_list);
+extern!(i32, vfscanf, FILE*, str*, arg::va_list);
+extern!(i32, vprintf, str*, arg::va_list);
+extern!(i32, vscanf, str*, arg::va_list);
+extern!(i32, vsnprintf, str*, u64, str*, arg::va_list);
+extern!(i32, vsprintf, str*, str*, arg::va_list);
+extern!(i32, vsscanf, str*, str*, arg::va_list);
+
+extern!(i32, fgetc, FILE*);
+extern!(str*, fgets, str*, i32, FILE*);
+extern!(i32, fputc, i32, FILE*);
+extern!(i32, fputs, str*, FILE*);
+extern!(i32, getc, FILE*);
+extern!(i32, getchar);
+extern!(i32, putc, i32, FILE*);
+extern!(i32, putchar, i32);
+extern!(i32, puts, str*);
+extern!(i32, ungetc, i32, FILE*);
+
+extern!(u64, fread, void*, u64, u64, FILE*);
+extern!(u64, fwrite, void*, u64, u64, FILE*);
+
+#extern!(i32, fgetpos, FILE*, fpos_t*);
+extern!(i32, fseek, FILE*, i64, i32);
+#extern!(i32, fsetpos, FILE*, fpos_t*);
+extern!(i64, ftell, FILE*);
+extern!(void, rewind, FILE*);
+extern!(void, clearerr, FILE*);
+extern!(i32, feof, FILE*);
+extern!(i32, ferror, FILE*);
+extern!(void, perror, str*);
+
+extern_va!(i32, fprintf, FILE*, str*);
+extern_va!(i32, fscanf, FILE*, str*);
