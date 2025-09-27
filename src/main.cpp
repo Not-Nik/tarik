@@ -174,6 +174,8 @@ int main(int argc, const char *argv[]) {
     obj_path.replace_extension(".o");
     lib_path.replace_extension(".tlib");
 
+    std::filesystem::current_path(input_path.parent_path());
+
     Bucket error_bucket;
     Parser p(input_path, &error_bucket);
 
