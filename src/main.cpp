@@ -74,8 +74,6 @@ int main(int argc, const char *argv[]) {
     std::string output_filename;
     std::unordered_map<std::string, std::vector<aast::Statement *>> libraries;
 
-    fs::path executable_path = get_executable_path(argv[0]);
-
     for (const auto &option : parser) {
         if (option == search_path) {
             std::filesystem::path input = option.argument;

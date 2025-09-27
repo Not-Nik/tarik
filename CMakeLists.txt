@@ -3,6 +3,14 @@ project(tarik)
 
 find_package(llvm 21.1 REQUIRED)
 
+include(FetchContent)
+FetchContent_Declare(
+        tomlplusplus
+        GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
+        GIT_TAG v3.4.0
+)
+FetchContent_MakeAvailable(tomlplusplus)
+
 set(CMAKE_CXX_STANDARD 23 REQUIRED)
 
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
@@ -75,6 +83,8 @@ add_executable(tarik-testing
 
 add_executable(tlib src/tlib/TLibMain.cpp)
 
+add_executable(temet temet/main.cpp)
+
 target_include_directories(tarik-lib SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
 target_include_directories(tarik-lib PUBLIC src)
 
@@ -83,6 +93,7 @@ target_link_libraries(tarik-lib comperr LLVM)
 target_link_libraries(tarik tarik-lib)
 target_link_libraries(tarik-testing tarik-lib)
 target_link_libraries(tlib tarik-lib)
+target_link_libraries(temet tarik-lib tomlplusplus::tomlplusplus)
 
 install(TARGETS tarik tlib
         RUNTIME DESTINATION bin)

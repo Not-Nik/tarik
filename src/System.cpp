@@ -12,8 +12,10 @@
 #endif
 
 // Standard-library-only fallback using argv[0] and PATH
-std::filesystem::path get_executable_path_fallback(const char* argv0) {
-    if (!argv0) throw std::runtime_error("argv[0] not available");
+std::filesystem::path find_executable(const char *argv0) {
+    if (!argv0) {
+        return {};
+    }
 
     std::filesystem::path argPath(argv0);
 
@@ -77,14 +79,19 @@ std::filesystem::path get_executable_path(const char *argv0) {
     (void) argv0;
     char buffer[PATH_MAX];
     ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
-    if (len == -1) throw std::runtime_error("readlink failed");
+    if (len == -1) {
+        return {};
+    }
     buffer[len] = '\0';
     path = std::string(buffer);
 
 #else
 #warning Your system doesn't have a native way to find the executable path. Falling back to trying to find one manually.
-    path = get_executable_path_fallback(argv0);
+    path = find_executable(argv0);
 #endif
 
-    return path;
+    if (exists(path))
+        return path;
+    else
+        return {};
 }

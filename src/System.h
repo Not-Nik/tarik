@@ -5,6 +5,7 @@
 
 #include <filesystem>
 
+std::filesystem::path find_executable(const char *argv0);
 std::filesystem::path get_executable_path(const char *argv0);
 
 #endif //TARIK_SYSTEM_H
