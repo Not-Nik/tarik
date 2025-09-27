@@ -157,8 +157,10 @@ void LLVM::generate_statement(aast::Statement *statement, bool is_last) {
 bool LLVM::generate_statements(const std::vector<aast::Statement *> &statements, bool is_last) {
     for (auto it = statements.begin(); it != statements.end(); ++it) {
         generate_statement(*it, is_last && it + 1 == statements.end());
-        if ((*it)->statement_type == aast::RETURN_STMT)
-            return false;
+        if ((*it)->statement_type == aast::RETURN_STMT ||
+            (*it)->statement_type == aast::BREAK_STMT ||
+            (*it)->statement_type == aast::CONTINUE_STMT) {}
+        return false;
     }
     return true;
 }
