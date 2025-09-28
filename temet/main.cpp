@@ -194,7 +194,7 @@ struct Dependency {
         args.push_back(root_src.string());
 
         if (volatile_) {
-            std::cerr << " * Executing '\"" << paths.tarik.string() << "\" ";
+            std::cerr << " * Executing '";
             for (auto &arg : args) {
                 std::cerr << "\"" << arg << "\" ";
             }
@@ -221,7 +221,7 @@ int main(int argc, const char *argv[]) {
     ArgumentParser parser(argc, argv, "temet");
 
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
-    Option *volatile_option = parser.add_option("volatile",
+    Option *volatile_option = parser.add_option("verbose",
                                                 "Miscellaneous",
                                                 "Print details about what temet is doing",
                                                 'v');
