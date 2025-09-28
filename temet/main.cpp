@@ -33,50 +33,48 @@ struct Paths {
     }
 };
 
-
-
 struct Dependency {
     std::string name;
     std::string version;
-    bool system;
+    bool system = false;
+    std::vector<Dependency> deps;
+    std::filesystem::path path;
 
-    Dependency(const std::string &name = "", const std::string &version = "", bool system = false)
-        : name(name),
-          version(version),
+    explicit Dependency(std::filesystem::path path)
+        : path(std::move(path)) {}
+
+    explicit Dependency(std::string name = "", std::string version = "", bool system = false)
+        : name(std::move(name)),
+          version(std::move(version)),
           system(system) {}
 
-    std::filesystem::path make_output_path(std::filesystem::path out) {
+    [[nodiscard]]
+    std::filesystem::path make_output_path(const std::filesystem::path &out) const {
         return out / name / version / name;
     }
 
-    int build(const Paths &paths, std::filesystem::path out) {
+    int find_path(const Paths &paths) {
         if (system) {
-            std::filesystem::path path = paths.libraries / name;
+            path = paths.libraries / name;
             if (!exists(path)) {
                 std::cerr << "error: couldn't find system library '" << name << "'\n";
                 return 1;
             }
-
-            int ret = build(paths, path, std::move(out));
-            if (volatile_) {
-                std::cerr << " * Exiting " << path << "\n";
-            }
-            return ret;
         }
         return 0;
     }
 
-    int build(const Paths &paths, std::filesystem::path in, std::filesystem::path out) {
+    int collect(const Paths &paths) {
         if (volatile_) {
-            std::cerr << " * Entering " << in << "\n";
+            std::cerr << " * Collecting " << path << "\n";
         }
 
-        if (!std::filesystem::exists(in / "Temet.toml")) {
+        if (!std::filesystem::exists(path / "Temet.toml")) {
             std::cerr << "error: Temet.toml does not exist\n";
             return 1;
         }
 
-        auto maybe_config = toml::parse_file((in / "Temet.toml").string());
+        auto maybe_config = toml::parse_file((path / "Temet.toml").string());
 
         if (maybe_config.failed()) {
             std::cerr << "error: failed to parse Temet.toml\n";
@@ -113,8 +111,6 @@ struct Dependency {
             dependencies = toml::table();
         }
 
-        std::vector<Dependency> deps;
-
         for (auto &&[key, value] : dependencies) {
             std::string dep_name = {key.begin(), key.end()};
 
@@ -137,10 +133,33 @@ struct Dependency {
             }
         }
 
+        for (auto &dep : deps) {
+            if (dep.find_path(paths)) {
+                return 1;
+            }
+            if (dep.collect(paths)) {
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    int build(const Paths &paths, const std::filesystem::path &out) {
+        if (volatile_) {
+            std::cerr << " * Entering " << path << "\n";
+        }
+
         std::vector<std::string> import_strings;
         for (auto &dep : deps) {
-            if (dep.build(paths, out))
-                return 1;
+            int ret = dep.build(paths, out);
+
+            if (volatile_) {
+                std::cerr << " * Exiting " << std::filesystem::current_path() << "\n";
+            }
+            if (ret) {
+                return ret;
+            }
+
             std::filesystem::path output_path = dep.make_output_path(out);
             output_path.replace_extension(".tlib");
             import_strings.emplace_back("-I");
@@ -150,7 +169,7 @@ struct Dependency {
         std::filesystem::path out_path = make_output_path(out);
         std::filesystem::create_directories(out_path.parent_path());
 
-        std::filesystem::path root_src = in / "src";
+        std::filesystem::path root_src = path / "src";
         std::string library_str;
 
         if (exists(root_src / "lib.tk")) {
@@ -190,8 +209,9 @@ struct Dependency {
         }
 
         int ret = llvm::sys::ExecuteAndWait(paths.tarik.string(), llvm::ArrayRef(args_ref.data(), args_ref.size()));
-        if (ret)
+        if (ret) {
             return ret;
+        }
 
         return 0;
     }
@@ -230,8 +250,11 @@ int main(int argc, const char *argv[]) {
     }
 
     if (inputs[0] == "build") {
-        Dependency root;
-        int ret = root.build(paths, std::filesystem::current_path(), std::filesystem::current_path() / "target");
+        Dependency root(std::filesystem::current_path());
+        if (root.collect(paths)) {
+            return 1;
+        }
+        int ret = root.build(paths, std::filesystem::current_path() / "target");
         if (volatile_) {
             std::cerr << " * Exiting " << std::filesystem::current_path() << "\n";
         }
