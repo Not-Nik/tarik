@@ -95,6 +95,6 @@ target_link_libraries(tarik-testing tarik-lib)
 target_link_libraries(tlib tarik-lib)
 target_link_libraries(temet tarik-lib tomlplusplus::tomlplusplus)
 
-install(TARGETS tarik tlib
+install(TARGETS tarik tlib temet
         RUNTIME DESTINATION bin)
 install(DIRECTORY lib DESTINATION .)
