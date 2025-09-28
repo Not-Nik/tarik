@@ -14,8 +14,7 @@ int main(int argc, const char *argv[]) {
     Option *version = parser.add_option("version", "Miscellaneous", "Display the compiler version");
     Option *merge_option = parser.add_option("merge",
                                              "Actions",
-                                             "Merge a library into the input library",
-                                             true,
+                                             "Merge a library into the input library"
                                              "library");
 
     std::filesystem::path merge;

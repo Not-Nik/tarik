@@ -12,7 +12,7 @@
 #include "syntactic/Parser.h"
 
 void compile_test_file(Bucket &bucket, const std::string &file_name) {
-    Parser p(file_name, &bucket, {});
+    Parser p(file_name, &bucket);
 
     std::vector<ast::Statement *> statements;
     do {
@@ -23,7 +23,7 @@ void compile_test_file(Bucket &bucket, const std::string &file_name) {
     std::vector<aast::Statement *> analysed_statements;
     if (bucket.get_error_count() != 0)
         return;
-    Analyser analyser(&bucket);
+    Analyser analyser(&bucket, {});
     analyser.analyse(statements);
     analysed_statements = analyser.finish();
 
