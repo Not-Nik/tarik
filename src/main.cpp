@@ -174,16 +174,19 @@ int main(int argc, const char *argv[]) {
     obj_path.replace_extension(".o");
     lib_path.replace_extension(".tlib");
 
+    std::filesystem::path wd = std::filesystem::current_path();
     std::filesystem::current_path(input_path.parent_path());
 
     Bucket error_bucket;
-    Parser p(input_path, &error_bucket);
+    Parser p(input_path.filename(), &error_bucket);
 
     std::vector<ast::Statement *> statements;
     do {
         statements.push_back(p.parse_statement());
     } while (statements.back());
     statements.pop_back();
+
+    std::filesystem::current_path(wd);
 
     int result = 0;
     if (emit_ast) {
@@ -215,12 +218,12 @@ int main(int argc, const char *argv[]) {
         }
         LLVM generator(input);
         generator.generate_statements(analysed_statements);
+        if (emit_llvm)
+            generator.dump_ir(llvm_path);
         if (emit_asm) {
             config.output = LLVM::Config::Output::Assembly;
             result = generator.write_file(asm_path, config);
         }
-        if (emit_llvm)
-            generator.dump_ir(llvm_path);
         if (emit_obj) {
             config.output = LLVM::Config::Output::Object;
             result = generator.write_file(obj_path, config);
