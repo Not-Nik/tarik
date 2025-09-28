@@ -216,8 +216,14 @@ int main(int argc, const char *argv[]) {
             }
             out.put('\n');
         }
+        if (emit_lib) {
+            Export exporter;
+            exporter.generate_statements(analysed_statements);
+            exporter.write_file(lib_path);
+        }
         LLVM generator(input);
-        generator.generate_statements(analysed_statements);
+        if (emit_llvm || emit_asm)
+            generator.generate_statements(analysed_statements);
         if (emit_llvm)
             generator.dump_ir(llvm_path);
         if (emit_asm) {
@@ -227,11 +233,6 @@ int main(int argc, const char *argv[]) {
         if (emit_obj) {
             config.output = LLVM::Config::Output::Object;
             result = generator.write_file(obj_path, config);
-        }
-        if (emit_lib) {
-            Export exporter;
-            exporter.generate_statements(analysed_statements);
-            exporter.write_file(lib_path);
         }
     }
 

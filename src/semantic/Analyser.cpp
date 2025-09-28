@@ -95,9 +95,12 @@ void Analyser::analyse_import(const std::vector<ast::Statement *> &statements) {
                     if (statement->statement_type == aast::FUNC_DECL_STMT) {
                         auto *fd = (aast::FuncDeclareStatement *) statement;
                         func_decls.emplace(fd->path, fd);
-                    } else if (statement->statement_type == aast::STRUCT_DECL_STMT) {
-                        auto *sd = (aast::StructDeclareStatement *) statement;
+                    } else if (statement->statement_type == aast::STRUCT_STMT) {
+                        auto *sd = (aast::StructStatement *) statement;
                         struct_decls.emplace(sd->path, sd);
+                        structures.emplace(sd->path, sd);
+                        // Can't have cyclic dependencies between packages, so don't bother adding fields
+                        structure_graph.get_node(sd);
                     }
                 }
             }
