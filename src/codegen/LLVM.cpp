@@ -290,8 +290,8 @@ void LLVM::generate_while(aast::WhileStatement *while_, bool is_last) {
     last_loop_entry = while_comp_block;
     last_loop_exit = endwhile_block;
 
-    generate_scope(while_, is_last);
-    builder.CreateBr(while_comp_block);
+    if (generate_scope(while_, is_last))
+        builder.CreateBr(while_comp_block);
 
     last_loop_entry = old_llen;
     last_loop_exit = old_llex;
