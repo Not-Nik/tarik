@@ -221,18 +221,20 @@ int main(int argc, const char *argv[]) {
             exporter.generate_statements(analysed_statements);
             exporter.write_file(lib_path);
         }
-        LLVM generator(input);
-        if (emit_llvm || emit_asm)
+
+        if (emit_llvm || emit_asm || emit_obj) {
+            LLVM generator(input);
             generator.generate_statements(analysed_statements);
-        if (emit_llvm)
-            generator.dump_ir(llvm_path);
-        if (emit_asm) {
-            config.output = LLVM::Config::Output::Assembly;
-            result = generator.write_file(asm_path, config);
-        }
-        if (emit_obj) {
-            config.output = LLVM::Config::Output::Object;
-            result = generator.write_file(obj_path, config);
+            if (emit_llvm)
+                generator.dump_ir(llvm_path);
+            if (emit_asm) {
+                config.output = LLVM::Config::Output::Assembly;
+                result = generator.write_file(asm_path, config);
+            }
+            if (emit_obj) {
+                config.output = LLVM::Config::Output::Object;
+                result = generator.write_file(obj_path, config);
+            }
         }
     }
 
