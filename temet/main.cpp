@@ -16,6 +16,8 @@
 #include <toml++/toml.hpp>
 #include <llvm/Support/Program.h>
 
+constexpr auto DEFAULT_VERSION = "0.0.0";
+
 static bool volatile_ = false;
 
 struct Paths {
@@ -35,7 +37,7 @@ struct Paths {
 
 struct Dependency {
     std::string name;
-    std::string version;
+    std::string version = DEFAULT_VERSION;
     bool system = false;
     std::vector<Dependency> deps;
     std::filesystem::path path;
@@ -43,7 +45,7 @@ struct Dependency {
     explicit Dependency(std::filesystem::path path)
         : path(std::move(path)) {}
 
-    explicit Dependency(std::string name = "", std::string version = "", bool system = false)
+    explicit Dependency(std::string name, std::string version, bool system)
         : name(std::move(name)),
           version(std::move(version)),
           system(system) {}
@@ -96,7 +98,7 @@ struct Dependency {
         }
 
         name = project["name"].as_string()->get();
-        version = project["version"].value_or("");
+        version = project["version"].value_or(DEFAULT_VERSION);
 
         toml::table dependencies;
 
@@ -117,7 +119,7 @@ struct Dependency {
             switch (value.type()) {
             case toml::node_type::table: {
                 toml::table table = *value.as_table();
-                std::string version = table["version"].value_or("");
+                std::string version = table["version"].value_or(DEFAULT_VERSION);
                 bool system = table["system"].value_or(false);
                 deps.emplace_back(dep_name, version, system);
                 break;
