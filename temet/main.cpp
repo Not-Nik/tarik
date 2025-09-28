@@ -6,15 +6,15 @@
 
 #include <iostream>
 #include <filesystem>
+#include <utility>
 
 #include "cli/Arguments.h"
+#include "System.h"
 #include "Version.h"
 
 #define TOML_EXCEPTIONS 0
 #include <toml++/toml.hpp>
-#include <utility>
-
-#include "System.h"
+#include <llvm/Support/Program.h>
 
 static bool volatile_ = false;
 
@@ -138,13 +138,14 @@ int build(const Paths &paths, std::filesystem::path in, std::filesystem::path ou
         }
     }
 
-    std::string import_string;
+    std::vector<std::string> import_strings;
     for (auto &dep : deps) {
         if (dep.build(paths, out))
             return 1;
         std::filesystem::path output_path = make_output_path(out, dep.name, dep.version);
         output_path.replace_extension(".tlib");
-        import_string += " -I \"" + output_path.string() + "\"";
+        import_strings.emplace_back("-I");
+        import_strings.push_back(output_path.string());
     }
 
     std::filesystem::path out_path = make_output_path(out, name, version);
@@ -155,7 +156,7 @@ int build(const Paths &paths, std::filesystem::path in, std::filesystem::path ou
 
     if (exists(root_src / "lib.tk")) {
         root_src /= "lib.tk";
-        library_str = " --emit=lib";
+        library_str = "--emit=lib";
     } else if (exists(root_src / "main.tk")) {
         root_src /= "main.tk";
     } else {
@@ -163,16 +164,35 @@ int build(const Paths &paths, std::filesystem::path in, std::filesystem::path ou
         return 1;
     }
 
-    std::string exec_str = "\"" + paths.tarik.string() + "\"" +
-                           import_string +
-                           " --emit=obj" + library_str +
-                           " --output=\"" + out_path.string() +
-                           "\" \"" + root_src.string() + "\"";
+    std::vector<std::string> args;
 
-    if (volatile_)
-        std::cerr << " * Executing '" << exec_str << "'\n";
+    args.push_back(paths.tarik.string());
+    args.insert(args.end(), import_strings.begin(), import_strings.end());
+    args.emplace_back("--emit=obj");
+    if (!library_str.empty()) {
+        args.push_back(library_str);
+    }
+    args.push_back("--output=" + out_path.string());
+    args.push_back(root_src.string());
 
-    system(exec_str.c_str());
+    if (volatile_) {
+        std::cerr << " * Executing '\"" << paths.tarik.string() << "\" ";
+        for (auto &arg : args) {
+            std::cerr << "\"" << arg << "\" ";
+        }
+        std::cerr << "\b'\n";
+    }
+
+    std::vector<llvm::StringRef> args_ref;
+
+    args_ref.reserve(args.size());
+    for (auto &arg : args) {
+        args_ref.emplace_back(arg);
+    }
+
+    int ret = llvm::sys::ExecuteAndWait(paths.tarik.string(), llvm::ArrayRef(args_ref.data(), args_ref.size()));
+    if (ret)
+        return ret;
 
     return 0;
 }
